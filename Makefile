@@ -108,7 +108,7 @@ glue_glitch_youtube_bg_intro:
 	   [intro_scaled]split[intro_fg][intro_bg]; \
 	   [intro_bg]scale=1920:-1,crop=1920:1080,gblur=sigma=30,eq=contrast=0.7:brightness=-0.3[intro_background]; \
 	   [intro_fg]scale=-1:1080[intro_foreground]; \
-	   [intro_background][intro_foreground]overlay=(W-w)/2:0,fade=t=out:st=4:d=1[intro]; \
+	   [intro_background][intro_foreground]overlay=(W-w)/2:0,drawtext=text='Snowy Morning in Liberec':fontsize=72:fontcolor=white:x=(w-text_w)/2:y=(h-text_h)/2:alpha='if(lt(t,4),1,if(lt(t,5),(5-t),0))',fade=t=out:st=4:d=1[intro]; \
 	   [1:v][2:v]concat=n=2:v=1:a=0[vbase]; \
 	   [vbase]split[vfg][vbg]; \
 	   [vbg]scale=1920:-1,crop=1920:1080,gblur=sigma=30,eq=contrast=0.7:brightness=-0.3[background]; \
