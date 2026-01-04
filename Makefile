@@ -82,3 +82,19 @@ glue_glitch_youtube:
 	   [0:a][1:a]concat=n=2:v=0:a=1[a]" \
 	  -map "[v]" -map "[a]" -c:v libx264 -crf 20 -preset fast test_output.mp4
 
+glue_glitch_youtube_bg:
+	@DURATION=$$(ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 ./input/20251224_110901.mp4); \
+	GLITCH_DUR=$$(ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 ./effects/digital_glitch_01.mp4); \
+	OFFSET=$$(echo "$$DURATION - $$GLITCH_DUR / 2" | bc); \
+	echo "Video duration: $$DURATION seconds, glitch duration: $$GLITCH_DUR seconds, overlay offset: $$OFFSET seconds"; \
+	ffmpeg -y -i ./input/20251224_110901.mp4 -i ./input/20251224_110901.mp4 -i ./effects/digital_glitch_01.mp4 -filter_complex \
+	  "[0:v][1:v]concat=n=2:v=1:a=0[vbase]; \
+	   [vbase]split[vfg][vbg]; \
+	   [vbg]scale=1920:-1,crop=1920:1080,gblur=sigma=30,eq=contrast=0.7:brightness=-0.3[background]; \
+	   [vfg]scale=-1:1080[foreground]; \
+	   [background][foreground]overlay=(W-w)/2:0[vcomposed]; \
+	   [2:v]scale=-1:1080,colorkey=0x000000:0.3:0.2,setpts=PTS+$$OFFSET/TB[glitch]; \
+	   [vcomposed][glitch]overlay=(W-w)/2:0:enable='between(t,$$OFFSET,$$OFFSET+$$GLITCH_DUR)'[v]; \
+	   [0:a][1:a]concat=n=2:v=0:a=1[a]" \
+	  -map "[v]" -map "[a]" -c:v libx264 -crf 20 -preset fast test_output.mp4
+
