@@ -1,0 +1,74 @@
+sequences:
+  - name: main
+    z-index: 0
+    fragments:
+      - intro
+      - glitchy_trans
+      - footage
+      - glitchy_trans
+      - footage_final
+      - outro
+
+fragments:
+  - id: intro
+    z-index: 0
+    width: 5s
+    transition-out: # fade to black at the end
+      type: fade-to-black
+      duration: 1s
+  - id: footage
+    z-index: 0
+    width: 100%
+    asset: clip_01 # easy: just specify the asset name
+  - id: footage_final
+    z-index: 0
+    width: 100%
+    asset: clip_01
+    transition-out:
+      type: fade-to-black
+      width: 1s
+  - id: glitchy_trans
+    z-index: 1
+    width: 1s
+    margin-left: -0.5s
+    margin-righ: 0.5s
+    asset: glitch # easy: just specify the asset name
+    blend-mode: screen # black becomes transparent
+  - id: outro
+    width: 3s
+
+assets:
+  - name: clip_01
+    path: ./input/20251224_110901.mp4
+    author: "John Doe"
+  - name: clip_02
+    path: ./input/20251224_111721.mp4
+    author: "Jane Doe"
+  - name: intro_image
+    path: ./images/20251224_110757.jpg
+    author: "FooBar"
+  - name: glitch
+    path: ./effects/digital_glitch_01.mp4
+  - name: guitar_music
+    path: ./audio/instrumental-acoustic-guitar-music-401434.mp3
+    title: "Badass Guitar Music"
+    author: "Baz"
+
+output:
+  - name: for_youtube
+    path: ./output/for_youtube.mp4
+    resolution: 1920x1080
+    fps: 30
+  - name: for_youtube_short
+    path: ./output/for_youtube_short.mp4
+    resolution: 1080x1920
+    fps: 30
+  - name: for_instagram
+    path: ./output/for_instagram.mp4
+    resolution: 1080x1920
+    fps: 30
+
+upload:
+  - name: to_youtube_channel_1
+    output: for_youtube
+    channel: SergeiGannochenko

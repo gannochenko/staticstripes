@@ -17,8 +17,20 @@ output/*
 
 .DS_Store
 *.mp4
+*.mp3
+*.jpg
+*.png
 images/*
 !images/.gitkeep
 
 audio/*
 !audio/.gitkeep
+
+# Go
+*.exe
+*.exe~
+*.dll
+*.dylib
+*.test
+*.out
+go.sum

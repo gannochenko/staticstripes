@@ -1,0 +1,95 @@
+<!--
+# Legend:
+
+1. sequences are vertically stacked containers, can be used to define parallel sequences
+2. fragments are horizontally stacked containers, define the chunk
+3. container is a piece of rich html that will be rendered using puppeteer into a png against the output's resolution
+-->
+
+<project>
+  <sequence>
+    <fragment class="intro intro_duration" />
+    <fragment class="glitchy_transition" />
+    <fragment class="footage" />
+    <fragment class="glitchy_transition" />
+    <fragment class="footage footage_final" />
+    <fragment class="outro" />
+  </sequence>
+  <sequence>
+    <fragment class="intro_sound intro_duration" />
+  </sequence>
+  <sequence>
+    <fragment class="intro_greeting intro_duration">
+      <container class="intro_greeting_text">
+        <div>Snowy Morning in Liberec 🇨🇿</div>
+      </container>
+    </fragment>
+  </sequence>
+</project>
+
+<style>
+  .intro {
+    z-index: 0;
+    -asset: intro_image;
+    -transition-out: fade-to-black 1s;
+  }
+  .intro_duration {
+    width: 5s;
+  }
+  .intro_sound {
+    -asset: guitar_music;
+    -transition-out: fade-out 1s;
+  }
+  .intro_greeting_text {
+    width: 100vh;
+    height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+  }
+  .glitchy_transition {
+    width: 5s;
+    margin-left: -0.5s;
+    margin-right: 0.5s;
+    -asset: glitch;
+    -blend-mode: screen;
+    z-index: 1;
+  }
+  .footage {
+    width: 100%; /* entire asset duration */
+    z-index: 0;
+    -asset: clip_01;
+  }
+  .footage_final {
+    -transition-out: fade-to-black 1s;
+  }
+  .outro {
+    width: 3s;
+    z-index: 0;
+  }
+</style>
+
+<assets>
+  <asset name="clip_01" path="./input/20251224_110901.mp4" author="John Doe" />
+  <asset name="clip_02" path="./input/20251224_111721.mp4" author="Jane Doe" />
+  <asset
+    name="intro_image"
+    path="./images/20251224_110757.jpg"
+    author="FooBar"
+  />
+  <asset name="glitch" path="./effects/digital_glitch_01.mp4" />
+  <asset
+    name="guitar_music"
+    path="./audio/instrumental-acoustic-guitar-music-401434.mp3"
+    author="Baz"
+  />
+</assets>
+
+<outputs>
+  <output
+    name="for_youtube"
+    path="./output/for_youtube.mp4"
+    resolution="1920x1080"
+    fps="30"
+  />
+</outputs>
