@@ -1,13 +1,31 @@
-.PHONY: run build test clean
+.PHONY: install dev build start lint lint-fix format format-check clean
+
+install:
+	npm install
 
 run:
-	go run main.go parser.go
+	npm run dev
 
 build:
-	go build -o renderer
+	npm run build
 
-test:
-	go test ./...
+start:
+	npm start
+
+lint:
+	npm run lint
+
+lint-fix:
+	npm run lint:fix
+
+format:
+	npm run format
+
+format-check:
+	npm run format:check
 
 clean:
-	rm -f renderer
+	rm -rf node_modules dist *.tsbuildinfo
+	rm -f package-lock.json
+
+all: install build

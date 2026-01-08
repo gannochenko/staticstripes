@@ -1,41 +1,36 @@
-# Binaries for programs and plugins
-*.exe
-*.exe~
-*.dll
-*.so
-*.dylib
-
-# Test binary, built with `go test -c`
-*.test
-
-# Output of the go coverage tool
-*.out
-
-# Dependency directories
-vendor/
-
-# Go workspace file
-go.work
+# Dependencies
+node_modules/
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
 
 # Build output
-bin/
 dist/
 build/
+*.tsbuildinfo
 
-# IDE specific
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# IDE
 .idea/
 .vscode/
 *.swp
 *.swo
 *~
 
-# OS specific
+# OS
 .DS_Store
 Thumbs.db
 
-# Environment variables
-.env
-.env.local
-
 # Logs
 *.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Testing
+coverage/
+.nyc_output/
