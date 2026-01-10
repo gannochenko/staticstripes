@@ -5,6 +5,8 @@ import {
   Output,
   Element,
   ASTNode,
+  Sequence,
+  Fragment,
 } from './type';
 import { execFile } from 'child_process';
 import { promisify } from 'util';
@@ -19,9 +21,10 @@ export async function prepareProject(
   const projectDir = dirname(projectPath);
   const assets = await processAssets(html, projectDir);
   const output = processOutput(html, projectDir);
+  const sequences = processSequences(html);
 
   return {
-    sequences: [],
+    sequences,
     assets,
     output,
   };
@@ -265,4 +268,144 @@ function findOutputElements(html: ParsedHtml): Element[] {
 
   traverse(html.ast);
   return results;
+}
+
+/**
+ * Processes sequences and fragments from the parsed HTML
+ */
+function processSequences(html: ParsedHtml): Sequence[] {
+  const sequenceElements = findSequenceElements(html);
+  const sequences: Sequence[] = [];
+
+  for (const sequenceElement of sequenceElements) {
+    const fragmentElements = findFragmentChildren(sequenceElement);
+    const fragments: Fragment[] = [];
+
+    for (const fragmentElement of fragmentElements) {
+      const fragment = processFragment(fragmentElement, html);
+      if (fragment) {
+        fragments.push(fragment);
+      }
+    }
+
+    sequences.push({ fragments });
+  }
+
+  return sequences;
+}
+
+/**
+ * Finds all sequence elements that are direct children of <project>
+ */
+function findSequenceElements(html: ParsedHtml): Element[] {
+  // First find the <project> element
+  const projectElement = findProjectElement(html);
+  if (!projectElement) {
+    console.warn('No <project> element found');
+    return [];
+  }
+
+  // Get direct sequence children only
+  const sequences: Element[] = [];
+  if ('childNodes' in projectElement && projectElement.childNodes) {
+    for (const child of projectElement.childNodes) {
+      if ('tagName' in child) {
+        const element = child as Element;
+        if (element.tagName === 'sequence') {
+          sequences.push(element);
+        }
+      }
+    }
+  }
+
+  return sequences;
+}
+
+/**
+ * Finds the <project> root element
+ */
+function findProjectElement(html: ParsedHtml): Element | null {
+  function traverse(node: ASTNode): Element | null {
+    if ('tagName' in node) {
+      const element = node as Element;
+      if (element.tagName === 'project') {
+        return element;
+      }
+    }
+
+    if ('childNodes' in node && node.childNodes) {
+      for (const child of node.childNodes) {
+        const result = traverse(child);
+        if (result) return result;
+      }
+    }
+
+    return null;
+  }
+
+  return traverse(html.ast);
+}
+
+/**
+ * Finds all fragment descendants of a sequence element (not just direct children)
+ * Parse5 treats self-closing custom tags as opening tags, nesting subsequent elements
+ */
+function findFragmentChildren(sequenceElement: Element): Element[] {
+  const fragments: Element[] = [];
+
+  function traverse(node: ASTNode) {
+    if ('tagName' in node) {
+      const element = node as Element;
+      if (element.tagName === 'fragment') {
+        fragments.push(element);
+      }
+    }
+
+    if ('childNodes' in node && node.childNodes) {
+      for (const child of node.childNodes) {
+        traverse(child);
+      }
+    }
+  }
+
+  // Start traversing from the sequence element's children
+  if ('childNodes' in sequenceElement && sequenceElement.childNodes) {
+    for (const child of sequenceElement.childNodes) {
+      traverse(child);
+    }
+  }
+
+  return fragments;
+}
+
+/**
+ * Processes a single fragment element
+ */
+function processFragment(element: Element, html: ParsedHtml): Fragment | null {
+  const attrs = new Map(element.attrs.map((attr) => [attr.name, attr.value]));
+  const styles = html.css.get(element) || {};
+
+  // Extract assetName from data-asset attribute or CSS -asset property
+  // If no asset is specified, use empty string (asset will be created on demand)
+  const assetName = attrs.get('data-asset') || styles['-asset'] || '';
+
+  // Extract zIndex from CSS z-index property (default to 0)
+  const zIndexStr = styles['z-index'];
+  const zIndex = zIndexStr ? parseInt(zIndexStr, 10) : 0;
+
+  // TODO: Populate other fields
+  return {
+    assetName,
+    duration: 0,
+    overlayLeft: 0,
+    overlayRight: 0,
+    blendModeLeft: '',
+    blendModeRight: '',
+    transitionIn: '',
+    transitionInDuration: 0,
+    transitionOut: '',
+    transitionOutDuration: 0,
+    zIndex,
+    objectFit: 'cover',
+  };
 }

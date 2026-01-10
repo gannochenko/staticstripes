@@ -17,7 +17,10 @@ async function main() {
   const fileContent = await parseHTMLFile(projectPath);
   const project = await prepareProject(fileContent, projectPath);
 
-  console.log(project);
+  console.log('Sequences:', project.sequences.length);
+  project.sequences.forEach((seq, i) => {
+    console.log(`  Sequence ${i}: ${seq.fragments.length} fragments`);
+  });
 
   // await generateFilterComplex(fileContent);
 
