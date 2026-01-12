@@ -23,9 +23,17 @@ export async function prepareProject(
   const output = processOutput(html, projectDir);
   const sequences = processSequences(html, assets);
 
+  // Build asset index mapping (asset name -> ffmpeg input index)
+  const assetIndexMap = new Map<string, number>();
+  let index = 0;
+  for (const assetName of assets.keys()) {
+    assetIndexMap.set(assetName, index++);
+  }
+
   return {
     sequences,
     assets,
+    assetIndexMap,
     output,
   };
 }

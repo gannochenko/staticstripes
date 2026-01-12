@@ -8,8 +8,6 @@ export type Filter = {
   render: () => string;
 };
 
-export type FilterGraph = Filter[];
-
 /**
  * Wraps a label in brackets
  */
@@ -81,13 +79,4 @@ export function makeCopy(input: string, output: string): Filter {
     output,
     render: () => `${wrap(input)}copy${wrap(output)}`,
   };
-}
-
-/**
- * Renders a filter graph into a filter_complex string
- * @param graph - Array of filters
- * @returns filter_complex string
- */
-export function renderFilterGraph(graph: FilterGraph): string {
-  return graph.map((filter) => filter.render()).join(';');
 }

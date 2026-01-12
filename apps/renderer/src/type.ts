@@ -53,5 +53,6 @@ export type Output = {
 export type ProjectStructure = {
   sequences: Sequence[];
   assets: Map<string, Asset>;
+  assetIndexMap: Map<string, number>; // assetName -> ffmpeg input index
   output: Output;
 };

@@ -1,37 +1,62 @@
 import { ProjectStructure, Sequence, Fragment } from './type';
-import {
-  FilterGraph,
-  makeConcat,
-  makeXFade,
-  makeCopy,
-  renderFilterGraph,
-} from './ffmpeg';
+import { makeConcat, makeXFade, makeCopy } from './ffmpeg';
+import { StreamDAG } from './dag';
 
 export function generateFilterComplex(project: ProjectStructure): string {
-  // For now, process only the first sequence
   if (project.sequences.length === 0) {
     return '';
   }
 
-  const sequence = project.sequences[0];
-  const graph = generateSequenceGraph(sequence);
+  const dag = new StreamDAG();
 
-  return renderFilterGraph(graph);
+  // Process each sequence
+  const sequenceOutputs: string[] = [];
+  for (let seqIdx = 0; seqIdx < project.sequences.length; seqIdx++) {
+    const sequence = project.sequences[seqIdx];
+    const outputLabel = dag.label();
+
+    const output = generateSequenceGraph(
+      dag,
+      sequence,
+      project.assetIndexMap,
+      outputLabel,
+    );
+    sequenceOutputs.push(output);
+  }
+
+  // Connect all sequences with concat
+  if (sequenceOutputs.length === 1) {
+    // Single sequence, just copy to output
+    dag.add(makeCopy(sequenceOutputs[0], 'outv'));
+  } else {
+    // Multiple sequences, concat them in time
+    dag.add(makeConcat(sequenceOutputs, 'outv'));
+  }
+
+  return dag.render();
 }
 
 /**
  * Generates filter graph for a single sequence
  */
-function generateSequenceGraph(sequence: Sequence): FilterGraph {
+function generateSequenceGraph(
+  dag: StreamDAG,
+  sequence: Sequence,
+  assetIndexMap: Map<string, number>,
+  outputLabel: string,
+): string {
   const { fragments } = sequence;
 
   if (fragments.length === 0) {
-    return [];
+    return outputLabel;
   }
 
   if (fragments.length === 1) {
-    // Single fragment, just output it
-    return [makeCopy('0:v', 'outv')];
+    // Single fragment, just copy it
+    const fragment = fragments[0];
+    const inputIndex = assetIndexMap.get(fragment.assetName) ?? 0;
+    dag.add(makeCopy(`${inputIndex}:v`, outputLabel));
+    return outputLabel;
   }
 
   // Check if we can use simple concat for all (no overlaps anywhere)
@@ -39,27 +64,40 @@ function generateSequenceGraph(sequence: Sequence): FilterGraph {
 
   if (!hasOverlaps) {
     // Use concat filter for everything (faster)
-    return buildConcatGraph(fragments);
+    buildConcatGraph(dag, fragments, assetIndexMap, outputLabel);
+  } else {
+    // Mix of overlapping and non-overlapping: use hybrid approach
+    buildHybridGraph(dag, fragments, assetIndexMap, outputLabel);
   }
 
-  // Mix of overlapping and non-overlapping: use hybrid approach
-  return buildHybridGraph(fragments);
+  return outputLabel;
 }
 
 /**
  * Builds a graph with a single concat filter for all fragments
  */
-function buildConcatGraph(fragments: Fragment[]): FilterGraph {
-  const inputs = fragments.map((_, idx) => `${idx}:v`);
-  return [makeConcat(inputs, 'outv')];
+function buildConcatGraph(
+  dag: StreamDAG,
+  fragments: Fragment[],
+  assetIndexMap: Map<string, number>,
+  outputLabel: string,
+): void {
+  const inputs = fragments.map((frag) => {
+    const inputIndex = assetIndexMap.get(frag.assetName) ?? 0;
+    return `${inputIndex}:v`;
+  });
+  dag.add(makeConcat(inputs, outputLabel));
 }
 
 /**
  * Builds a hybrid graph: concat for non-overlapping prefix, xfade for the rest
  */
-function buildHybridGraph(fragments: Fragment[]): FilterGraph {
-  const graph: FilterGraph = [];
-
+function buildHybridGraph(
+  dag: StreamDAG,
+  fragments: Fragment[],
+  assetIndexMap: Map<string, number>,
+  outputLabel: string,
+): void {
   // Find the longest prefix of consecutive non-overlapping fragments
   let concatEnd = 0;
   for (let i = 0; i < fragments.length - 1; i++) {
@@ -78,15 +116,16 @@ function buildHybridGraph(fragments: Fragment[]): FilterGraph {
   if (concatEnd >= 1) {
     const inputs = [];
     for (let i = 0; i <= concatEnd; i++) {
-      inputs.push(`${i}:v`);
+      const inputIndex = assetIndexMap.get(fragments[i].assetName) ?? 0;
+      inputs.push(`${inputIndex}:v`);
       timeOffset += fragments[i].duration;
     }
-    currentLabel = 'g0';
-    graph.push(makeConcat(inputs, currentLabel));
+    currentLabel = dag.add(makeConcat(inputs, dag.label()));
     nextFragmentIndex = concatEnd + 1;
   } else {
     // Start with first fragment
-    currentLabel = '0:v';
+    const firstInputIndex = assetIndexMap.get(fragments[0].assetName) ?? 0;
+    currentLabel = `${firstInputIndex}:v`;
     timeOffset = fragments[0].duration;
     nextFragmentIndex = 1;
   }
@@ -94,27 +133,23 @@ function buildHybridGraph(fragments: Fragment[]): FilterGraph {
   // Process remaining fragments with xfade
   while (nextFragmentIndex < fragments.length) {
     const currFragment = fragments[nextFragmentIndex];
+    const inputIndex = assetIndexMap.get(currFragment.assetName) ?? 0;
 
     // Adjust offset for overlap (now only overlayLeft matters)
     timeOffset += currFragment.overlayLeft;
 
-    const nextLabel =
-      nextFragmentIndex === fragments.length - 1
-        ? 'outv'
-        : `x${nextFragmentIndex - 1}`;
+    const isLast = nextFragmentIndex === fragments.length - 1;
+    const nextLabel = isLast ? outputLabel : dag.label();
     const transitionDuration = Math.abs(currFragment.overlayLeft) / 1000;
 
-    graph.push(
-      makeXFade(currentLabel, `${nextFragmentIndex}:v`, nextLabel, {
+    currentLabel = dag.add(
+      makeXFade(currentLabel, `${inputIndex}:v`, nextLabel, {
         duration: transitionDuration,
         offset: timeOffset / 1000,
       }),
     );
 
-    currentLabel = nextLabel;
     timeOffset += currFragment.duration;
     nextFragmentIndex++;
   }
-
-  return graph;
 }

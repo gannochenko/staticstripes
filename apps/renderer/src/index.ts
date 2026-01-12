@@ -17,7 +17,12 @@ async function main() {
   const fileContent = await parseHTMLFile(projectPath);
   const project = await prepareProject(fileContent, projectPath);
 
-  console.log('Sequences:', project.sequences.length);
+  console.log('\n=== Asset Index Mapping ===');
+  for (const [assetName, index] of project.assetIndexMap) {
+    console.log(`  ${assetName} -> ${index}:v`);
+  }
+
+  console.log('\nSequences:', project.sequences.length);
   project.sequences.forEach((seq, i) => {
     console.log(`  Sequence ${i}: ${seq.fragments.length} fragments`);
     seq.fragments.forEach((frag, j) => {

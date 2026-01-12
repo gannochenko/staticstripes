@@ -1,11 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import {
-  makeConcat,
-  makeXFade,
-  makeCopy,
-  renderFilterGraph,
-  type FilterGraph,
-} from './ffmpeg';
+import { makeConcat, makeXFade, makeCopy } from './ffmpeg';
 
 describe('ffmpeg filter factories', () => {
   describe('makeConcat', () => {
@@ -118,47 +112,6 @@ describe('ffmpeg filter factories', () => {
       const filter = makeCopy('input', 'output');
 
       expect(filter.render()).toBe('[input]copy[output]');
-    });
-  });
-
-  describe('renderFilterGraph', () => {
-    it('should render empty graph', () => {
-      const graph: FilterGraph = [];
-
-      expect(renderFilterGraph(graph)).toBe('');
-    });
-
-    it('should render single filter', () => {
-      const graph: FilterGraph = [makeConcat(['0:v', '1:v'], 'outv')];
-
-      expect(renderFilterGraph(graph)).toBe(
-        '[0:v][1:v]concat=n=2:v=1:a=0[outv]',
-      );
-    });
-
-    it('should render multiple filters with semicolon separator', () => {
-      const graph: FilterGraph = [
-        makeConcat(['0:v', '1:v'], 'g0'),
-        makeXFade('g0', '2:v', 'outv', { duration: 0.5, offset: 22.0 }),
-      ];
-
-      expect(renderFilterGraph(graph)).toBe(
-        '[0:v][1:v]concat=n=2:v=1:a=0[g0];[g0][2:v]xfade=transition=fade:duration=0.5:offset=22[outv]',
-      );
-    });
-
-    it('should render complex graph with multiple transitions', () => {
-      const graph: FilterGraph = [
-        makeConcat(['0:v', '1:v'], 'g0'),
-        makeXFade('g0', '2:v', 'x1', { duration: 0.5, offset: 22.16 }),
-        makeXFade('x1', '3:v', 'outv', { duration: 0.5, offset: 23.66 }),
-      ];
-
-      expect(renderFilterGraph(graph)).toBe(
-        '[0:v][1:v]concat=n=2:v=1:a=0[g0];' +
-          '[g0][2:v]xfade=transition=fade:duration=0.5:offset=22.16[x1];' +
-          '[x1][3:v]xfade=transition=fade:duration=0.5:offset=23.66[outv]',
-      );
     });
   });
 
