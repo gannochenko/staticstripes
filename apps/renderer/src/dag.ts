@@ -13,7 +13,7 @@ export type StreamNode = {
 export type FilterEdge = {
   filter: Filter;
   from: string[]; // Input stream IDs
-  to: string; // Output stream ID
+  to: string[]; // Output stream IDs (array to support split filter)
 };
 
 /**
@@ -37,7 +37,7 @@ export class StreamDAG {
   /**
    * Adds a filter edge to the DAG
    * Automatically creates nodes for all referenced streams
-   * Returns the output label for chaining
+   * Returns the first output label for chaining
    */
   add(filter: Filter): string {
     // Add nodes for all input streams
@@ -47,26 +47,28 @@ export class StreamDAG {
       }
     }
 
-    // Add node for output stream
-    if (!this.nodes.has(filter.output)) {
-      this.nodes.set(filter.output, { id: filter.output });
+    // Add nodes for all output streams
+    for (const output of filter.outputs) {
+      if (!this.nodes.has(output)) {
+        this.nodes.set(output, { id: output });
+      }
     }
 
     // Add edge
     this.edges.push({
       filter,
       from: filter.inputs,
-      to: filter.output,
+      to: filter.outputs,
     });
 
-    return filter.output;
+    return filter.outputs[0]; // Return first output for chaining
   }
 
   /**
    * Gets all input nodes (not produced by any filter)
    */
   getInputs(): Set<string> {
-    const outputs = new Set(this.edges.map((e) => e.to));
+    const outputs = new Set(this.edges.flatMap((e) => e.to));
     const inputs = new Set<string>();
     for (const nodeId of this.nodes.keys()) {
       if (!outputs.has(nodeId)) {

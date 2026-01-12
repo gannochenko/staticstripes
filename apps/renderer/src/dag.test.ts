@@ -111,7 +111,7 @@ describe('StreamDAG', () => {
       const edges = dag.getEdges();
       expect(edges.length).toBe(1);
       expect(edges[0].from).toEqual(['0:v', '1:v']);
-      expect(edges[0].to).toBe('outv');
+      expect(edges[0].to).toEqual(['outv']);
     });
 
     it('should store multiple edges', () => {
@@ -122,9 +122,9 @@ describe('StreamDAG', () => {
       const edges = dag.getEdges();
       expect(edges.length).toBe(2);
       expect(edges[0].from).toEqual(['0:v', '1:v']);
-      expect(edges[0].to).toBe('g0');
+      expect(edges[0].to).toEqual(['g0']);
       expect(edges[1].from).toEqual(['g0', '2:v']);
-      expect(edges[1].to).toBe('outv');
+      expect(edges[1].to).toEqual(['outv']);
     });
   });
 
@@ -219,9 +219,9 @@ describe('StreamDAG', () => {
       dag.add(makeXFade('x1', '3:v', 'outv', { duration: 1, offset: 20 }));
 
       const edges = dag.getEdges();
-      expect(edges[0].to).toBe('g0');
-      expect(edges[1].to).toBe('x1');
-      expect(edges[2].to).toBe('outv');
+      expect(edges[0].to).toEqual(['g0']);
+      expect(edges[1].to).toEqual(['x1']);
+      expect(edges[2].to).toEqual(['outv']);
     });
   });
 });
