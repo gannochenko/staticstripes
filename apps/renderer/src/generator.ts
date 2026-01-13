@@ -98,7 +98,7 @@ function generateSequenceGraph(
 
 /**
  * Builds a graph with a single concat filter for all fragments
- * Adds scale filter to normalize all inputs to 1920x1080
+ * Adds scale and fps normalization to all inputs
  */
 function buildConcatGraph(
   dag: StreamDAG,
@@ -106,13 +106,17 @@ function buildConcatGraph(
   assetIndexMap: Map<string, number>,
   outputLabel: string,
 ): void {
-  const scaledInputs = fragments.map((frag) => {
+  const normalizedInputs = fragments.map((frag) => {
     const inputIndex = assetIndexMap.get(frag.assetName) ?? 0;
+    // Scale to output resolution
     const scaledLabel = dag.label();
     dag.add(makeScale(`${inputIndex}:v`, scaledLabel, { width: 1920, height: 1080 }));
-    return scaledLabel;
+    // Normalize FPS to match output
+    const fpsLabel = dag.label();
+    dag.add(makeFps(scaledLabel, fpsLabel, 30));
+    return fpsLabel;
   });
-  dag.add(makeConcat(scaledInputs, outputLabel));
+  dag.add(makeConcat(normalizedInputs, outputLabel));
 }
 
 /**
@@ -140,24 +144,29 @@ function buildHybridGraph(
 
   // If we have 2+ non-overlapping fragments at the start, concat them
   if (concatEnd >= 1) {
-    const scaledInputs = [];
+    const normalizedInputs = [];
     for (let i = 0; i <= concatEnd; i++) {
       const inputIndex = assetIndexMap.get(fragments[i].assetName) ?? 0;
+      // Scale to output resolution
       const scaledLabel = dag.label();
       dag.add(makeScale(`${inputIndex}:v`, scaledLabel, { width: 1920, height: 1080 }));
-      scaledInputs.push(scaledLabel);
+      // Normalize FPS to match output
+      const fpsLabel = dag.label();
+      dag.add(makeFps(scaledLabel, fpsLabel, 30));
+      normalizedInputs.push(fpsLabel);
       timeOffset += fragments[i].duration;
     }
-    const concatLabel = dag.label();
-    currentLabel = dag.add(makeConcat(scaledInputs, concatLabel));
-    // Normalize FPS and timebase after concat
-    currentLabel = dag.add(makeFps(currentLabel, dag.label(), 30));
+    currentLabel = dag.label();
+    dag.add(makeConcat(normalizedInputs, currentLabel));
     nextFragmentIndex = concatEnd + 1;
   } else {
     // Start with first fragment (scale it)
     const firstInputIndex = assetIndexMap.get(fragments[0].assetName) ?? 0;
+    const scaledLabel = dag.label();
+    dag.add(makeScale(`${firstInputIndex}:v`, scaledLabel, { width: 1920, height: 1080 }));
+    // Normalize FPS and timebase before xfade
     currentLabel = dag.label();
-    dag.add(makeScale(`${firstInputIndex}:v`, currentLabel, { width: 1920, height: 1080 }));
+    dag.add(makeFps(scaledLabel, currentLabel, 30));
     timeOffset = fragments[0].duration;
     nextFragmentIndex = 1;
   }
