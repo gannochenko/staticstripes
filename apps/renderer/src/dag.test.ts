@@ -23,8 +23,8 @@ describe('StreamDAG', () => {
 
     it('should generate random labels', () => {
       const dag = new StreamDAG();
-      const label1 = dag.label();
-      const label2 = dag.label();
+      const label1 = dag.makeLabel();
+      const label2 = dag.makeLabel();
 
       expect(label1).toMatch(/^[a-z]\d+$/);
       expect(label2).toMatch(/^[a-z]\d+$/);

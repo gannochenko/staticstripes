@@ -12,9 +12,6 @@ export function generateFFmpegCommand(
   // Overwrite output file without asking
   parts.push('-y');
 
-  // Ignore rotation metadata to avoid size mismatches
-  parts.push('-noautorotate');
-
   // Add input files in order of their index mapping
   const inputsByIndex = new Map<number, string>();
   for (const [assetName, index] of project.assetIndexMap) {

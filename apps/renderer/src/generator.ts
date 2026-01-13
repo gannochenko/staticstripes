@@ -8,6 +8,69 @@ export function generateFilterComplex(project: ProjectStructure): string {
 }
 
 /**
+ * Collects all unique asset names used in video sequences
+ */
+function collectUsedAssets(project: ProjectStructure): Set<string> {
+  const usedAssets = new Set<string>();
+
+  for (const sequence of project.sequences) {
+    for (const fragment of sequence.fragments) {
+      if (fragment.assetName) {
+        usedAssets.add(fragment.assetName);
+      }
+    }
+  }
+
+  return usedAssets;
+}
+
+/**
+ * Normalizes assets that are actually used (rotation correction, scaling, fps)
+ * Returns a map of asset name -> normalized stream label
+ */
+function normalizeAssets(
+  dag: StreamDAG,
+  project: ProjectStructure,
+): Map<string, string> {
+  const normalized = new Map<string, string>();
+  const outputWidth = project.output.resolution.width;
+  const outputHeight = project.output.resolution.height;
+  const outputFps = project.output.fps;
+
+  // Only normalize assets that are actually used in fragments
+  const usedAssets = collectUsedAssets(project);
+
+  for (const assetName of usedAssets) {
+    const asset = project.assets.get(assetName);
+    if (!asset) {
+      console.warn(`Asset "${assetName}" referenced but not found`);
+      continue;
+    }
+
+    // Skip audio-only assets
+    if (asset.type === 'audio') {
+      continue;
+    }
+
+    const inputIndex = project.assetIndexMap.get(assetName);
+    if (inputIndex === undefined) {
+      continue;
+    }
+
+    // Normalize: rotation -> scale -> fps
+    const normalizedStream = dag
+      .from(`${inputIndex}:v`)
+      .correctRotation(asset.rotation)
+      .scale({ width: outputWidth, height: outputHeight })
+      .fps(outputFps);
+
+    normalized.set(assetName, normalizedStream.getLooseLabel());
+  }
+
+  return normalized;
+}
+
+/**
  * Builds the StreamDAG from a project structure
  * Exposed for debugging and analysis
  */
@@ -17,6 +80,9 @@ export function buildDAG(project: ProjectStructure): StreamDAG {
   }
 
   const dag = new StreamDAG();
+
+  // Normalize all assets upfront (rotation, scale, fps)
+  const normalizedAssets = normalizeAssets(dag, project);
 
   // Filter out audio-only sequences (sequences where all assets are audio-only)
   const videoSequences = project.sequences.filter((sequence) => {
@@ -36,12 +102,12 @@ export function buildDAG(project: ProjectStructure): StreamDAG {
   const sequenceOutputs: string[] = [];
   for (let seqIdx = 0; seqIdx < videoSequences.length; seqIdx++) {
     const sequence = videoSequences[seqIdx];
-    const outputLabel = dag.label();
+    const outputLabel = dag.makeLabel();
 
     const output = generateSequenceGraph(
       dag,
       sequence,
-      project.assetIndexMap,
+      normalizedAssets,
       outputLabel,
     );
     sequenceOutputs.push(output);
@@ -66,7 +132,7 @@ export function buildDAG(project: ProjectStructure): StreamDAG {
 function generateSequenceGraph(
   dag: StreamDAG,
   sequence: Sequence,
-  assetIndexMap: Map<string, number>,
+  normalizedAssets: Map<string, string>,
   outputLabel: string,
 ): string {
   const { fragments } = sequence;
@@ -78,8 +144,12 @@ function generateSequenceGraph(
   if (fragments.length === 1) {
     // Single fragment, just copy it
     const fragment = fragments[0];
-    const inputIndex = assetIndexMap.get(fragment.assetName) ?? 0;
-    dag.from(`${inputIndex}:v`).copyTo(outputLabel);
+    const normalizedLabel = normalizedAssets.get(fragment.assetName);
+    if (!normalizedLabel) {
+      console.warn(`Normalized asset not found: ${fragment.assetName}`);
+      return outputLabel;
+    }
+    dag.from(normalizedLabel).copyTo(outputLabel);
     return outputLabel;
   }
 
@@ -88,10 +158,10 @@ function generateSequenceGraph(
 
   if (!hasOverlaps) {
     // Use concat filter for everything (faster)
-    buildConcatGraph(dag, fragments, assetIndexMap, outputLabel);
+    buildConcatGraph(dag, fragments, normalizedAssets, outputLabel);
   } else {
     // Mix of overlapping and non-overlapping: use hybrid approach
-    buildHybridGraph(dag, fragments, assetIndexMap, outputLabel);
+    buildHybridGraph(dag, fragments, normalizedAssets, outputLabel);
   }
 
   return outputLabel;
@@ -99,32 +169,36 @@ function generateSequenceGraph(
 
 /**
  * Builds a graph with a single concat filter for all fragments
- * Adds scale and fps normalization to all inputs
+ * Uses pre-normalized assets
  */
 function buildConcatGraph(
   dag: StreamDAG,
   fragments: Fragment[],
-  assetIndexMap: Map<string, number>,
+  normalizedAssets: Map<string, string>,
   outputLabel: string,
 ): void {
-  const streams = fragments.map((frag) => {
-    const inputIndex = assetIndexMap.get(frag.assetName) ?? 0;
-    return dag
-      .from(`${inputIndex}:v`)
-      .scale({ width: 1920, height: 1080 })
-      .fps(30);
-  });
+  const streams = fragments
+    .map((frag) => {
+      const normalizedLabel = normalizedAssets.get(frag.assetName);
+      if (!normalizedLabel) {
+        console.warn(`Normalized asset not found: ${frag.assetName}`);
+        return null;
+      }
+      return dag.from(normalizedLabel);
+    })
+    .filter((s) => s !== null);
 
   StreamUtils.concatTo(dag, streams, outputLabel);
 }
 
 /**
  * Builds a hybrid graph: concat for non-overlapping prefix, xfade for the rest
+ * Uses pre-normalized assets
  */
 function buildHybridGraph(
   dag: StreamDAG,
   fragments: Fragment[],
-  assetIndexMap: Map<string, number>,
+  normalizedAssets: Map<string, string>,
   outputLabel: string,
 ): void {
   // Find the longest prefix of consecutive non-overlapping fragments
@@ -145,24 +219,24 @@ function buildHybridGraph(
   if (concatEnd >= 1) {
     const streams = [];
     for (let i = 0; i <= concatEnd; i++) {
-      const inputIndex = assetIndexMap.get(fragments[i].assetName) ?? 0;
-      streams.push(
-        dag
-          .from(`${inputIndex}:v`)
-          .scale({ width: 1920, height: 1080 })
-          .fps(30),
-      );
+      const normalizedLabel = normalizedAssets.get(fragments[i].assetName);
+      if (!normalizedLabel) {
+        console.warn(`Normalized asset not found: ${fragments[i].assetName}`);
+        continue;
+      }
+      streams.push(dag.from(normalizedLabel));
       timeOffset += fragments[i].duration;
     }
     currentStream = StreamUtils.concat(dag, streams);
     nextFragmentIndex = concatEnd + 1;
   } else {
     // Start with first fragment
-    const firstInputIndex = assetIndexMap.get(fragments[0].assetName) ?? 0;
-    currentStream = dag
-      .from(`${firstInputIndex}:v`)
-      .scale({ width: 1920, height: 1080 })
-      .fps(30);
+    const normalizedLabel = normalizedAssets.get(fragments[0].assetName);
+    if (!normalizedLabel) {
+      console.warn(`Normalized asset not found: ${fragments[0].assetName}`);
+      return;
+    }
+    currentStream = dag.from(normalizedLabel);
     timeOffset = fragments[0].duration;
     nextFragmentIndex = 1;
   }
@@ -170,13 +244,15 @@ function buildHybridGraph(
   // Process remaining fragments with xfade
   while (nextFragmentIndex < fragments.length) {
     const currFragment = fragments[nextFragmentIndex];
-    const inputIndex = assetIndexMap.get(currFragment.assetName) ?? 0;
 
-    // Scale and normalize FPS before xfade
-    const nextStream = dag
-      .from(`${inputIndex}:v`)
-      .scale({ width: 1920, height: 1080 })
-      .fps(30);
+    // Get normalized asset stream
+    const normalizedLabel = normalizedAssets.get(currFragment.assetName);
+    if (!normalizedLabel) {
+      console.warn(`Normalized asset not found: ${currFragment.assetName}`);
+      nextFragmentIndex++;
+      continue;
+    }
+    const nextStream = dag.from(normalizedLabel);
 
     // Adjust offset for overlap
     timeOffset += currFragment.overlayLeft;

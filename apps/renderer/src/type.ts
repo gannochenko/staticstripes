@@ -20,6 +20,9 @@ export type Asset = {
   author?: string; // e.g. "John Doe"
   type: 'video' | 'image' | 'audio';
   duration: number; // in ms
+  width: number;
+  height: number;
+  rotation: number; // rotation in degrees (0, 90, 180, 270)
 };
 
 export type Fragment = {
@@ -33,6 +36,7 @@ export type Fragment = {
   transitionOutDuration: number; // how long the transition out lasts
   zIndex: number; // order of layering
   objectFit: 'cover' | 'contain';
+  objectFitContain: 'ambient' | 'pillarbox';
 };
 
 export type Sequence = {

@@ -130,6 +130,14 @@ async function extractAssetFromElement(
   // Get duration using ffprobe (in ms) - only for audio/video
   const duration = await getAssetDuration(absolutePath, type);
 
+  // Get dimensions using ffprobe - for video and image
+  const { width, height } = await getAssetDimensions(absolutePath, type);
+
+  // Get rotation using ffprobe - for video and image
+  const rotation = await getAssetRotation(absolutePath, type);
+
+  console.log(`Asset "${name}" dimensions: ${width}x${height}, rotation: ${rotation}°`);
+
   // Extract author (optional)
   const author = attrs.get('data-author');
 
@@ -138,6 +146,9 @@ async function extractAssetFromElement(
     path: absolutePath,
     type,
     duration,
+    width,
+    height,
+    rotation,
     ...(author && { author }),
   };
 }
@@ -201,6 +212,95 @@ async function getAssetDuration(
   } catch (error) {
     console.error(`Failed to get duration for asset: ${path}`, error);
     return 0;
+  }
+}
+
+/**
+ * Gets the rotation of an asset file using ffprobe
+ * @param path - Path to the asset file
+ * @param type - Asset type (video, audio, or image)
+ * @returns Rotation in degrees (0, 90, 180, 270)
+ */
+async function getAssetRotation(
+  path: string,
+  type: 'video' | 'image' | 'audio',
+): Promise<number> {
+  // Audio files don't have rotation
+  if (type === 'audio') {
+    return 0;
+  }
+
+  try {
+    const { stdout } = await execFileAsync('ffprobe', [
+      '-v',
+      'error',
+      '-select_streams',
+      'v:0',
+      '-show_entries',
+      'stream_side_data=rotation',
+      '-of',
+      'default=noprint_wrappers=1:nokey=1',
+      path,
+    ]);
+
+    const rotation = parseInt(stdout.trim(), 10);
+
+    if (isNaN(rotation)) {
+      // No rotation metadata found
+      return 0;
+    }
+
+    // Normalize to 0, 90, 180, 270
+    const normalized = Math.abs(rotation) % 360;
+    return normalized;
+  } catch (error) {
+    // No rotation metadata or error - default to 0
+    return 0;
+  }
+}
+
+/**
+ * Gets the dimensions of an asset file using ffprobe
+ * @param path - Path to the asset file
+ * @param type - Asset type (video, audio, or image)
+ * @returns Object with width and height in pixels
+ */
+async function getAssetDimensions(
+  path: string,
+  type: 'video' | 'image' | 'audio',
+): Promise<{ width: number; height: number }> {
+  // Audio files don't have dimensions
+  if (type === 'audio') {
+    return { width: 0, height: 0 };
+  }
+
+  try {
+    const { stdout } = await execFileAsync('ffprobe', [
+      '-v',
+      'error',
+      '-select_streams',
+      'v:0',
+      '-show_entries',
+      'stream=width,height',
+      '-of',
+      'csv=s=x:p=0',
+      path,
+    ]);
+
+    const dimensions = stdout.trim();
+    const [widthStr, heightStr] = dimensions.split('x');
+    const width = parseInt(widthStr, 10);
+    const height = parseInt(heightStr, 10);
+
+    if (isNaN(width) || isNaN(height)) {
+      console.warn(`Could not parse dimensions for asset: ${path}`);
+      return { width: 0, height: 0 };
+    }
+
+    return { width, height };
+  } catch (error) {
+    console.error(`Failed to get dimensions for asset: ${path}`, error);
+    return { width: 0, height: 0 };
   }
 }
 
@@ -454,6 +554,10 @@ function processFragment(
   // Extract objectFit from CSS object-fit property (default: "cover")
   const objectFit = parseObjectFit(styles['object-fit']);
 
+  // Extract objectFitContain from CSS -object-fit-contain property (default: "ambient")
+  const objectFitContain: 'ambient' | 'pillarbox' =
+    styles['-object-fit-contain'] === 'pillarbox' ? 'pillarbox' : 'ambient';
+
   return {
     assetName,
     duration,
@@ -467,6 +571,7 @@ function processFragment(
     transitionOutDuration: transitionOut.duration,
     zIndex,
     objectFit,
+    objectFitContain,
   };
 }
 

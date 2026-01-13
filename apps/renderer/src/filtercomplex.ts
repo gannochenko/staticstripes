@@ -331,6 +331,50 @@ export function makeSetpts(
 }
 
 /**
+ * Creates a transpose filter
+ * @param input - Input stream label
+ * @param output - Output stream label
+ * @param direction - Transpose direction (0=90°CCW+vflip, 1=90°CW, 2=90°CCW, 3=90°CW+vflip)
+ */
+export function makeTranspose(
+  input: string,
+  output: string,
+  direction: 0 | 1 | 2 | 3,
+): Filter {
+  return {
+    inputs: [input],
+    outputs: [output],
+    render: () => `${wrap(input)}transpose=${direction}${wrap(output)}`,
+  };
+}
+
+/**
+ * Creates an hflip filter (horizontal flip)
+ * @param input - Input stream label
+ * @param output - Output stream label
+ */
+export function makeHflip(input: string, output: string): Filter {
+  return {
+    inputs: [input],
+    outputs: [output],
+    render: () => `${wrap(input)}hflip${wrap(output)}`,
+  };
+}
+
+/**
+ * Creates a vflip filter (vertical flip)
+ * @param input - Input stream label
+ * @param output - Output stream label
+ */
+export function makeVflip(input: string, output: string): Filter {
+  return {
+    inputs: [input],
+    outputs: [output],
+    render: () => `${wrap(input)}vflip${wrap(output)}`,
+  };
+}
+
+/**
  * Creates an atrim (audio trim) filter
  * @param input - Input stream label
  * @param output - Output stream label

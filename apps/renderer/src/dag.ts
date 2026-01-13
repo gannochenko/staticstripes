@@ -29,7 +29,7 @@ export class StreamDAG {
   /**
    * Generates a random intermediate label
    */
-  label(): string {
+  makeLabel(): string {
     const letter = String.fromCharCode(97 + Math.floor(Math.random() * 26)); // a-z
     const num = Math.floor(Math.random() * 1000);
     return `${letter}${num}`;
