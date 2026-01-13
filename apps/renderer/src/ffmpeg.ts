@@ -35,19 +35,25 @@ export function generateFFmpegCommand(
     parts.push(`-filter_complex "${filterComplex}"`);
   }
 
-  // Map the output video stream
-  // TODO: Handle audio streams as well
+  // Map the output streams (video and audio)
   parts.push('-map "[outv]"');
+  parts.push('-map "[outa]"');
 
   // Increase buffer queue size for complex filter graphs
   parts.push('-max_muxing_queue_size 4096');
 
   // Add output parameters
   const { width, height } = project.output.resolution;
+
+  // Video encoding parameters
   parts.push(`-s ${width}x${height}`);
   parts.push(`-r ${project.output.fps}`);
   parts.push('-pix_fmt yuv420p'); // Standard pixel format for compatibility
   parts.push('-preset ultrafast'); // Fast encoding for quick results
+
+  // Audio encoding parameters
+  parts.push('-c:a aac'); // AAC audio codec
+  parts.push('-b:a 192k'); // Audio bitrate
 
   // Add output path
   parts.push(`"${project.output.path}"`);

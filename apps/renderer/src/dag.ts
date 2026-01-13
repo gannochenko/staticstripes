@@ -1,5 +1,5 @@
 import { Filter } from './filtercomplex';
-import { StreamBuilder } from './stream-builder';
+import { LabelGenerator } from './label-generator';
 
 /**
  * A node in the stream DAG (represents a stream label)
@@ -25,14 +25,13 @@ export type FilterEdge = {
 export class StreamDAG {
   private nodes: Map<string, StreamNode> = new Map();
   private edges: FilterEdge[] = [];
+  private labelGenerator: LabelGenerator = new LabelGenerator();
 
   /**
-   * Generates a random intermediate label
+   * Generates a unique intermediate label
    */
   makeLabel(): string {
-    const letter = String.fromCharCode(97 + Math.floor(Math.random() * 26)); // a-z
-    const num = Math.floor(Math.random() * 1000);
-    return `${letter}${num}`;
+    return this.labelGenerator.generate();
   }
 
   /**
@@ -41,18 +40,20 @@ export class StreamDAG {
    * Returns the first output label for chaining
    */
   add(filter: Filter): string {
-    // Add nodes for all input streams
+    // Add nodes for all input streams and mark labels as used
     for (const input of filter.inputs) {
       if (!this.nodes.has(input)) {
         this.nodes.set(input, { id: input });
       }
+      this.labelGenerator.markUsed(input);
     }
 
-    // Add nodes for all output streams
+    // Add nodes for all output streams and mark labels as used
     for (const output of filter.outputs) {
       if (!this.nodes.has(output)) {
         this.nodes.set(output, { id: output });
       }
+      this.labelGenerator.markUsed(output);
     }
 
     // Add edge
@@ -118,11 +119,59 @@ export class StreamDAG {
    * Creates a StreamBuilder starting from an input label
    * @param inputLabel - The starting stream label (e.g., '0:v', '1:v')
    */
-  from(inputLabel: string): StreamBuilder {
-    // Ensure the input node exists in the graph
+  from(inputLabel: string) {
+    // Ensure the input node exists in the graph and mark as used
     if (!this.nodes.has(inputLabel)) {
       this.nodes.set(inputLabel, { id: inputLabel });
     }
+    this.labelGenerator.markUsed(inputLabel);
+
+    // Dynamic import to avoid circular dependency
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { StreamBuilder } = require('./stream-builder');
     return new StreamBuilder(this, inputLabel);
+  }
+
+  /**
+   * Appends streams from other DAGs into this DAG
+   * Merges all nodes and edges from the source DAGs
+   * @param streams - Array of StreamBuilder instances to append
+   */
+  appendStreams(streams: Array<{ getDAG(): StreamDAG }>): void {
+    const sourceDags = new Set<StreamDAG>();
+
+    // Collect unique source DAGs from all streams
+    for (const stream of streams) {
+      const sourceDAG = stream.getDAG();
+      if (sourceDAG && sourceDAG !== this) {
+        sourceDags.add(sourceDAG);
+      }
+    }
+
+    // Merge each source DAG into this DAG
+    for (const sourceDAG of sourceDags) {
+      // Copy all nodes from source and mark labels as used
+      for (const [nodeId, node] of sourceDAG.getNodes()) {
+        if (!this.nodes.has(nodeId)) {
+          this.nodes.set(nodeId, { ...node });
+        }
+        this.labelGenerator.markUsed(nodeId);
+      }
+
+      // Copy all edges from source
+      for (const edge of sourceDAG.getEdges()) {
+        // Check if this edge already exists (avoid duplicates)
+        const exists = this.edges.some(
+          (e) =>
+            e.filter === edge.filter &&
+            JSON.stringify(e.from) === JSON.stringify(edge.from) &&
+            JSON.stringify(e.to) === JSON.stringify(edge.to),
+        );
+
+        if (!exists) {
+          this.edges.push({ ...edge });
+        }
+      }
+    }
   }
 }

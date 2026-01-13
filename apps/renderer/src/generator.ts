@@ -57,11 +57,12 @@ function normalizeAssets(
       continue;
     }
 
-    // Normalize: rotation -> scale -> fps
+    // Normalize: rotation -> scale (cover) -> fps
+    // Using 'cover' mode: scales to fill while preserving aspect ratio, crops overflow
     const normalizedStream = dag
       .from(`${inputIndex}:v`)
       .correctRotation(asset.rotation)
-      .scale({ width: outputWidth, height: outputHeight })
+      .scaleCover(outputWidth, outputHeight)
       .fps(outputFps);
 
     normalized.set(assetName, normalizedStream.getLooseLabel());

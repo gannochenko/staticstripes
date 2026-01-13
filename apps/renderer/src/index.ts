@@ -4,6 +4,12 @@ import { generateFilterComplex } from './generator.js';
 import { prepareProject } from './project.js';
 import { generateFFmpegCommand } from './ffmpeg.js';
 import { spawn } from 'child_process';
+import { StreamDAG } from './dag.js';
+import { makeConcat } from './filtercomplex.js';
+import {
+  makeStream as startStream,
+  startStreamWithConcat,
+} from './stream-builder.js';
 
 console.log('Renderer application starting...');
 
@@ -17,21 +23,64 @@ async function main() {
   const project = await prepareProject(fileContent, projectPath);
 
   console.log('\n=== Filter Complex ===');
-  const filterComplex = generateFilterComplex(project);
+  // const filterComplex = generateFilterComplex(project);
+  // console.log(filterComplex);
+
+  const dag = new StreamDAG();
+
+  // asset transformation streams
+  const assetVideoStream0 = startStream('0:v')
+    .correctRotation(90)
+    .scale({ width: 1920, height: 1080 })
+    .fps(30);
+  const assetVideoStream1 = startStream('1:v')
+    .scale({ width: 1920, height: 1080 })
+    .fps(30);
+
+  const assetAudioStream0 = startStream('0:a');
+  const assetAudioStream1 = startStream('1:a');
+
+  // Concat video streams
+  const videoStream = startStreamWithConcat([
+    assetVideoStream0,
+    assetVideoStream1,
+  ]);
+
+  const audioStream = startStreamWithConcat([
+    assetAudioStream0,
+    assetAudioStream1,
+  ]);
+
+  // Append the concatenated streams to main DAG
+  dag.appendStreams([videoStream, audioStream]);
+
+  // Wire streams to output labels
+  dag.from(videoStream.getLooseLabel()).copyTo('outv');
+  dag.from(audioStream.getLooseLabel()).copyTo('outa');
+
+  const filterComplex = dag.render();
+
+  console.log('\n=== Filter ===');
   console.log(filterComplex);
+
+  console.log('\n=== Output ===');
+  console.log(project.output);
 
   console.log('\n=== FFmpeg Command ===');
   const ffmpegCommand = generateFFmpegCommand(project, filterComplex);
   console.log(ffmpegCommand);
 
+  return;
+
   console.log('\n=== Starting Render ===');
   console.log('Progress:\n');
 
   // Parse command into array (handle quoted paths)
-  const args = ffmpegCommand
-    .slice('ffmpeg '.length)
-    .match(/(?:[^\s"]+|"[^"]*")+/g)
-    ?.map((arg) => arg.replace(/^"|"$/g, '')) || [];
+  const args =
+    ffmpegCommand
+      .slice('ffmpeg '.length)
+      .match(/(?:[^\s"]+|"[^"]*")+/g)
+      ?.map((arg) => arg.replace(/^"|"$/g, '')) || [];
 
   return new Promise<void>((resolve, reject) => {
     const ffmpeg = spawn('ffmpeg', args, {

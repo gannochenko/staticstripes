@@ -17,27 +17,49 @@ function wrap(label: string): string {
 
 /**
  * Creates a concat filter
- * @param inputs - Array of input stream labels (e.g., ['0:v', '1:v'])
- * @param output - Output stream label (e.g., 'outv')
+ * @param inputs - Array of input stream labels (e.g., ['0:v', '0:a', '1:v', '1:a'] for n=2:v=1:a=1)
+ * @param outputs - Array of output stream labels (length must equal videoStreams + audioStreams)
  * @param options - Optional parameters
  */
 export function makeConcat(
   inputs: string[],
-  output: string,
+  outputs: string | string[],
   options?: {
     videoStreams?: number;
     audioStreams?: number;
   },
 ): Filter {
-  const n = inputs.length;
   const v = options?.videoStreams ?? 1;
   const a = options?.audioStreams ?? 0;
+  const totalOutputs = v + a;
+
+  // Handle backward compatibility: single output string
+  const outputArray = typeof outputs === 'string' ? [outputs] : outputs;
+
+  // Validate output count
+  if (outputArray.length !== totalOutputs) {
+    throw new Error(
+      `makeConcat: Expected ${totalOutputs} outputs (v=${v}, a=${a}), got ${outputArray.length}`,
+    );
+  }
+
+  // Calculate n based on inputs and stream counts
+  // For n segments with v video streams and a audio streams each:
+  // total inputs = n * (v + a)
+  const streamsPerSegment = v + a;
+  const n = inputs.length / streamsPerSegment;
+
+  if (!Number.isInteger(n)) {
+    throw new Error(
+      `makeConcat: Input count ${inputs.length} is not divisible by ${streamsPerSegment} (v=${v}, a=${a})`,
+    );
+  }
 
   return {
     inputs,
-    outputs: [output],
+    outputs: outputArray,
     render: () =>
-      `${inputs.map(wrap).join('')}concat=n=${n}:v=${v}:a=${a}${wrap(output)}`,
+      `${inputs.map(wrap).join('')}concat=n=${n}:v=${v}:a=${a}${outputArray.map(wrap).join('')}`,
   };
 }
 

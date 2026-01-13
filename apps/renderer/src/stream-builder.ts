@@ -9,7 +9,6 @@ import {
   makeSplit,
   makeGblur,
   makeEq,
-  makeDrawtext,
   makeFade,
   makeColorkey,
   makeSetpts,
@@ -19,6 +18,45 @@ import {
   makeHflip,
   makeVflip,
 } from './filtercomplex.js';
+
+export const makeStream = (inputLabel: string) => {
+  return new StreamDAG().from(inputLabel);
+};
+
+/**
+ * Creates a new stream by concatenating multiple streams
+ * Creates a new DAG, appends all input streams, then concatenates them
+ * @param streams - Array of StreamBuilder instances to concatenate
+ * @returns A new StreamBuilder representing the concatenated result
+ */
+export const startStreamWithConcat = (streams: StreamBuilder[]): StreamBuilder => {
+  if (streams.length === 0) {
+    throw new Error('startStreamWithConcat requires at least one stream');
+  }
+
+  if (streams.length === 1) {
+    // Single stream, just return a copy in a new DAG
+    const newDag = new StreamDAG();
+    newDag.appendStreams([streams[0]]);
+    return newDag.from(streams[0].getLooseLabel());
+  }
+
+  // Create a new DAG and append all input streams
+  const newDag = new StreamDAG();
+  newDag.appendStreams(streams);
+
+  // Get labels from all streams
+  const inputLabels = streams.map((s) => s.getLooseLabel());
+
+  // Create output label
+  const outputLabel = newDag.makeLabel();
+
+  // Add concat filter
+  newDag.add(makeConcat(inputLabels, outputLabel));
+
+  // Return StreamBuilder for the concatenated result
+  return newDag.from(outputLabel);
+};
 
 /**
  * StreamBuilder - Fluent API for building filter graphs
@@ -43,6 +81,13 @@ export class StreamBuilder {
   }
 
   /**
+   * Returns the underlying DAG
+   */
+  getDAG(): StreamDAG {
+    return this.dag;
+  }
+
+  /**
    * Scale filter
    */
   scale(options: {
@@ -52,6 +97,64 @@ export class StreamBuilder {
     const outputLabel = this.dag.makeLabel();
     this.dag.add(makeScale(this.looseLabel, outputLabel, options));
     return new StreamBuilder(this.dag, outputLabel);
+  }
+
+  /**
+   * Scale with aspect ratio preservation (fit within bounds, letterbox if needed)
+   */
+  scaleContain(width: number, height: number): StreamBuilder {
+    // Scale to fit within bounds, preserving aspect ratio
+    // force_original_aspect_ratio=decrease ensures it fits within the box
+    // Then pad to exact dimensions with black bars
+    const scaledLabel = this.dag.makeLabel();
+    const paddedLabel = this.dag.makeLabel();
+
+    // Scale with aspect ratio preservation
+    this.dag.add(
+      makeScale(this.looseLabel, scaledLabel, {
+        width: `${width}`,
+        height: `${height}:force_original_aspect_ratio=decrease`,
+      }),
+    );
+
+    // Pad to exact dimensions (centered)
+    this.dag.add({
+      inputs: [scaledLabel],
+      outputs: [paddedLabel],
+      render: () =>
+        `[${scaledLabel}]pad=${width}:${height}:(ow-iw)/2:(oh-ih)/2[${paddedLabel}]`,
+    });
+
+    return new StreamBuilder(this.dag, paddedLabel);
+  }
+
+  /**
+   * Scale with aspect ratio preservation (fill bounds, crop if needed)
+   */
+  scaleCover(width: number, height: number): StreamBuilder {
+    // Scale to fill bounds, preserving aspect ratio
+    // force_original_aspect_ratio=increase ensures it fills the box
+    // Then crop to exact dimensions (centered)
+    const scaledLabel = this.dag.makeLabel();
+    const croppedLabel = this.dag.makeLabel();
+
+    // Scale with aspect ratio preservation
+    this.dag.add(
+      makeScale(this.looseLabel, scaledLabel, {
+        width: `${width}`,
+        height: `${height}:force_original_aspect_ratio=increase`,
+      }),
+    );
+
+    // Crop to exact dimensions (centered using expressions)
+    this.dag.add({
+      inputs: [scaledLabel],
+      outputs: [croppedLabel],
+      render: () =>
+        `[${scaledLabel}]crop=${width}:${height}:(iw-${width})/2:(ih-${height})/2[${croppedLabel}]`,
+    });
+
+    return new StreamBuilder(this.dag, croppedLabel);
   }
 
   /**
@@ -325,5 +428,30 @@ export class StreamUtils {
     const inputs = streams.map((s) => s.getLooseLabel());
     dag.add(makeConcat(inputs, outputLabel));
     return new StreamBuilder(dag, outputLabel);
+  }
+
+  /**
+   * Concatenates multiple streams with both video and audio
+   * @param dag - Target DAG
+   * @param streams - Array of StreamBuilder instances (must have both video and audio)
+   * @param outputs - Array of output labels [videoOut, audioOut]
+   * @returns Array of StreamBuilders [video, audio]
+   */
+  static concatVideoAudio(
+    dag: StreamDAG,
+    streams: StreamBuilder[],
+    outputs?: [string, string],
+  ): [StreamBuilder, StreamBuilder] {
+    const [videoOut, audioOut] = outputs ?? [dag.makeLabel(), dag.makeLabel()];
+    const inputs = streams.map((s) => s.getLooseLabel());
+
+    dag.add(
+      makeConcat(inputs, [videoOut, audioOut], {
+        videoStreams: 1,
+        audioStreams: 1,
+      }),
+    );
+
+    return [new StreamBuilder(dag, videoOut), new StreamBuilder(dag, audioOut)];
   }
 }

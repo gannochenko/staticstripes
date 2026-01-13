@@ -136,7 +136,9 @@ async function extractAssetFromElement(
   // Get rotation using ffprobe - for video and image
   const rotation = await getAssetRotation(absolutePath, type);
 
-  console.log(`Asset "${name}" dimensions: ${width}x${height}, rotation: ${rotation}°`);
+  console.log(
+    `Asset "${name}" dimensions: w=${width}, h=${height}, rotation: ${rotation}°`,
+  );
 
   // Extract author (optional)
   const author = attrs.get('data-author');
@@ -683,9 +685,10 @@ function parseBlendMode(value: string | undefined): string {
  * @param value - CSS transition value (e.g., "fade-to-black 1s", "fade-out 0.5s")
  * @returns Object with transition name and duration in milliseconds
  */
-function parseTransition(
-  value: string | undefined,
-): { name: string; duration: number } {
+function parseTransition(value: string | undefined): {
+  name: string;
+  duration: number;
+} {
   if (!value) {
     return { name: '', duration: 0 };
   }
