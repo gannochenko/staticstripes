@@ -263,6 +263,87 @@ export function makeOverlay(inputs: Label[]): Filter {
   };
 }
 
+export function makeFps(inputs: Label[], fps: number): Filter {
+  if (inputs.length !== 1) {
+    throw new Error(`makeFps: expects one input`);
+  }
+
+  const input1 = inputs[0];
+  if (input1.isAudio) {
+    throw new Error(
+      `makeFps: input1 must be video, got audio (tag: ${input1.tag})`,
+    );
+  }
+
+  const output = {
+    tag: getLabel(),
+    isAudio: false,
+  };
+
+  return {
+    inputs: inputs,
+    outputs: [output],
+    render: () => `${wrap(input1.tag)}fps=${fps}${wrap(output.tag)}`,
+  };
+}
+
+export function makeScale(
+  inputs: Label[],
+  options: { width: number | string; height: number | string },
+): Filter {
+  if (inputs.length !== 1) {
+    throw new Error(`makeFps: expects one input`);
+  }
+
+  const input1 = inputs[0];
+  if (input1.isAudio) {
+    throw new Error(
+      `makeScale: input1 must be video, got audio (tag: ${input1.tag})`,
+    );
+  }
+
+  const output = {
+    tag: getLabel(),
+    isAudio: false,
+  };
+
+  return {
+    inputs: inputs,
+    outputs: [output],
+    render: () =>
+      `${wrap(input1.tag)}scale=${options.width}:${options.height}${wrap(output.tag)}`,
+  };
+}
+
+/**
+ * Creates a split filter (splits one input into multiple outputs)
+ * @param input - Input stream label
+ * @param outputLabels - Array of output stream labels
+ */
+export function makeSplit(inputs: Label[]): Filter {
+  if (inputs.length !== 1) {
+    throw new Error(`makeFps: expects one input`);
+  }
+
+  const input1 = inputs[0];
+
+  const output1 = {
+    tag: getLabel(),
+    isAudio: input1.isAudio,
+  };
+  const output2 = {
+    tag: getLabel(),
+    isAudio: input1.isAudio,
+  };
+
+  return {
+    inputs: inputs,
+    outputs: [output1, output2], // Multiple outputs!
+    render: () =>
+      `${wrap(input1.tag)}split${[output1.tag, output2.tag].map(wrap).join('')}`,
+  };
+}
+
 /**
  * Wraps a label in brackets
  */
