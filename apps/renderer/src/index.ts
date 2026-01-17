@@ -20,17 +20,30 @@ async function main() {
 
   const buf = new FilterBuffer();
 
-  makeStream(project.getVideoInputLabelByAssetName('clip_02'), buf)
+  makeStream(project.getVideoInputLabelByAssetName('clip_01'), buf)
     .trim(0, 1)
-    .coverOutput({ width: 1920, height: 1080 })
+    // .cwRotate(Direction.CCW) // Apply -90° rotation (counter-clockwise)
+    .fitOutputV2(
+      {
+        width: 1920,
+        height: 1080,
+      },
+      {
+        ambient: {
+          blurStrength: 25,
+          brightness: -0.4,
+          saturation: 0.7,
+        },
+      },
+    )
+    // .fitOutput({ width: 1920, height: 1080 })
     .fps(30)
-    // .blur(100)
     .endTo({
       tag: 'outv',
       isAudio: false,
     });
 
-  makeStream(project.getAudioInputLabelByAssetName('clip_02'), buf)
+  makeStream(project.getAudioInputLabelByAssetName('clip_01'), buf)
     .trim(0, 1)
     .endTo({
       tag: 'outa',

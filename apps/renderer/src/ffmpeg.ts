@@ -249,7 +249,13 @@ export function makeNull(inputs: Label[]): Filter {
   );
 }
 
-export function makeOverlay(inputs: Label[]): Filter {
+export function makeOverlay(
+  inputs: Label[],
+  options?: {
+    x?: string | number;
+    y?: string | number;
+  },
+): Filter {
   if (inputs.length !== 2) {
     throw new Error(`makeOverlay: expects two inputs`);
   }
@@ -274,7 +280,14 @@ export function makeOverlay(inputs: Label[]): Filter {
     isAudio: false,
   };
 
-  return new Filter(inputs, [output], 'overlay=format=auto');
+  let overlayParams = 'format=auto';
+  if (options?.x !== undefined || options?.y !== undefined) {
+    const x = options.x ?? 0;
+    const y = options.y ?? 0;
+    overlayParams = `x=${x}:y=${y}:format=auto`;
+  }
+
+  return new Filter(inputs, [output], `overlay=${overlayParams}`);
 }
 
 export function makeFps(inputs: Label[], fps: number): Filter {

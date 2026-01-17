@@ -12,6 +12,9 @@ import {
   makePad,
   makeGblur,
   makeCrop,
+  makeSplit,
+  makeOverlay,
+  makeEq,
 } from './ffmpeg';
 
 type Dimensions = {
@@ -104,6 +107,94 @@ class Stream {
     });
     this.looseEnd = cropRes.outputs[0];
     this.buf.append(cropRes);
+
+    return this;
+  }
+
+  /**
+   * Creates the "blurred background" effect:
+   * - Background: blurred + darkened version that covers the entire output
+   * - Foreground: original video fitted with aspect ratio preserved
+   * @param dimensions - Target output dimensions
+   * @param options - Effect parameters
+   */
+  public fitOutputV2(
+    dimensions: Dimensions,
+    options: {
+      ambient: {
+        blurStrength?: number; // Gaussian blur sigma (default: 20)
+        brightness?: number; // Background brightness reduction (default: -0.3)
+        saturation?: number; // Background saturation (default: 0.8)
+      };
+    } = {
+      ambient: {},
+    },
+  ): Stream {
+    const blurStrength = options.ambient.blurStrength ?? 20;
+    const brightness = options.ambient.brightness ?? -0.3;
+    const saturation = options.ambient.saturation ?? 0.8;
+
+    // // Split input into 2 streams: background and foreground
+    // const splitRes = makeSplit([this.looseEnd]);
+    // this.buf.append(splitRes);
+
+    // const [bgStream, fgStream] = splitRes.outputs;
+
+    // // Background stream: cover + blur + darken
+    // const bgScaleRes = makeScale([bgStream], {
+    //   width: dimensions.width,
+    //   height: dimensions.height,
+    //   flags: 'force_original_aspect_ratio=increase',
+    // });
+    // this.buf.append(bgScaleRes);
+
+    // const bgCropRes = makeCrop([bgScaleRes.outputs[0]], {
+    //   width: dimensions.width,
+    //   height: dimensions.height,
+    // });
+    // this.buf.append(bgCropRes);
+
+    // const bgBlurRes = makeGblur([bgCropRes.outputs[0]], {
+    //   sigma: blurStrength,
+    //   steps: 2,
+    // });
+    // this.buf.append(bgBlurRes);
+
+    // const bgEqRes = makeEq([bgBlurRes.outputs[0]], {
+    //   brightness,
+    //   saturation,
+    // });
+    // this.buf.append(bgEqRes);
+
+    ////////////////////////////////////////////////////////////////////////////////////
+
+    const fgScale = makeScale([this.looseEnd], {
+      width: dimensions.width,
+      height: dimensions.height,
+      flags: 'force_original_aspect_ratio=decrease',
+    });
+    this.buf.append(fgScale);
+
+    // Step 2: Pad to exact dimensions with black bars (centered)
+    const fgPad = makePad(fgScale.outputs, {
+      width: dimensions.width,
+      height: dimensions.height,
+      color: '#ffffff',
+      // x and y default to '(ow-iw)/2' and '(oh-ih)/2' which centers the video
+    });
+    this.buf.append(fgPad);
+
+    ////////////////////////////////////////////////////////////////////////////////////
+
+    // // Overlay foreground centered on background
+    // // (W-w)/2 and (H-h)/2 center the overlay on the background
+    // const overlayRes = makeOverlay([bgEqRes.outputs[0], fgScaleRes.outputs[0]], {
+    //   x: '(W-w)/2',
+    //   y: '(H-h)/2',
+    // });
+    // this.buf.append(overlayRes);
+
+    this.looseEnd = fgPad.outputs[0];
 
     return this;
   }
