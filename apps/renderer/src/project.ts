@@ -11,31 +11,62 @@ import {
 import { execFile } from 'child_process';
 import { promisify } from 'util';
 import { resolve, dirname } from 'path';
+import { Label } from './ffmpeg';
 
 const execFileAsync = promisify(execFile);
+
+export class Project {
+  private assetIndexMap: Map<string, number> = new Map();
+
+  constructor(
+    private sequences: Sequence[],
+    private assets: Asset[],
+    private output: Output,
+  ) {
+    let index = 0;
+    for (const asset of assets) {
+      this.assetIndexMap.set(asset.name, index++);
+    }
+  }
+
+  public getAssetIndexMap(): Map<string, number> {
+    return this.assetIndexMap;
+  }
+
+  public getAssetByName(name: string): Asset | undefined {
+    return this.assets.find((assetItem) => assetItem.name === name);
+  }
+
+  public getSequences(): Sequence[] {
+    return this.sequences;
+  }
+
+  public getOutput(): Output {
+    return this.output;
+  }
+
+  public getInputLabelByAssetName(name: string): Label {
+    const assetIndex = this.assetIndexMap.get(name);
+    const asset = this.getAssetByName(name);
+    const isAudio = !!(asset?.type === 'audio');
+
+    return {
+      tag: `${assetIndex}:${isAudio ? 'a' : 'v'}`,
+      isAudio,
+    };
+  }
+}
 
 export async function prepareProject(
   html: ParsedHtml,
   projectPath: string,
-): Promise<ProjectStructure> {
+): Promise<Project> {
   const projectDir = dirname(projectPath);
   const assets = await processAssets(html, projectDir);
   const output = processOutput(html, projectDir);
   const sequences = processSequences(html, assets);
 
-  // Build asset index mapping (asset name -> ffmpeg input index)
-  const assetIndexMap = new Map<string, number>();
-  let index = 0;
-  for (const assetName of assets.keys()) {
-    assetIndexMap.set(assetName, index++);
-  }
-
-  return {
-    sequences,
-    assets,
-    assetIndexMap,
-    output,
-  };
+  return new Project(sequences, assets, output);
 }
 
 /**
@@ -44,8 +75,8 @@ export async function prepareProject(
 async function processAssets(
   html: ParsedHtml,
   projectDir: string,
-): Promise<Map<string, Asset>> {
-  const assetsMap = new Map<string, Asset>();
+): Promise<Asset[]> {
+  const result: Asset[] = [];
 
   // Find all elements with class "asset" or data-asset attribute
   const assetElements = findAssetElements(html);
@@ -53,11 +84,11 @@ async function processAssets(
   for (const element of assetElements) {
     const asset = await extractAssetFromElement(element, projectDir);
     if (asset) {
-      assetsMap.set(asset.name, asset);
+      result.push(asset);
     }
   }
 
-  return assetsMap;
+  return result;
 }
 
 /**
@@ -383,12 +414,12 @@ function findOutputElements(html: ParsedHtml): Element[] {
 /**
  * Processes sequences and fragments from the parsed HTML
  */
-function processSequences(
-  html: ParsedHtml,
-  assets: Map<string, Asset>,
-): Sequence[] {
+function processSequences(html: ParsedHtml, assets: Asset[]): Sequence[] {
   const sequenceElements = findSequenceElements(html);
   const sequences: Sequence[] = [];
+
+  const assetMap: Map<string, Asset> = new Map();
+  assets.forEach((ass) => assetMap.set(ass.name, ass));
 
   for (const sequenceElement of sequenceElements) {
     const fragmentElements = findFragmentChildren(sequenceElement);
@@ -397,7 +428,7 @@ function processSequences(
     > = [];
 
     for (const fragmentElement of fragmentElements) {
-      const fragment = processFragment(fragmentElement, html, assets);
+      const fragment = processFragment(fragmentElement, html, assetMap);
       if (fragment) {
         rawFragments.push(fragment);
       }

@@ -1,5 +1,12 @@
 import { wrap } from 'module';
-import { Filter, Label, makeNull, makeFps, makeTranspose } from './ffmpeg';
+import {
+  Filter,
+  Label,
+  makeNull,
+  makeFps,
+  makeTranspose,
+  makeTrim,
+} from './ffmpeg';
 
 type Dimensions = {
   width: number;
@@ -38,6 +45,15 @@ class Stream {
   }
 
   public scale(dimensions: Dimensions, way: string): Stream {
+    return this;
+  }
+
+  public trim(start: number, end: number): Stream {
+    const res = makeTrim([this.looseEnd], start, end);
+    this.looseEnd = res.outputs[0];
+
+    this.buf.append(res);
+
     return this;
   }
 

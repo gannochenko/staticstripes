@@ -1,4 +1,5 @@
 import { getLabel } from './label-generator';
+import { Project } from './project';
 import type { ProjectStructure } from './type';
 
 export type Label = {
@@ -39,7 +40,7 @@ export class Filter {
  * Generates the complete ffmpeg command for rendering the project
  */
 export function makeFFmpegCommand(
-  project: ProjectStructure,
+  project: Project,
   filterComplex: string,
 ): string {
   const parts: string[] = ['ffmpeg'];
@@ -49,8 +50,8 @@ export function makeFFmpegCommand(
 
   // Add input files in order of their index mapping
   const inputsByIndex = new Map<number, string>();
-  for (const [assetName, index] of project.assetIndexMap) {
-    const asset = project.assets.get(assetName);
+  for (const [assetName, index] of project.getAssetIndexMap()) {
+    const asset = project.getAssetByName(assetName);
     if (asset) {
       inputsByIndex.set(index, asset.path);
     }
@@ -78,11 +79,11 @@ export function makeFFmpegCommand(
   parts.push('-max_muxing_queue_size 4096');
 
   // Add output parameters
-  const { width, height } = project.output.resolution;
+  const { width, height } = project.getOutput().resolution;
 
   // Video encoding parameters
   parts.push(`-s ${width}x${height}`);
-  parts.push(`-r ${project.output.fps}`);
+  parts.push(`-r ${project.getOutput().fps}`);
   parts.push('-pix_fmt yuv420p'); // Standard pixel format for compatibility
   parts.push('-preset ultrafast'); // Fast encoding for quick results
 
@@ -91,7 +92,7 @@ export function makeFFmpegCommand(
   parts.push('-b:a 192k'); // Audio bitrate
 
   // Add output path
-  parts.push(`"${project.output.path}"`);
+  parts.push(`"${project.getOutput().path}"`);
 
   return parts.join(' ');
 }
@@ -356,7 +357,31 @@ export function makeTranspose(
     isAudio: false,
   };
 
+  const input1 = inputs[0];
+  if (input1.isAudio) {
+    throw new Error(
+      `makeTranspose: input1 must be video, got audio (tag: ${input1.tag})`,
+    );
+  }
+
   return new Filter(inputs, [output], `transpose=${direction}`);
+}
+
+export function makeTrim(inputs: Label[], start: number, end: number): Filter {
+  const input1 = inputs[0];
+
+  const output = {
+    tag: getLabel(),
+    isAudio: input1.isAudio,
+  };
+
+  const prefix = input1.isAudio ? 'a' : '';
+
+  return new Filter(
+    inputs,
+    [output],
+    `${prefix}trim=start=${start}:end=${end},${prefix}setpts=PTS-STARTPTS`,
+  );
 }
 
 /**

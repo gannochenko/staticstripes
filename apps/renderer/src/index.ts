@@ -1,11 +1,9 @@
 import { parseHTMLFile } from './html-parser.js';
 import { resolve } from 'path';
-import { prepareProject } from './project.js';
+import { prepareProject as makeProject } from './project.js';
 import { spawn } from 'child_process';
 import { FilterBuffer, makeStream } from './stream.js';
-import { getLabel } from './label-generator.js';
 import { makeFFmpegCommand } from './ffmpeg.js';
-import { buffer } from 'stream/consumers';
 
 console.log('Renderer application starting...');
 
@@ -15,18 +13,15 @@ async function main() {
   // Parse the demo project HTML file
   const projectPath = resolve(__dirname, '../../../examples/demo/project.html');
 
-  const fileContent = await parseHTMLFile(projectPath);
-  const project = await prepareProject(fileContent, projectPath);
+  const project = await makeProject(
+    await parseHTMLFile(projectPath),
+    projectPath,
+  );
 
   const buf = new FilterBuffer();
 
-  const input1VideoStream = makeStream(
-    {
-      tag: '0:v',
-      isAudio: false,
-    },
-    buf,
-  )
+  makeStream(project.getInputLabelByAssetName('clip_02'), buf)
+    .trim(0, 1)
     .transpose(3)
     .scale({ width: 1920, height: 1080 }, 'cover') // or 'contain'
     .fps(30)
@@ -35,20 +30,16 @@ async function main() {
       isAudio: false,
     });
 
-  const input1AudioStream = makeStream(
-    {
-      tag: '0:a',
+  makeStream(project.getInputLabelByAssetName('clip_02'), buf)
+    .trim(0, 1)
+    .endTo({
+      tag: 'outa',
       isAudio: true,
-    },
-    buf,
-  ).endTo({
-    tag: 'outa',
-    isAudio: true,
-  });
+    });
 
-  // console.log(input1VideoStream.render());
+  const ffmpegCommand = makeFFmpegCommand(project, buf.render());
 
-  const ffmpegCommand = makeFFmpegCommand(project, input1VideoStream.render());
+  console.log('\n=== Command ===');
 
   console.log(ffmpegCommand);
 
