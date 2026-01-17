@@ -22,8 +22,7 @@ async function main() {
 
   makeStream(project.getVideoInputLabelByAssetName('clip_02'), buf)
     .trim(0, 1)
-    .cwRotate(Direction.CCW)
-    .scale({ width: 1920, height: 1080 }, 'cover') // or 'contain'
+    .fitOutput({ width: 1920, height: 1080 })
     .fps(30)
     .endTo({
       tag: 'outv',

@@ -299,7 +299,7 @@ export function makeFps(inputs: Label[], fps: number): Filter {
 
 export function makeScale(
   inputs: Label[],
-  options: { width: number | string; height: number | string; algo?: string },
+  options: { width: number | string; height: number | string; flags?: string },
 ): Filter {
   if (inputs.length !== 1) {
     throw new Error(`makeFps: expects one input`);
@@ -317,12 +317,12 @@ export function makeScale(
     isAudio: false,
   };
 
-  const algo = options.algo;
+  const algo = options.flags;
 
   return new Filter(
     inputs,
     [output],
-    `scale=${options.width}:${options.height}:flags=setsar=1${algo ? `,${algo}` : ''}`,
+    `scale=${options.width}:${options.height}${algo ? `:${algo}` : ''}`,
   );
 }
 
@@ -383,6 +383,49 @@ export function makeTrim(inputs: Label[], start: number, end: number): Filter {
     inputs,
     [output],
     `${prefix}trim=start=${start}:end=${end},${prefix}setpts=PTS-STARTPTS`,
+  );
+}
+
+/**
+ * Creates a pad filter to add borders/letterboxing
+ * @param inputs - Input stream labels (must be video)
+ * @param width - Output width (can be expression like 'iw' or number)
+ * @param height - Output height (can be expression like 'ih' or number)
+ * @param x - X position (default: center using '(ow-iw)/2')
+ * @param y - Y position (default: center using '(oh-ih)/2')
+ * @param color - Background color (default: 'black')
+ */
+export function makePad(
+  inputs: Label[],
+  options: {
+    width: number | string;
+    height: number | string;
+    x?: string;
+    y?: string;
+    color?: string;
+  },
+): Filter {
+  const input = inputs[0];
+
+  if (input.isAudio) {
+    throw new Error(
+      `makePad: input must be video, got audio (tag: ${input.tag})`,
+    );
+  }
+
+  const output = {
+    tag: getLabel(),
+    isAudio: false,
+  };
+
+  const x = options.x ?? '(ow-iw)/2';
+  const y = options.y ?? '(oh-ih)/2';
+  const color = options.color ?? 'black';
+
+  return new Filter(
+    inputs,
+    [output],
+    `pad=${options.width}:${options.height}:${x}:${y}:${color}`,
   );
 }
 

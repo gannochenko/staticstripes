@@ -8,6 +8,8 @@ import {
   makeTrim,
   makeHflip,
   makeVflip,
+  makeScale,
+  makePad,
 } from './ffmpeg';
 
 type Dimensions = {
@@ -49,15 +51,34 @@ class Stream {
     this.buf = fBuf ?? new FilterBuffer();
   }
 
-  public scale(dimensions: Dimensions, way: string): Stream {
-    return this;
-  }
-
   public trim(start: number, end: number): Stream {
     const res = makeTrim([this.looseEnd], start, end);
     this.looseEnd = res.outputs[0];
 
     this.buf.append(res);
+
+    return this;
+  }
+
+  public fitOutput(dimensions: Dimensions): Stream {
+    // Step 1: Scale video to fit within dimensions while maintaining aspect ratio
+    // Using 'force_original_aspect_ratio=decrease' ensures the video fits inside the box
+    const scaleRes = makeScale([this.looseEnd], {
+      width: dimensions.width,
+      height: dimensions.height,
+      flags: 'force_original_aspect_ratio=decrease',
+    });
+    this.looseEnd = scaleRes.outputs[0];
+    this.buf.append(scaleRes);
+
+    // Step 2: Pad to exact dimensions with black bars (centered)
+    const padRes = makePad([this.looseEnd], {
+      width: dimensions.width,
+      height: dimensions.height,
+      // x and y default to '(ow-iw)/2' and '(oh-ih)/2' which centers the video
+    });
+    this.looseEnd = padRes.outputs[0];
+    this.buf.append(padRes);
 
     return this;
   }
