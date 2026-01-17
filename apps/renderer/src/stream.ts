@@ -138,7 +138,7 @@ class Stream {
     // const splitRes = makeSplit([this.looseEnd]);
     // this.buf.append(splitRes);
 
-    // const [bgStream, fgStream] = splitRes.outputs;
+    // const [bgLabel, fgLabel] = splitRes.outputs;
 
     // // Background stream: cover + blur + darken
     const bgScaleRes = makeScale([this.looseEnd], {
@@ -160,11 +160,11 @@ class Stream {
     });
     this.buf.append(bgBlurRes);
 
-    // const bgEqRes = makeEq([bgBlurRes.outputs[0]], {
-    //   brightness,
-    //   saturation,
-    // });
-    // this.buf.append(bgEqRes);
+    const bgEqRes = makeEq(bgBlurRes.outputs, {
+      brightness,
+      saturation,
+    });
+    this.buf.append(bgEqRes);
 
     ////////////////////////////////////////////////////////////////////////////////////
 
@@ -194,7 +194,7 @@ class Stream {
     // });
     // this.buf.append(overlayRes);
 
-    this.looseEnd = bgBlurRes.outputs[0];
+    this.looseEnd = bgEqRes.outputs[0];
 
     return this;
   }
