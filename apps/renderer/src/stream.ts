@@ -134,14 +134,14 @@ class Stream {
     const brightness = options.ambient.brightness ?? -0.3;
     const saturation = options.ambient.saturation ?? 0.8;
 
-    // // Split input into 2 streams: background and foreground
-    // const splitRes = makeSplit([this.looseEnd]);
-    // this.buf.append(splitRes);
+    // Split input into 2 streams: background and foreground
+    const splitRes = makeSplit([this.looseEnd]);
+    this.buf.append(splitRes);
 
-    // const [bgLabel, fgLabel] = splitRes.outputs;
+    const [bgLabel, fgLabel] = splitRes.outputs;
 
     // // Background stream: cover + blur + darken
-    const bgScaleRes = makeScale([this.looseEnd], {
+    const bgScaleRes = makeScale([bgLabel], {
       width: dimensions.width,
       height: dimensions.height,
       flags: 'force_original_aspect_ratio=increase',
@@ -160,41 +160,41 @@ class Stream {
     });
     this.buf.append(bgBlurRes);
 
-    const bgEqRes = makeEq(bgBlurRes.outputs, {
+    const bgFinal = makeEq(bgBlurRes.outputs, {
       brightness,
       saturation,
     });
-    this.buf.append(bgEqRes);
+    this.buf.append(bgFinal);
 
     ////////////////////////////////////////////////////////////////////////////////////
 
-    // const fgScale = makeScale([this.looseEnd], {
-    //   width: dimensions.width,
-    //   height: dimensions.height,
-    //   flags: 'force_original_aspect_ratio=decrease',
-    // });
-    // this.buf.append(fgScale);
+    const fgScale = makeScale([fgLabel], {
+      width: dimensions.width,
+      height: dimensions.height,
+      flags: 'force_original_aspect_ratio=decrease',
+    });
+    this.buf.append(fgScale);
 
-    // // Step 2: Pad to exact dimensions with black bars (centered)
-    // const fgPad = makePad(fgScale.outputs, {
-    //   width: dimensions.width,
-    //   height: dimensions.height,
-    //   color: '#ffffff',
-    //   // x and y default to '(ow-iw)/2' and '(oh-ih)/2' which centers the video
-    // });
-    // this.buf.append(fgPad);
+    // Step 2: Pad to exact dimensions with black bars (centered)
+    const fgFinal = makePad(fgScale.outputs, {
+      width: dimensions.width,
+      height: dimensions.height,
+      color: '#00000000',
+      // x and y default to '(ow-iw)/2' and '(oh-ih)/2' which centers the video
+    });
+    this.buf.append(fgFinal);
 
     ////////////////////////////////////////////////////////////////////////////////////
 
-    // // Overlay foreground centered on background
-    // // (W-w)/2 and (H-h)/2 center the overlay on the background
-    // const overlayRes = makeOverlay([bgEqRes.outputs[0], fgScaleRes.outputs[0]], {
-    //   x: '(W-w)/2',
-    //   y: '(H-h)/2',
-    // });
-    // this.buf.append(overlayRes);
+    // Overlay foreground centered on background
+    // (W-w)/2 and (H-h)/2 center the overlay on the background
+    const overlayRes = makeOverlay([bgFinal.outputs[0], fgFinal.outputs[0]], {
+      x: '(W-w)/2',
+      y: '(H-h)/2',
+    });
+    this.buf.append(overlayRes);
 
-    this.looseEnd = bgEqRes.outputs[0];
+    this.looseEnd = overlayRes.outputs[0];
 
     return this;
   }

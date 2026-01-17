@@ -31,7 +31,7 @@ async function main() {
       {
         ambient: {
           blurStrength: 25,
-          brightness: -0.4,
+          brightness: -0.1,
           saturation: 0.7,
         },
       },
