@@ -31,7 +31,7 @@ async function main() {
     project.getVideoInputLabelByAssetName('glitch'),
     buf,
   )
-    .trim(0, 1)
+    .trim(0, 2)
     .fitOutputContain({ width: 1920, height: 1080 })
     .fps(30)
     .chromakey({
@@ -41,7 +41,7 @@ async function main() {
     });
 
   makeStream(project.getVideoInputLabelByAssetName('clip_01'), buf)
-    .trim(0, 1)
+    .trim(0, 5)
     .fitOutputContain(
       {
         width: 1920,
@@ -59,7 +59,13 @@ async function main() {
       },
     )
     .fps(30)
-    .overlayStream(glitchStream)
+    .overlayStream(glitchStream, {
+      overlay: {
+        duration: 5, // value from trim()
+        otherStreamDuration: 2, // value from trim() of glitch
+        otherStreamOffsetLeft: -1, // how much they overlay
+      },
+    })
     .endTo({
       tag: 'outv',
       isAudio: false,

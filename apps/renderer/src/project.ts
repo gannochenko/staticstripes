@@ -47,6 +47,10 @@ export class Project {
 
   public getVideoInputLabelByAssetName(name: string): Label {
     const assetIndex = this.assetIndexMap.get(name);
+    const asset = this.getAssetByName(name);
+    if (asset && asset.type === 'audio') {
+      throw new Error('trying to get video stream from an audio only asset');
+    }
 
     return {
       tag: `${assetIndex}:v`,

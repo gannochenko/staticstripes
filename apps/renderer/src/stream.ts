@@ -307,7 +307,7 @@ class Stream {
   }
 
   public concatStreams(streams: Stream[]): Stream {
-    // todo: check streams type here
+    // todo: check streams type here, it can either be all audio or all video
 
     const res = makeConcat([
       this.looseEnd,
@@ -326,11 +326,38 @@ class Stream {
     return this;
   }
 
-  public overlayStream(stream: Stream): Stream {
-    const res = makeOverlay([this.looseEnd, stream.getLooseEnd()]);
-    this.looseEnd = res.outputs[0];
+  public overlayStream(
+    stream: Stream,
+    options: {
+      overlay?: {
+        duration: number; // duration of this stream
+        otherStreamDuration: number; // duration of the joining stream
+        otherStreamOffsetLeft: number; // offset of the joining stream in seconds
+      };
+    },
+  ): Stream {
+    const overlay = options.overlay;
 
-    this.buf.append(res);
+    if (!overlay) {
+      // usual overlay
+      const res = makeOverlay([this.looseEnd, stream.getLooseEnd()]);
+      this.looseEnd = res.outputs[0];
+
+      this.buf.append(res);
+    } else {
+      if (overlay.duration === undefined) {
+        throw new Error(
+          'exact duration of the fragment in the stream must be provided',
+        );
+      }
+      if (overlay.otherStreamDuration === undefined) {
+        throw new Error(
+          'exact duration of the fragment in the joining stream must be provided',
+        );
+      }
+
+      const offset = overlay.otherStreamOffsetLeft;
+    }
 
     return this;
   }
