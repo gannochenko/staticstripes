@@ -405,14 +405,16 @@ export function makeTrim(inputs: Label[], start: number, end: number): Filter {
  * @param options - Padding parameters
  *   - start: Duration to add at the beginning (in seconds, default: 0)
  *   - stop: Duration to add at the end (in seconds, default: 0)
- *   - start_mode: 'clone' (duplicate frames) or 'add' (black frames/silence, default)
- *   - stop_mode: 'clone' (duplicate frames) or 'add' (black frames/silence, default)
+ *   - start_mode: 'clone' (duplicate frames) or 'add' (colored frames/silence, default)
+ *   - stop_mode: 'clone' (duplicate frames) or 'add' (colored frames/silence, default)
+ *   - color: Color of added frames (video only, e.g., 'black', '#00FF00', default: 'black')
  */
 export function makeTPad(
   inputs: Label[],
   options: {
     start?: number;
     stop?: number;
+    color?: string;
     start_mode?: 'clone' | 'add';
     stop_mode?: 'clone' | 'add';
   } = {},
@@ -428,6 +430,7 @@ export function makeTPad(
   const stop = options.stop ?? 0;
   const start_mode = options.start_mode ?? 'add';
   const stop_mode = options.stop_mode ?? 'add';
+  const color = options.color ?? 'black';
 
   const filterName = input.isAudio ? 'apad' : 'tpad';
 
@@ -449,6 +452,10 @@ export function makeTPad(
     if (stop > 0) {
       params.push(`stop_duration=${stop}`);
       params.push(`stop_mode=${stop_mode}`);
+    }
+    // Add color parameter for added frames (when mode is 'add')
+    if ((start_mode === 'add' && start > 0) || (stop_mode === 'add' && stop > 0)) {
+      params.push(`color=${color}`);
     }
     const filterParams = params.length > 0 ? `=${params.join(':')}` : '';
     return new Filter(inputs, [output], `${filterName}${filterParams}`);

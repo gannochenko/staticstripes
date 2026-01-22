@@ -6,6 +6,7 @@ import {
   makeFps,
   makeTranspose,
   makeTrim,
+  makeTPad,
   makeHflip,
   makeVflip,
   makeScale,
@@ -43,6 +44,10 @@ export enum ChromakeyBlend {
   Hard = 0.0,
   Smooth = 0.1,
   Soft = 0.2,
+}
+
+export enum Colors {
+  Transparent = '#00000000',
 }
 
 export class FilterBuffer {
@@ -326,21 +331,47 @@ class Stream {
     return this;
   }
 
+  public tPad(
+    options: {
+      start?: number;
+      stop?: number;
+      color?: string;
+      start_mode?: 'clone' | 'add';
+      stop_mode?: 'clone' | 'add';
+    } = {},
+  ): Stream {
+    const res = makeTPad([this.looseEnd], options);
+    this.looseEnd = res.outputs[0];
+
+    this.buf.append(res);
+
+    return this;
+  }
+
+  /*
+  this stream becomes the bottom layer, and the joining stream - top layer
+  */
   public overlayStream(
     stream: Stream,
     options: {
-      overlay?: {
+      flipLayers?: boolean;
+      offset?: {
         duration: number; // duration of this stream
         otherStreamDuration: number; // duration of the joining stream
         otherStreamOffsetLeft: number; // offset of the joining stream in seconds
       };
     },
   ): Stream {
-    const overlay = options.overlay;
+    const overlay = options.offset;
+    const flip = !!options.flipLayers;
 
     if (!overlay) {
       // usual overlay
-      const res = makeOverlay([this.looseEnd, stream.getLooseEnd()]);
+      const res = makeOverlay(
+        flip
+          ? [stream.getLooseEnd(), this.looseEnd]
+          : [this.looseEnd, stream.getLooseEnd()],
+      );
       this.looseEnd = res.outputs[0];
 
       this.buf.append(res);
@@ -357,6 +388,33 @@ class Stream {
       }
 
       const offset = overlay.otherStreamOffsetLeft;
+
+      if (offset < 0) {
+        if (-offset >= overlay.duration) {
+          throw new Error('offset cannot be bigger than the duration');
+        }
+
+        const delta = overlay.duration + offset;
+
+        stream.tPad({
+          start: delta,
+          color: Colors.Transparent,
+        });
+
+        // const overlayRes = makeOverlay([this.looseEnd, stream.getLooseEnd()]);
+        const overlayRes = makeOverlay([stream.getLooseEnd(), this.looseEnd]);
+        this.looseEnd = overlayRes.outputs[0];
+
+        this.buf.append(overlayRes);
+      } else if (offset > 0) {
+        throw new Error('positive offset is not supported for overlayStream');
+      } else {
+        // offset === 0: joining stream starts right after base stream ends
+        // Just overlay directly
+        const res = makeOverlay([this.looseEnd, stream.getLooseEnd()]);
+        this.looseEnd = res.outputs[0];
+        this.buf.append(res);
+      }
     }
 
     return this;

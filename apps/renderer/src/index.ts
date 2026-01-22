@@ -5,8 +5,6 @@ import { spawn } from 'child_process';
 import {
   ChromakeyBlend,
   ChromakeySimilarity,
-  concatStreams,
-  Direction,
   FilterBuffer,
   makeStream,
 } from './stream.js';
@@ -60,11 +58,12 @@ async function main() {
     )
     .fps(30)
     .overlayStream(glitchStream, {
-      overlay: {
-        duration: 5, // value from trim()
-        otherStreamDuration: 2, // value from trim() of glitch
-        otherStreamOffsetLeft: -1, // how much they overlay
-      },
+      // flipLayers: true,
+      // offset: {
+      //   duration: 5, // value from trim()
+      //   otherStreamDuration: 2, // value from trim() of glitch
+      //   otherStreamOffsetLeft: -1, // how much they overlay
+      // },
     })
     .endTo({
       tag: 'outv',
