@@ -38,7 +38,18 @@ async function main() {
       color: '#000000',
     });
 
-  makeStream(project.getVideoInputLabelByAssetName('clip_01'), buf)
+  const clip02Stream = makeStream(
+    project.getVideoInputLabelByAssetName('clip_02'),
+    buf,
+  )
+    .trim(0, 5)
+    .fitOutputContain({ width: 1920, height: 1080 })
+    .fps(30);
+
+  const clip01Stream = makeStream(
+    project.getVideoInputLabelByAssetName('clip_01'),
+    buf,
+  )
     .trim(0, 5)
     .fitOutputContain(
       {
@@ -58,11 +69,19 @@ async function main() {
     )
     .fps(30)
     .overlayStream(glitchStream, {
-      flipLayers: true,
+      // flipLayers: true,
       offset: {
         duration: 5, // value from trim()
         otherStreamDuration: 2, // value from trim() of glitch
-        otherStreamOffsetLeft: 4, // padding of the glitch
+        otherStreamOffsetLeft: 4, // start of the glitch
+      },
+    })
+    .overlayStream(clip02Stream, {
+      flipLayers: true,
+      offset: {
+        duration: 5, // value from trim()
+        otherStreamDuration: 6, // 5 seconds of clip01, 1 second of glitch
+        otherStreamOffsetLeft: 5, // start of the of clip01stream
       },
     })
     .endTo({
