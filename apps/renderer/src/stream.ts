@@ -358,8 +358,8 @@ class Stream {
       start?: number;
       stop?: number;
       color?: string;
-      start_mode?: 'clone' | 'add';
-      stop_mode?: 'clone' | 'add';
+      startMode?: 'clone' | 'add';
+      stopMode?: 'clone' | 'add';
     } = {},
   ): Stream {
     const res = makeTPad([this.looseEnd], options);

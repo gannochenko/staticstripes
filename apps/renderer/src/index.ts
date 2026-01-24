@@ -43,7 +43,6 @@ async function main() {
     buf,
   )
     .trim(0, 5)
-    // .fitOutputContain({ width: 1920, height: 1080 })
     .fitOutputContain(
       {
         width: 1920,
@@ -58,6 +57,17 @@ async function main() {
       },
     )
     .fps(30);
+
+  const introImageStream = makeStream(
+    project.getVideoInputLabelByAssetName('intro_image'),
+    buf,
+  )
+    .fps(30)
+    .fitOutputCover({ width: 1920, height: 1080 })
+    .tPad({
+      start: 3,
+      startMode: 'clone',
+    });
 
   makeStream(project.getVideoInputLabelByAssetName('clip_01'), buf)
     .trim(0, 5) // length = 5
@@ -113,6 +123,7 @@ async function main() {
         },
       ],
     })
+    .concatStream(introImageStream)
     .endTo({
       tag: 'outv',
       isAudio: false,

@@ -419,8 +419,8 @@ export function makeTPad(
     start?: number;
     stop?: number;
     color?: string;
-    start_mode?: 'clone' | 'add';
-    stop_mode?: 'clone' | 'add';
+    startMode?: 'clone' | 'add';
+    stopMode?: 'clone' | 'add';
   } = {},
 ): Filter {
   const input = inputs[0];
@@ -432,8 +432,8 @@ export function makeTPad(
 
   const start = options.start ?? 0;
   const stop = options.stop ?? 0;
-  const start_mode = options.start_mode ?? 'add';
-  const stop_mode = options.stop_mode ?? 'add';
+  const start_mode = options.startMode ?? 'add';
+  const stop_mode = options.stopMode ?? 'add';
   const color = options.color ?? 'black';
 
   const filterName = input.isAudio ? 'apad' : 'tpad';
