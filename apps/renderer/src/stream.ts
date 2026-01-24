@@ -18,6 +18,7 @@ import {
   makeEq,
   makeChromakey,
   makeConcat,
+  makeFade,
 } from './ffmpeg';
 import { getLabel } from './label-generator';
 
@@ -274,6 +275,23 @@ class Stream {
     return this;
   }
 
+  public fade(options: {
+    fades: Array<{
+      type: 'in' | 'out';
+      startTime: number;
+      duration: number;
+      color?: string;
+      curve?: string;
+    }>;
+  }): Stream {
+    const res = makeFade([this.looseEnd], options);
+    this.looseEnd = res.outputs[0];
+
+    this.buf.append(res);
+
+    return this;
+  }
+
   public transpose(value: 0 | 1 | 2 | 3): Stream {
     const res = makeTranspose([this.looseEnd], value);
     this.looseEnd = res.outputs[0];
@@ -309,6 +327,10 @@ class Stream {
     }
 
     return this;
+  }
+
+  public concatStream(stream: Stream): Stream {
+    return this.concatStreams([stream]);
   }
 
   public concatStreams(streams: Stream[]): Stream {

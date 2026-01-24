@@ -870,6 +870,55 @@ export function makeDespill(
   );
 }
 
+export function makeFade(
+  inputs: Label[],
+  options: {
+    fades: Array<{
+      type: 'in' | 'out';
+      startTime: number;
+      duration: number;
+      color?: string;
+      curve?: string;
+    }>;
+  },
+): Filter {
+  const input = inputs[0];
+
+  if (!options.fades || options.fades.length === 0) {
+    throw new Error(`makeFade: at least one fade operation is required`);
+  }
+
+  const output = {
+    tag: getLabel(),
+    isAudio: input.isAudio,
+  };
+
+  // Use 'afade' for audio, 'fade' for video
+  const filterName = input.isAudio ? 'afade' : 'fade';
+
+  // Build fade filter string by chaining multiple fade operations
+  const fadeStrings = options.fades.map((fade) => {
+    const params: string[] = [];
+    params.push(`t=${fade.type}`);
+    params.push(`st=${fade.startTime}`);
+    params.push(`d=${fade.duration}`);
+
+    // Color parameter only applies to video (fade, not afade)
+    if (fade.color && !input.isAudio) {
+      params.push(`color=${fade.color}`);
+    }
+
+    // Curve parameter works for both video and audio
+    if (fade.curve) {
+      params.push(`curve=${fade.curve}`);
+    }
+
+    return `${filterName}=${params.join(':')}`;
+  });
+
+  return new Filter(inputs, [output], fadeStrings.join(','));
+}
+
 /**
  * Wraps a label in brackets
  */
