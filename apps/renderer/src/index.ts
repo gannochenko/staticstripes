@@ -34,6 +34,7 @@ async function main() {
     {
       fragments: [
         {
+          enabled: true,
           assetName: 'clip_01',
           duration: 5,
           trimStart: 1,
@@ -43,10 +44,42 @@ async function main() {
           transitionOut: '',
           transitionOutDuration: 0,
           objectFit: 'contain',
-          objectFitContain: 'pillarbox',
+          objectFitContain: 'ambient',
 
-          zIndex: 0,
-          blendModeLeft: '',
+          zIndex: 0, // ignore
+          blendModeLeft: '', // ignore
+        },
+        {
+          enabled: false,
+          assetName: 'glitch',
+          duration: 2,
+          trimStart: 0,
+          overlayLeft: 0,
+          transitionIn: '',
+          transitionInDuration: 0,
+          transitionOut: '',
+          transitionOutDuration: 0,
+          objectFit: 'cover',
+          objectFitContain: 'pillarbox', // ignore
+
+          zIndex: 0, // ignore
+          blendModeLeft: '', // ignore
+        },
+        {
+          enabled: true,
+          assetName: 'clip_02',
+          duration: 5,
+          trimStart: 0,
+          overlayLeft: 0,
+          transitionIn: '',
+          transitionInDuration: 0,
+          transitionOut: '',
+          transitionOutDuration: 0,
+          objectFit: 'contain',
+          objectFitContain: 'ambient',
+
+          zIndex: 0, // ignore
+          blendModeLeft: '', // ignore
         },
       ],
     },
@@ -54,6 +87,16 @@ async function main() {
     project.getAssetManager(),
   );
   seq1.build();
+
+  // tmp:
+  seq1.getVideoStream().endTo({
+    tag: 'outv',
+    isAudio: false,
+  });
+  seq1.getAudioStream().endTo({
+    tag: 'outa',
+    isAudio: true,
+  });
 
   // addSampleStreams(project, buf);
 

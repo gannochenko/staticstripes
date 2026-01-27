@@ -1,4 +1,3 @@
-import { wrap } from 'module';
 import {
   Filter,
   Label,
@@ -20,7 +19,9 @@ import {
   makeConcat,
   makeFade,
 } from './ffmpeg';
-import { getLabel } from './label-generator';
+
+export const PILLARBOX = 'pillarbox';
+export const AMBIENT = 'ambient';
 
 type Dimensions = {
   width: number;
@@ -50,6 +51,17 @@ export enum ChromakeyBlend {
 export enum Colors {
   Transparent = '#00000000',
 }
+
+export type ObjectFitContainOptions = {
+  ambient?: {
+    blurStrength?: number; // Gaussian blur sigma (default: 20)
+    brightness?: number; // Background brightness reduction (default: -0.3)
+    saturation?: number; // Background saturation (default: 0.8)
+  };
+  pillarbox?: {
+    color: string;
+  };
+};
 
 export class FilterBuffer {
   private filters: Filter[] = [];
@@ -130,16 +142,7 @@ export class Stream {
 
   public fitOutputContain(
     dimensions: Dimensions,
-    options: {
-      ambient?: {
-        blurStrength?: number; // Gaussian blur sigma (default: 20)
-        brightness?: number; // Background brightness reduction (default: -0.3)
-        saturation?: number; // Background saturation (default: 0.8)
-      };
-      pillarbox?: {
-        color: string;
-      };
-    } = {},
+    options: ObjectFitContainOptions = {},
   ): Stream {
     if (options.ambient) {
       const blurStrength = options.ambient?.blurStrength ?? 20;

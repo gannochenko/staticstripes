@@ -26,6 +26,7 @@ export type Asset = {
 };
 
 export type Fragment = {
+  enabled: boolean;
   assetName: string;
   duration: number; // calculated, in seconds (can come from CSS or from the asset's duration)
   trimStart: number; // in seconds
