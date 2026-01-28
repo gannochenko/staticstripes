@@ -214,7 +214,7 @@ export class HTMLProjectParser {
     const hasAudio = await this.getHasAudio(absolutePath, type);
 
     console.log(
-      `Asset "${name}" dimensions: w=${width}, h=${height}, rotation: ${rotation}°, hasAudio: ${hasAudio}`,
+      `Asset "${name}" dimensions: w=${width}, h=${height}, rotation: ${rotation}°, duration: ${duration}, hasAudio: ${hasAudio}`,
     );
 
     // Extract author (optional)

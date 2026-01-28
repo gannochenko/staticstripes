@@ -1,17 +1,21 @@
 import { getLabel } from './label-generator';
 import { Project } from './project';
-import type { ProjectStructure } from './type';
 
 export type Label = {
   tag: string;
   isAudio: boolean; // false for video, true for audio
 };
 
-// export type Filter = {
-//   inputs: Label[];
-//   outputs: Label[]; // Array to support filters with multiple outputs (e.g., split)
-//   render: () => string;
-// };
+export type Millisecond = number;
+
+/**
+ * Helper function to format milliseconds for FFmpeg time parameters
+ * @param value - Time value in milliseconds
+ * @returns Formatted string with 'ms' suffix (e.g., "1500ms")
+ */
+export function ms(value: Millisecond): string {
+  return `${value}ms`;
+}
 
 export class Filter {
   constructor(
@@ -185,8 +189,8 @@ export function makeConcat(inputs: Label[]): Filter {
 export function makeXFade(
   inputs: Label[],
   options: {
-    duration: number; // in seconds
-    offset: number; // in seconds
+    duration: Millisecond;
+    offset: Millisecond;
     transition?: string;
   },
 ): Filter {
@@ -220,7 +224,7 @@ export function makeXFade(
   return new Filter(
     [input1, input2],
     [output],
-    `xfade=transition=${transition}:duration=${options.duration}:offset=${options.offset}`,
+    `xfade=transition=${transition}:duration=${ms(options.duration)}:offset=${ms(options.offset)}`,
   );
 }
 
@@ -386,7 +390,18 @@ export function makeTranspose(
   return new Filter(inputs, [output], `transpose=${direction}`);
 }
 
-export function makeTrim(inputs: Label[], start: number, end: number): Filter {
+/**
+ * Creates a trim filter to cut streams to a specific time range
+ * @param inputs - Input stream labels (video or audio)
+ * @param start - Start time in milliseconds
+ * @param end - End time in milliseconds
+ * @returns Filter with trimmed output
+ */
+export function makeTrim(
+  inputs: Label[],
+  start: Millisecond,
+  end: Millisecond,
+): Filter {
   const input1 = inputs[0];
 
   const output = {
@@ -399,7 +414,7 @@ export function makeTrim(inputs: Label[], start: number, end: number): Filter {
   return new Filter(
     inputs,
     [output],
-    `${prefix}trim=start=${start}:end=${end},${prefix}setpts=PTS-STARTPTS`,
+    `${prefix}trim=start=${ms(start)}:end=${ms(end)},${prefix}setpts=PTS-STARTPTS`,
   );
 }
 
@@ -407,8 +422,8 @@ export function makeTrim(inputs: Label[], start: number, end: number): Filter {
  * Creates a tpad/apad filter to add temporal padding (frames/silence)
  * @param inputs - Input stream labels (video or audio)
  * @param options - Padding parameters
- *   - start: Duration to add at the beginning (in seconds, default: 0)
- *   - stop: Duration to add at the end (in seconds, default: 0)
+ *   - start: Duration to add at the beginning (in milliseconds, default: 0)
+ *   - stop: Duration to add at the end (in milliseconds, default: 0)
  *   - start_mode: 'clone' (duplicate frames) or 'add' (colored frames/silence, default)
  *   - stop_mode: 'clone' (duplicate frames) or 'add' (colored frames/silence, default)
  *   - color: Color of added frames (video only, e.g., 'black', '#00FF00', default: 'black')
@@ -416,8 +431,8 @@ export function makeTrim(inputs: Label[], start: number, end: number): Filter {
 export function makeTPad(
   inputs: Label[],
   options: {
-    start?: number;
-    stop?: number;
+    start?: Millisecond;
+    stop?: Millisecond;
     color?: string;
     startMode?: 'clone' | 'add';
     stopMode?: 'clone' | 'add';
@@ -442,15 +457,14 @@ export function makeTPad(
     // For audio: use adelay for start padding, apad for stop padding
     const filters: string[] = [];
 
-    // Add silence at the start using adelay (converts seconds to milliseconds)
+    // Add silence at the start using adelay (already in milliseconds)
     if (start > 0) {
-      const delayMs = Math.round(start * 1000);
-      filters.push(`adelay=${delayMs}|${delayMs}`);
+      filters.push(`adelay=${start}|${start}`);
     }
 
     // Add silence at the end using apad
     if (stop > 0) {
-      filters.push(`apad=pad_dur=${stop}`);
+      filters.push(`apad=pad_dur=${ms(stop)}`);
     }
 
     const filterStr = filters.length > 0 ? filters.join(',') : 'anull';
@@ -459,11 +473,11 @@ export function makeTPad(
     // tpad for video
     const params: string[] = [];
     if (start > 0) {
-      params.push(`start_duration=${start}`);
+      params.push(`start_duration=${ms(start)}`);
       params.push(`start_mode=${start_mode}`);
     }
     if (stop > 0) {
-      params.push(`stop_duration=${stop}`);
+      params.push(`stop_duration=${ms(stop)}`);
       params.push(`stop_mode=${stop_mode}`);
     }
     // Add color parameter for added frames (when mode is 'add')
@@ -884,8 +898,8 @@ export function makeFade(
   options: {
     fades: Array<{
       type: 'in' | 'out';
-      startTime: number;
-      duration: number;
+      startTime: Millisecond;
+      duration: Millisecond;
       color?: string;
       curve?: string;
     }>;
@@ -909,8 +923,8 @@ export function makeFade(
   const fadeStrings = options.fades.map((fade) => {
     const params: string[] = [];
     params.push(`t=${fade.type}`);
-    params.push(`st=${fade.startTime}`);
-    params.push(`d=${fade.duration}`);
+    params.push(`st=${ms(fade.startTime)}`);
+    params.push(`d=${ms(fade.duration)}`);
 
     // Color parameter only applies to video (fade, not afade)
     if (fade.color && !input.isAudio) {
@@ -931,13 +945,13 @@ export function makeFade(
 /**
  * Creates an anullsrc filter to generate silent audio
  * @param options - Audio parameters
- *   - duration: Duration in seconds
+ *   - duration: Duration in milliseconds
  *   - channel_layout: Audio channel layout (default: 'stereo')
  *   - sample_rate: Sample rate in Hz (default: 48000)
  * @returns Filter with audio output
  */
 export function makeAnullsrc(options: {
-  duration: number;
+  duration: Millisecond;
   channel_layout?: string;
   sample_rate?: number;
 }): Filter {
@@ -951,7 +965,7 @@ export function makeAnullsrc(options: {
   const duration = options.duration;
 
   // anullsrc generates infinite silence, so we trim to the desired duration
-  const filterStr = `anullsrc=channel_layout=${channelLayout}:sample_rate=${sampleRate},atrim=duration=${duration},asetpts=PTS-STARTPTS`;
+  const filterStr = `anullsrc=channel_layout=${channelLayout}:sample_rate=${sampleRate},atrim=duration=${ms(duration)},asetpts=PTS-STARTPTS`;
 
   return new Filter([], [output], filterStr);
 }
@@ -1008,7 +1022,10 @@ export function makeAmix(
     const weights =
       options.weights.length === inputs.length
         ? options.weights
-        : [...options.weights, ...Array(inputs.length - options.weights.length).fill(1)];
+        : [
+            ...options.weights,
+            ...Array(inputs.length - options.weights.length).fill(1),
+          ];
 
     params.push(`weights=${weights.join(' ')}`);
   }

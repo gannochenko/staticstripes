@@ -36,8 +36,8 @@ async function main() {
         {
           enabled: true,
           assetName: 'clip_01',
-          duration: 10,
-          trimLeft: 1,
+          duration: 11330 - 3000, // asset duration is 11330
+          trimLeft: 3000,
           overlayLeft: 0,
           transitionIn: '',
           transitionInDuration: 0,
@@ -54,11 +54,11 @@ async function main() {
           blendModeLeft: '', // ignore
         },
         {
-          enabled: false,
+          enabled: true,
           assetName: 'glitch',
-          duration: 3,
+          duration: 2000, // asset duration is 10000
           trimLeft: 0,
-          overlayLeft: -1,
+          overlayLeft: -1000,
           transitionIn: '',
           transitionInDuration: 0,
           transitionOut: '',
@@ -76,7 +76,7 @@ async function main() {
         {
           enabled: false,
           assetName: 'clip_02',
-          duration: 8,
+          duration: 4000, // asset duration is 90245
           trimLeft: 0,
           overlayLeft: 0,
           transitionIn: '',

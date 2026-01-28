@@ -62,18 +62,23 @@ export class Sequence {
         );
       } else {
         // Create silent audio stream matching the video duration
-        const durationInSeconds = fragment.duration / 1000;
-        currentAudioStream = makeSilentStream(durationInSeconds, this.buf);
+        currentAudioStream = makeSilentStream(fragment.duration, this.buf);
       }
 
       if (fragment.trimLeft != 0 || fragment.duration < asset.duration) {
         console.log('fragment.trimLeft=' + fragment.trimLeft);
         console.log('fragment.duration=' + fragment.duration);
         console.log('asset.duration=' + asset.duration);
-        currentVideoStream.trim(fragment.trimLeft, fragment.duration);
+        currentVideoStream.trim(
+          fragment.trimLeft,
+          fragment.trimLeft + fragment.duration,
+        );
         if (asset.hasAudio) {
           // Only trim if the audio came from an actual source
-          currentAudioStream.trim(fragment.trimLeft, fragment.duration);
+          currentAudioStream.trim(
+            fragment.trimLeft,
+            fragment.trimLeft + fragment.duration,
+          );
         }
       }
 
@@ -113,10 +118,8 @@ export class Sequence {
           console.log('this.time=' + this.time);
           console.log('streamDuration=' + this.time);
           console.log('otherStreamDuration=' + fragment.duration);
-          console.log(
-            'otherStreamOffsetLeft=' +
-              (this.time + fragment.duration + fragment.overlayLeft),
-          );
+          const otherStreamOffsetLeft = this.time + fragment.overlayLeft;
+          console.log('otherStreamOffsetLeft=' + otherStreamOffsetLeft);
 
           // use overlay
           this.videoStream.overlayStream(currentVideoStream, {
@@ -124,16 +127,14 @@ export class Sequence {
             offset: {
               streamDuration: this.time,
               otherStreamDuration: fragment.duration,
-              otherStreamOffsetLeft:
-                this.time + fragment.duration + fragment.overlayLeft,
+              otherStreamOffsetLeft: otherStreamOffsetLeft,
             },
           });
           this.audioStream.overlayStream(currentAudioStream, {
             offset: {
               streamDuration: this.time,
               otherStreamDuration: fragment.duration,
-              otherStreamOffsetLeft:
-                this.time + fragment.duration + fragment.overlayLeft,
+              otherStreamOffsetLeft: otherStreamOffsetLeft,
             },
           });
 
@@ -144,6 +145,8 @@ export class Sequence {
         this.audioStream = currentAudioStream;
         this.time += fragment.duration;
       }
+
+      console.log('new time=' + this.time);
 
       firstOne = false;
     });

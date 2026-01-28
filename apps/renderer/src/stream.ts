@@ -1,6 +1,7 @@
 import {
   Filter,
   Label,
+  Millisecond,
   makeNull,
   makeFps,
   makeTranspose,
@@ -81,8 +82,8 @@ export function makeStream(label: Label, buf: FilterBuffer): Stream {
   return new Stream(label, buf);
 }
 
-export function makeSilentStream(durationInSeconds: number, buf: FilterBuffer): Stream {
-  const filter = makeAnullsrc({ duration: durationInSeconds });
+export function makeSilentStream(duration: Millisecond, buf: FilterBuffer): Stream {
+  const filter = makeAnullsrc({ duration });
   buf.append(filter);
   return new Stream(filter.outputs[0], buf);
 }
@@ -93,7 +94,7 @@ export class Stream {
     private buf: FilterBuffer,
   ) {}
 
-  public trim(start: number, end: number): Stream {
+  public trim(start: Millisecond, end: Millisecond): Stream {
     const res = makeTrim([this.looseEnd], start, end);
     this.looseEnd = res.outputs[0];
 
@@ -284,8 +285,8 @@ export class Stream {
   public fade(options: {
     fades: Array<{
       type: 'in' | 'out';
-      startTime: number;
-      duration: number;
+      startTime: Millisecond;
+      duration: Millisecond;
       color?: string;
       curve?: string;
     }>;
@@ -393,8 +394,8 @@ export class Stream {
 
   public tPad(
     options: {
-      start?: number;
-      stop?: number;
+      start?: Millisecond;
+      stop?: Millisecond;
       color?: string;
       startMode?: 'clone' | 'add';
       stopMode?: 'clone' | 'add';
