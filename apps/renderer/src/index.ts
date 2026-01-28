@@ -39,6 +39,7 @@ async function main() {
           duration: 11330 - 3000, // asset duration is 11330
           trimLeft: 3000,
           overlayLeft: 0,
+          overlayZIndex: 1,
           transitionIn: '',
           transitionInDuration: 0,
           transitionOut: '',
@@ -63,6 +64,7 @@ async function main() {
           duration: 2000, // asset duration is 10000
           trimLeft: 0,
           overlayLeft: -1000,
+          overlayZIndex: 1,
           transitionIn: '',
           transitionInDuration: 0,
           transitionOut: '',
@@ -82,11 +84,12 @@ async function main() {
           blendModeLeft: '', // ignore
         },
         {
-          enabled: false,
+          enabled: true,
           assetName: 'clip_02',
           duration: 4000, // asset duration is 90245
           trimLeft: 0,
-          overlayLeft: 0,
+          overlayLeft: -1000,
+          overlayZIndex: -1,
           transitionIn: '',
           transitionInDuration: 0,
           transitionOut: '',

@@ -131,7 +131,7 @@ export class Sequence {
 
           // use overlay
           this.videoStream.overlayStream(currentVideoStream, {
-            // flipLayers: true,
+            flipLayers: fragment.overlayZIndex < 0,
             offset: {
               streamDuration: this.time,
               otherStreamDuration: fragment.duration,
