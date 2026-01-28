@@ -67,6 +67,9 @@ export class Sequence {
       }
 
       if (fragment.trimLeft != 0 || fragment.duration < asset.duration) {
+        console.log('fragment.trimLeft=' + fragment.trimLeft);
+        console.log('fragment.duration=' + fragment.duration);
+        console.log('asset.duration=' + asset.duration);
         currentVideoStream.trim(fragment.trimLeft, fragment.duration);
         if (asset.hasAudio) {
           // Only trim if the audio came from an actual source
@@ -107,6 +110,14 @@ export class Sequence {
           //    [         ]
           //
 
+          console.log('this.time=' + this.time);
+          console.log('streamDuration=' + this.time);
+          console.log('otherStreamDuration=' + fragment.duration);
+          console.log(
+            'otherStreamOffsetLeft=' +
+              (this.time + fragment.duration + fragment.overlayLeft),
+          );
+
           // use overlay
           this.videoStream.overlayStream(currentVideoStream, {
             // flipLayers: true,
@@ -131,6 +142,7 @@ export class Sequence {
       } else {
         this.videoStream = currentVideoStream;
         this.audioStream = currentAudioStream;
+        this.time += fragment.duration;
       }
 
       firstOne = false;
