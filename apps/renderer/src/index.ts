@@ -49,6 +49,10 @@ async function main() {
           objectFitContainAmbientBrightness: -0.1,
           objectFitContainAmbientSaturation: 0.7,
           objectFitContainPillarboxColor: '#000000',
+          chromakey: false,
+          chromakeyBlend: 0.1,
+          chromakeySimilarity: 0.1,
+          chromakeyColor: '#000000',
 
           zIndex: 0, // ignore
           blendModeLeft: '', // ignore
@@ -69,6 +73,10 @@ async function main() {
           objectFitContainAmbientBrightness: -0.1,
           objectFitContainAmbientSaturation: 0.7,
           objectFitContainPillarboxColor: '#000000',
+          chromakey: true,
+          chromakeyBlend: 0.1,
+          chromakeySimilarity: 0.1,
+          chromakeyColor: '#000000',
 
           zIndex: 0, // ignore
           blendModeLeft: '', // ignore
@@ -89,6 +97,10 @@ async function main() {
           objectFitContainAmbientBrightness: -0.1,
           objectFitContainAmbientSaturation: 0.7,
           objectFitContainPillarboxColor: '#000000',
+          chromakey: false,
+          chromakeyBlend: 0.1,
+          chromakeySimilarity: 0.1,
+          chromakeyColor: '#000000',
 
           zIndex: 0, // ignore
           blendModeLeft: '', // ignore

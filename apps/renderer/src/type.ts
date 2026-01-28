@@ -41,7 +41,11 @@ export type Fragment = {
   objectFitContainAmbientBlurStrength: number;
   objectFitContainAmbientBrightness: number;
   objectFitContainAmbientSaturation: number;
-  objectFitContainPillarboxColor: '#000000';
+  objectFitContainPillarboxColor: string;
+  chromakey: boolean;
+  chromakeyBlend: number;
+  chromakeySimilarity: number;
+  chromakeyColor: string;
 
   // probably don't need it:
   zIndex: number; // order of layering

@@ -102,6 +102,14 @@ export class Sequence {
         currentVideoStream.fitOutputContain(this.output.resolution, options);
       }
 
+      if (fragment.chromakey) {
+        currentVideoStream.chromakey({
+          blend: fragment.chromakeyBlend,
+          similarity: fragment.chromakeySimilarity,
+          color: fragment.chromakeyColor,
+        });
+      }
+
       if (!firstOne) {
         // attach current streams to the main ones, depending on the stated overlap
         if (fragment.overlayLeft === 0) {
