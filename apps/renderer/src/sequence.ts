@@ -38,6 +38,11 @@ export class Sequence {
         return;
       }
 
+      const calculatedOverlayLeft = calculateFinalValue(
+        fragment.overlayLeft,
+        this.expressionContext,
+      );
+
       const timeContext: TimeData = {
         start: 0,
         end: 0,
@@ -192,11 +197,6 @@ export class Sequence {
         });
       }
 
-      const calculatedOverlayLeft = calculateFinalValue(
-        fragment.overlayLeft,
-        this.expressionContext,
-      );
-
       // console.log(
       //   'id=' +
       //     fragment.id +
@@ -213,16 +213,12 @@ export class Sequence {
           // just concat with the previous one, faster
           this.videoStream.concatStream(currentVideoStream);
           this.audioStream.concatStream(currentAudioStream);
-
-          timeContext.start = this.time;
-          timeContext.end = this.time + fragment.duration;
-
-          this.time += fragment.duration;
         } else {
+          const otherStreamOffsetLeft = this.time + calculatedOverlayLeft;
+
           // console.log('this.time=' + this.time);
           // console.log('streamDuration=' + this.time);
           // console.log('otherStreamDuration=' + fragment.duration);
-          // const otherStreamOffsetLeft = this.time + calculatedOverlayLeft;
           // console.log('otherStreamOffsetLeft=' + otherStreamOffsetLeft);
 
           // use overlay
@@ -241,12 +237,6 @@ export class Sequence {
               otherStreamOffsetLeft: otherStreamOffsetLeft,
             },
           });
-
-          timeContext.start = this.time + calculatedOverlayLeft;
-          timeContext.end =
-            this.time + fragment.duration + calculatedOverlayLeft;
-
-          this.time += fragment.duration + calculatedOverlayLeft;
         }
       } else {
         // here an overlay can only be positive
@@ -259,9 +249,11 @@ export class Sequence {
             start: calculatedOverlayLeft,
             startMode: 'clone',
           });
-        } else {
+        } else if (calculatedOverlayLeft < 0) {
           throw new Error(
-            'overlay cannot be negative for the first fragment in a sequence',
+            'overlay cannot be negative for the first fragment in a sequence (fragment id = ' +
+              fragment.id +
+              ')',
           );
         }
 
@@ -273,8 +265,11 @@ export class Sequence {
 
         this.videoStream = currentVideoStream;
         this.audioStream = currentAudioStream;
-        this.time += calculatedOverlayLeft + fragment.duration;
       }
+
+      timeContext.start = this.time + calculatedOverlayLeft;
+      timeContext.end = this.time + fragment.duration + calculatedOverlayLeft;
+      this.time += fragment.duration + calculatedOverlayLeft;
 
       this.expressionContext.fragments.set(fragment.id, {
         time: timeContext,
