@@ -21,6 +21,7 @@ import {
   makeFade,
   makeAmix,
   makeAnullsrc,
+  makeColor,
 } from './ffmpeg';
 
 export const PILLARBOX = 'pillarbox';
@@ -84,6 +85,18 @@ export function makeStream(label: Label, buf: FilterBuffer): Stream {
 
 export function makeSilentStream(duration: Millisecond, buf: FilterBuffer): Stream {
   const filter = makeAnullsrc({ duration });
+  buf.append(filter);
+  return new Stream(filter.outputs[0], buf);
+}
+
+export function makeBlankStream(
+  duration: Millisecond,
+  width: number,
+  height: number,
+  fps: number,
+  buf: FilterBuffer,
+): Stream {
+  const filter = makeColor({ duration, width, height, fps, color: '#00000000' });
   buf.append(filter);
   return new Stream(filter.outputs[0], buf);
 }

@@ -1,4 +1,5 @@
 import { type DefaultTreeAdapterMap } from 'parse5';
+import { CompiledExpression } from './expression-parser';
 
 export type ASTNode = DefaultTreeAdapterMap['node'];
 export type Document = DefaultTreeAdapterMap['document'];
@@ -23,15 +24,17 @@ export type Asset = {
   width: number;
   height: number;
   rotation: number; // rotation in degrees (0, 90, 180, 270)
+  hasVideo: boolean; // whether the asset has a video stream
   hasAudio: boolean; // whether the asset has an audio stream
 };
 
 export type Fragment = {
+  id: string;
   enabled: boolean;
   assetName: string;
   duration: number; // calculated, in seconds (can come from CSS or from the asset's duration)
   trimLeft: number; // in seconds
-  overlayLeft: number; // amount of seconds to overlay with the previous fragment (normalized from margin-left + prev margin-right)
+  overlayLeft: number | CompiledExpression; // amount of seconds to overlay with the previous fragment (normalized from margin-left + prev margin-right)
   overlayZIndex: number;
   transitionIn: string; // how to transition into the fragment
   transitionInDuration: number; // how long the transition in lasts

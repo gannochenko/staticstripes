@@ -943,6 +943,45 @@ export function makeFade(
 }
 
 /**
+ * Creates a color source filter to generate blank video
+ * @param options - Video parameters
+ *   - duration: Duration in milliseconds
+ *   - width: Video width in pixels
+ *   - height: Video height in pixels
+ *   - fps: Frame rate (default: 30)
+ *   - color: Color (default: 'black', supports alpha with format '#RRGGBBAA')
+ * @returns Filter with video output
+ */
+export function makeColor(options: {
+  duration: Millisecond;
+  width: number;
+  height: number;
+  fps?: number;
+  color?: string;
+}): Filter {
+  const output = {
+    tag: getLabel(),
+    isAudio: false,
+  };
+
+  const color = options.color ?? 'black';
+  const fps = options.fps ?? 30;
+
+  // Check if color has alpha channel (8-digit hex with alpha)
+  const hasAlpha = color.length === 9 && color.startsWith('#');
+
+  // color source generates video, add format filter for alpha if needed
+  let filterStr = `color=c=${color}:s=${options.width}x${options.height}:r=${fps}:d=${ms(options.duration)}`;
+
+  if (hasAlpha) {
+    // Add format filter to ensure proper alpha channel handling
+    filterStr += ',format=yuva420p';
+  }
+
+  return new Filter([], [output], filterStr);
+}
+
+/**
  * Creates an anullsrc filter to generate silent audio
  * @param options - Audio parameters
  *   - duration: Duration in milliseconds

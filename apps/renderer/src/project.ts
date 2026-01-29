@@ -210,11 +210,14 @@ export class HTMLProjectParser {
     // Get rotation using ffprobe - for video and image
     const rotation = await this.getAssetRotation(absolutePath, type);
 
+    // Check if asset has video stream
+    const hasVideo = await this.getHasVideo(absolutePath, type);
+
     // Check if asset has audio stream
     const hasAudio = await this.getHasAudio(absolutePath, type);
 
     console.log(
-      `Asset "${name}" dimensions: w=${width}, h=${height}, rotation: ${rotation}°, duration: ${duration}, hasAudio: ${hasAudio}`,
+      `Asset "${name}" dimensions: w=${width}, h=${height}, rotation: ${rotation}°, duration: ${duration}, hasVideo: ${hasVideo}, hasAudio: ${hasAudio}`,
     );
 
     // Extract author (optional)
@@ -228,6 +231,7 @@ export class HTMLProjectParser {
       width,
       height,
       rotation,
+      hasVideo,
       hasAudio,
       ...(author && { author }),
     };
@@ -382,6 +386,29 @@ export class HTMLProjectParser {
       console.error(`Failed to get dimensions for asset: ${path}`, error);
       return { width: 0, height: 0 };
     }
+  }
+
+  /**
+   * Checks if an asset file has a video stream using ffprobe
+   * @param _path - Path to the asset file (unused for now, type-based check)
+   * @param type - Asset type (video, audio, or image)
+   * @returns True if the asset has a video stream
+   */
+  private async getHasVideo(
+    _path: string,
+    type: 'video' | 'image' | 'audio',
+  ): Promise<boolean> {
+    // Audio files don't have video
+    if (type === 'audio') {
+      return false;
+    }
+
+    // Video and image files always have video
+    if (type === 'video' || type === 'image') {
+      return true;
+    }
+
+    return false;
   }
 
   /**
@@ -646,6 +673,9 @@ export class HTMLProjectParser {
     const attrs = new Map(element.attrs.map((attr) => [attr.name, attr.value]));
     const styles = this.html.css.get(element) || {};
 
+    // Extract fragment ID from id attribute or generate one
+    const id = attrs.get('id') || `fragment_${Math.random().toString(36).substr(2, 9)}`;
+
     // Extract assetName from data-asset attribute or CSS -asset property
     // If no asset is specified, use empty string (asset will be created on demand)
     const assetName = attrs.get('data-asset') || styles['-asset'] || '';
@@ -688,11 +718,13 @@ export class HTMLProjectParser {
       styles['-object-fit-contain'] === 'pillarbox' ? 'pillarbox' : 'ambient';
 
     return {
+      id,
       enabled: true,
       assetName,
       duration,
       trimLeft: trimStart,
       overlayLeft,
+      overlayZIndex: 0,
       overlayRight, // Temporary, will be normalized
       blendModeLeft, // Will be normalized with prev blendModeRight
       blendModeRight, // Temporary, will be normalized
@@ -707,6 +739,10 @@ export class HTMLProjectParser {
       objectFitContainAmbientBrightness: -0.1,
       objectFitContainAmbientSaturation: 0.7,
       objectFitContainPillarboxColor: '#000000',
+      chromakey: false,
+      chromakeyBlend: 0,
+      chromakeySimilarity: 0,
+      chromakeyColor: '#00FF00',
     };
   }
 

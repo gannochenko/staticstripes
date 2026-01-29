@@ -1,9 +1,15 @@
+import {
+  evaluateCompiledExpression,
+  ExpressionContext,
+  TimeData,
+} from './expression-parser';
 import { AssetManager } from './project';
 import {
   AMBIENT,
   FilterBuffer,
   makeStream,
   makeSilentStream,
+  makeBlankStream,
   ObjectFitContainOptions,
   PILLARBOX,
   Stream,
@@ -21,6 +27,7 @@ export class Sequence {
     private definition: SequenceDefinition,
     private output: Output,
     private assetManager: AssetManager,
+    private expressionContext: ExpressionContext,
   ) {}
 
   build() {
@@ -30,15 +37,34 @@ export class Sequence {
         return;
       }
 
+      const timeContext: TimeData = {
+        start: 0,
+        end: 0,
+        duration: 0,
+      };
+
       const asset = this.assetManager.getAssetByName(fragment.assetName);
       if (!asset) {
         return;
       }
 
-      const currentVideoStream = makeStream(
-        this.assetManager.getVideoInputLabelByAssetName(fragment.assetName),
-        this.buf,
-      );
+      // Create video stream: use actual video if available, otherwise create blank stream
+      let currentVideoStream: Stream;
+      if (asset.hasVideo) {
+        currentVideoStream = makeStream(
+          this.assetManager.getVideoInputLabelByAssetName(fragment.assetName),
+          this.buf,
+        );
+      } else {
+        // Create blank transparent video stream for audio-only assets
+        currentVideoStream = makeBlankStream(
+          fragment.duration,
+          this.output.resolution.width,
+          this.output.resolution.height,
+          this.output.fps,
+          this.buf,
+        );
+      }
 
       // Create audio stream: use actual audio if available, otherwise create silent stream
       let currentAudioStream: Stream;
@@ -57,59 +83,70 @@ export class Sequence {
         console.log('fragment.trimLeft=' + fragment.trimLeft);
         console.log('fragment.duration=' + fragment.duration);
         console.log('asset.duration=' + asset.duration);
-        currentVideoStream.trim(
-          fragment.trimLeft,
-          fragment.trimLeft + fragment.duration,
-        );
+
+        // Only trim video if it came from an actual source
+        if (asset.hasVideo) {
+          currentVideoStream.trim(
+            fragment.trimLeft,
+            fragment.trimLeft + fragment.duration,
+          );
+        }
+
+        // Only trim audio if it came from an actual source
         if (asset.hasAudio) {
-          // Only trim if the audio came from an actual source
           currentAudioStream.trim(
             fragment.trimLeft,
             fragment.trimLeft + fragment.duration,
           );
         }
       }
-      if (asset.duration === 0 && fragment.duration > 0) {
-        // special case for images
+      if (
+        asset.duration === 0 &&
+        fragment.duration > 0 &&
+        asset.type === 'image'
+      ) {
+        // special case for images - extend static image to desired duration
         currentVideoStream.tPad({
           start: fragment.duration,
           startMode: 'clone',
         });
       }
 
-      // stream normalization
+      // stream normalization (only for actual video, not synthetic blank video)
+      if (asset.hasVideo) {
+        // fps reduction
+        currentVideoStream.fps(this.output.fps);
 
-      // fps reduction
-      currentVideoStream.fps(this.output.fps);
-
-      // fitting the video stream into the output frame
-      if (fragment.objectFit === 'cover') {
-        currentVideoStream.fitOutputCover(this.output.resolution);
-      } else {
-        const options: ObjectFitContainOptions = {};
-        if (fragment.objectFitContain === AMBIENT) {
-          options.ambient = {
-            blurStrength: fragment.objectFitContainAmbientBlurStrength,
-            brightness: fragment.objectFitContainAmbientBrightness,
-            saturation: fragment.objectFitContainAmbientSaturation,
-          };
-        } else if (fragment.objectFitContain === PILLARBOX) {
-          options.pillarbox = {
-            color: fragment.objectFitContainPillarboxColor,
-          };
+        // fitting the video stream into the output frame
+        if (fragment.objectFit === 'cover') {
+          currentVideoStream.fitOutputCover(this.output.resolution);
+        } else {
+          const options: ObjectFitContainOptions = {};
+          if (fragment.objectFitContain === AMBIENT) {
+            options.ambient = {
+              blurStrength: fragment.objectFitContainAmbientBlurStrength,
+              brightness: fragment.objectFitContainAmbientBrightness,
+              saturation: fragment.objectFitContainAmbientSaturation,
+            };
+          } else if (fragment.objectFitContain === PILLARBOX) {
+            options.pillarbox = {
+              color: fragment.objectFitContainPillarboxColor,
+            };
+          }
+          currentVideoStream.fitOutputContain(this.output.resolution, options);
         }
-        currentVideoStream.fitOutputContain(this.output.resolution, options);
       }
 
-      // adding effects if needed
-
-      // chromakey
-      if (fragment.chromakey) {
-        currentVideoStream.chromakey({
-          blend: fragment.chromakeyBlend,
-          similarity: fragment.chromakeySimilarity,
-          color: fragment.chromakeyColor,
-        });
+      // adding effects if needed (only for actual video, not synthetic blank video)
+      if (asset.hasVideo) {
+        // chromakey
+        if (fragment.chromakey) {
+          currentVideoStream.chromakey({
+            blend: fragment.chromakeyBlend,
+            similarity: fragment.chromakeySimilarity,
+            color: fragment.chromakeyColor,
+          });
+        }
       }
 
       // transitions
@@ -156,6 +193,15 @@ export class Sequence {
 
       // merging to the main streams
       if (!firstOne) {
+        // expressionContext,
+        const calculatedOverlayLeft =
+          typeof fragment.overlayLeft === 'number'
+            ? fragment.overlayLeft
+            : evaluateCompiledExpression(
+                fragment.overlayLeft,
+                this.expressionContext,
+              );
+
         // attach current streams to the main ones, depending on the stated overlap
         if (fragment.overlayLeft === 0) {
           // just concat with the previous one, faster
@@ -167,7 +213,7 @@ export class Sequence {
           console.log('this.time=' + this.time);
           console.log('streamDuration=' + this.time);
           console.log('otherStreamDuration=' + fragment.duration);
-          const otherStreamOffsetLeft = this.time + fragment.overlayLeft;
+          const otherStreamOffsetLeft = this.time + calculatedOverlayLeft;
           console.log('otherStreamOffsetLeft=' + otherStreamOffsetLeft);
 
           // use overlay
@@ -187,13 +233,17 @@ export class Sequence {
             },
           });
 
-          this.time += fragment.duration + fragment.overlayLeft;
+          this.time += fragment.duration + calculatedOverlayLeft;
         }
       } else {
         this.videoStream = currentVideoStream;
         this.audioStream = currentAudioStream;
         this.time += fragment.duration;
       }
+
+      this.expressionContext.fragments.set(fragment.id, {
+        time: timeContext,
+      });
 
       console.log('new time=' + this.time);
 
