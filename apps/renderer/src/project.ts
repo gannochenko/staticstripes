@@ -1,6 +1,7 @@
 import { Asset, Output, SequenceDefinition } from './type';
 import { Label } from './ffmpeg';
 import { AssetManager } from './asset-manager';
+import { Sequence } from './sequence';
 
 export class Project {
   private assetManager: AssetManager;
@@ -11,6 +12,22 @@ export class Project {
     private output: Output,
   ) {
     this.assetManager = new AssetManager(assets);
+  }
+
+  public build() {
+    let mainSequence: Sequence;
+
+    this.sequences.forEach((sequence) => {});
+  }
+
+  public printStats() {
+    this.assetManager.getAssetIndexMap().forEach((key, value) => {
+      const asset = this.assetManager.getAssetByName(value)!;
+
+      console.log(
+        `Asset "${asset.name}" (${asset.type}) dimensions: w=${asset.width}, h=${asset.height}, rotation: ${asset.rotation}°, duration: ${asset.duration}, hasVideo: ${asset.hasVideo}, hasAudio: ${asset.hasAudio}`,
+      );
+    });
   }
 
   public getAssetManager(): AssetManager {

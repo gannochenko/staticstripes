@@ -8,81 +8,34 @@
 
 <project>
   <sequence>
-    <!-- <fragment class="intro intro_duration" /> -->
-    <!-- <fragment class="glitchy_transition" /> -->
-    <fragment class="footage" />
-    <fragment class="glitchy_transition" />
-    <!-- <fragment class="footage" /> -->
-    <!-- <fragment class="glitchy_transition" />
-    <fragment class="footage" data-asset="clip_02" /> -->
-    <!-- <fragment class="outro">
-      <container class="outro_text">
-        <div>Thank you for watching!</div>
-      </container>
-    </fragment> -->
+    <fragment class="intro_image" />
+    <fragment class="clip_1" />
+    <fragment class="glitch" />
+    <fragment class="clip_2" />
+    <fragment class="outro_image" />
   </sequence>
   <sequence>
-    <fragment class="intro_sound intro_duration" />
+    <fragment class="intro_sound" />
   </sequence>
-  <!-- <sequence>
-    <fragment class="intro_greeting intro_duration">
-      <container class="intro_greeting_text">
-        <div>Snowy Morning in Liberec 🇨🇿</div>
-      </container>
-    </fragment>
-  </sequence> -->
+  <sequence>
+    <fragment class="outro_sound" />
+  </sequence>
 </project>
 
 <style>
-  .intro {
-    z-index: 0;
-    -asset: intro_image;
-    -transition-out: fade-to-black 1s;
+  .intro_image {
   }
-  .intro_duration {
-    width: 5s;
+  .clip_1 {
+  }
+  .clip_2 {
+  }
+  .outro_image {
+  }
+  .glitch {
   }
   .intro_sound {
-    -asset: guitar_music;
-    -transition-out: fade-out 1s;
   }
-  .intro_greeting_text {
-    width: 100vh;
-    height: 100vh;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-  }
-  .outro_text {
-    width: 100vh;
-    height: 100vh;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-  }
-  .glitchy_transition {
-    width: 1s;
-    margin-left: -0.5s;
-    margin-right: 0.5s;
-    -asset: glitch;
-    -blend-mode-left: screen;
-    -blend-mode-right: screen;
-    z-index: 1;
-  }
-  .footage {
-    width: 100%; /* entire asset duration */
-    z-index: 0;
-    -asset: clip_01;
-    object-fit: cover; /* or contain */
-    -object-fit-contain: ambient 25 -0.1 0.7;
-    /* -object-fit-contain: pillarbox #ffffff; */
-  }
-  .footage_final {
-    -transition-out: fade-to-black 1s;
-  }
-  .outro {
-    width: 3s;
-    z-index: 0;
+  .outro_sound {
   }
 </style>
 

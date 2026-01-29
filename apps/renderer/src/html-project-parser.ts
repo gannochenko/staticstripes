@@ -132,10 +132,6 @@ export class HTMLProjectParser {
     // Check if asset has audio stream
     const hasAudio = await this.getHasAudio(absolutePath, type);
 
-    console.log(
-      `Asset "${name}" dimensions: w=${width}, h=${height}, rotation: ${rotation}°, duration: ${duration}, hasVideo: ${hasVideo}, hasAudio: ${hasAudio}`,
-    );
-
     // Extract author (optional)
     const author = attrs.get('data-author');
 

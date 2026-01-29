@@ -1,13 +1,6 @@
 import { HTMLParser } from './html-parser.js';
 import { resolve } from 'path';
-import { Project } from './project.js';
-import { spawn } from 'child_process';
-import {
-  ChromakeyBlend,
-  ChromakeySimilarity,
-  FilterBuffer,
-  makeStream,
-} from './stream.js';
+import { FilterBuffer } from './stream.js';
 import { makeFFmpegCommand, runFFMpeg } from './ffmpeg.js';
 import { Sequence } from './sequence.js';
 import { getAssetDuration } from './ffprobe.js';
@@ -265,8 +258,9 @@ async function main() {
     isAudio: true,
   });
 
-  // exit(1);
-  // addSampleStreams(project, buf);
+  console.log('\n=== Project stats ===\n');
+
+  project.printStats();
 
   const ffmpegCommand = makeFFmpegCommand(project, buf.render());
 

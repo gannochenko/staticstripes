@@ -1,10 +1,10 @@
+import { AssetManager } from './asset-manager';
 import {
   calculateFinalValue,
-  evaluateCompiledExpression,
   ExpressionContext,
   TimeData,
 } from './expression-parser';
-import { AssetManager } from './project';
+
 import {
   AMBIENT,
   FilterBuffer,
@@ -275,7 +275,7 @@ export class Sequence {
         time: timeContext,
       });
 
-      console.log('new time=' + this.time);
+      // console.log('new time=' + this.time);
 
       firstOne = false;
     });
