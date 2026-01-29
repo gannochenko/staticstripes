@@ -75,10 +75,6 @@ export class Sequence {
           start: fragment.duration,
           startMode: 'clone',
         });
-        currentAudioStream.tPad({
-          start: fragment.duration,
-          startMode: 'clone',
-        });
       }
 
       // stream normalization
@@ -203,6 +199,11 @@ export class Sequence {
 
       firstOne = false;
     });
+  }
+
+  overlayWith(sequence: Sequence) {
+    this.videoStream.overlayStream(sequence.getVideoStream(), {});
+    this.audioStream.overlayStream(sequence.getAudioStream(), {});
   }
 
   public getVideoStream(): Stream {

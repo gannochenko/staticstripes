@@ -37,14 +37,14 @@ async function main() {
         {
           enabled: true,
           assetName: 'intro_image',
-          duration: 5000, // asset duration is 0
+          duration: 2000, // asset duration is 0
           trimLeft: 0,
           overlayLeft: 0,
           overlayZIndex: 1,
           transitionIn: '',
           transitionInDuration: 0,
           transitionOut: 'fade',
-          transitionOutDuration: 0, //500,
+          transitionOutDuration: 500,
           objectFit: 'cover',
           objectFitContain: 'ambient',
           objectFitContainAmbientBlurStrength: 25,
@@ -60,7 +60,7 @@ async function main() {
           blendModeLeft: '', // ignore
         },
         {
-          enabled: false,
+          enabled: true,
           assetName: 'clip_01',
           duration: 11330 - 3000, // asset duration is 11330
           trimLeft: 3000,
@@ -85,7 +85,7 @@ async function main() {
           blendModeLeft: '', // ignore
         },
         {
-          enabled: false,
+          enabled: true,
           assetName: 'glitch',
           duration: 2000, // asset duration is 10000
           trimLeft: 0,
@@ -110,7 +110,7 @@ async function main() {
           blendModeLeft: '', // ignore
         },
         {
-          enabled: false,
+          enabled: true,
           assetName: 'clip_02',
           duration: 3000, // asset duration is 90245
           trimLeft: 0,
@@ -141,7 +141,44 @@ async function main() {
   );
   seq1.build();
 
-  // tmp:
+  const seq2 = new Sequence(
+    buf,
+    {
+      fragments: [
+        {
+          enabled: true,
+          assetName: 'guitar_music',
+          duration: 2000, // asset duration is 224653
+          trimLeft: 0,
+          overlayLeft: 0,
+          overlayZIndex: 1,
+          transitionIn: '',
+          transitionInDuration: 0,
+          transitionOut: 'fade',
+          transitionOutDuration: 500,
+          objectFit: 'cover',
+          objectFitContain: 'ambient',
+          objectFitContainAmbientBlurStrength: 25,
+          objectFitContainAmbientBrightness: -0.1,
+          objectFitContainAmbientSaturation: 0.7,
+          objectFitContainPillarboxColor: '#000000',
+          chromakey: false,
+          chromakeyBlend: 0.1,
+          chromakeySimilarity: 0.1,
+          chromakeyColor: '#000000',
+
+          zIndex: 0, // ignore
+          blendModeLeft: '', // ignore
+        },
+      ],
+    },
+    project.getOutput(),
+    project.getAssetManager(),
+  );
+  seq2.build();
+
+  seq1.overlayWith(seq2);
+
   seq1.getVideoStream().endTo({
     tag: 'outv',
     isAudio: false,
