@@ -68,7 +68,8 @@ Let me explain what each rule means:
    8.1.2: `objectFitContainAmbientSaturation` is a float
    8.2 `-object-fit: contain pillarbox <objectFitContainPillarboxColor>`, where
    8.2.1: `objectFitContainPillarboxColor` is a color constant with transparency, e.g. `#123abc45`
-   8.2 `-object-fit: cover`
+   8.2 `-object-fit: cover` sets the value to `cover`
+   8.3 if no `-object-fit` is set, the `objectFit` property should be `cover`
 9. `-chromakey` defines `chromakey`, `chromakeyBlend`, `chromakeySimilarity`, `chromakeyColor`, and has the following format: `-chromakey: <chromakeyBlend> <chromakeySimilarity> <chromakeyColor>`
    9.1: `chromakey` is a boolean property set to `true` if `-chromakey` was defined.
    9.2: `chromakeyBlend` is a float value, but a canned constant can be used: `hard` = 0.0, `smooth` = 0.1, `soft` = 0.2

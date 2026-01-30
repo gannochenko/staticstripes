@@ -1,25 +1,17 @@
-<!--
-# Legend:
-
-1. sequences are vertically stacked containers, can be used to define parallel sequences
-2. fragments are horizontally stacked containers, define the chunk
-3. container is a piece of rich html that will be rendered using puppeteer into a png against the output's resolution
--->
-
 <project>
   <sequence>
     <fragment class="intro_image" />
     <fragment class="clip_1" />
-    <fragment class="glitch" />
-    <fragment class="clip_2" />
-    <fragment class="outro_image" id="ending_screen" />
+    <fragment class="glitch disabled" />
+    <fragment class="clip_2 disabled" />
+    <fragment class="outro_image disabled" id="ending_screen" />
   </sequence>
-  <sequence>
+  <!-- <sequence>
     <fragment class="intro_sound" />
   </sequence>
   <sequence>
     <fragment class="outro_sound" />
-  </sequence>
+  </sequence> -->
 </project>
 
 <style>
@@ -29,6 +21,10 @@
     --font-size: 16px;
   }
 
+  .disabled {
+    display: none;
+  }
+
   .intro_image {
     -asset: intro_image;
     -duration: 4000ms;
@@ -36,7 +32,6 @@
   }
   .clip_1 {
     -asset: clip_01;
-    -duration: auto; /* auto means the duration takes 100% of the asset length minus -trim-left */
     -offset-start: 3000ms;
     -transition-start: fade-in 1000ms;
     -object-fit: contain ambient 25 -0.1 0.7;
@@ -44,6 +39,7 @@
   .clip_2 {
     -asset: clip_02;
     -duration: 3000ms;
+    -object-fit: contain ambient 25 -0.1 0.7;
   }
   .outro_image {
     -asset: intro_image;
@@ -68,7 +64,7 @@
   .outro_sound {
     -asset: guitar_music;
     -duration: 4000ms;
-    -offset-start: calc(url(#main.time.end) + 5s);
+    -offset-start: calc(url(#ending_screen.time.end) + 5s);
     -transition-end: fade-out 500ms;
   }
 </style>
@@ -99,9 +95,21 @@
 
 <outputs>
   <output
-    name="for_youtube"
-    path="./output/for_youtube.mp4"
+    name="youtube"
+    path="./output/youtube.mp4"
     resolution="1920x1080"
+    fps="30"
+  />
+  <output
+    name="youtube_shorts"
+    path="./output/youtube_shorts.mp4"
+    resolution="1080x1920"
+    fps="30"
+  />
+  <output
+    name="instagram_shorts"
+    path="./output/instagram_shorts.mp4"
+    resolution="1080x1920"
     fps="30"
   />
 </outputs>

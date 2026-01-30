@@ -1,23 +1,59 @@
 import { Asset, Output, SequenceDefinition } from './type';
-import { Label } from './ffmpeg';
+import { Filter, Label } from './ffmpeg';
 import { AssetManager } from './asset-manager';
 import { Sequence } from './sequence';
+import { FilterBuffer } from './stream';
+import { ExpressionContext, FragmentData } from './expression-parser';
 
 export class Project {
   private assetManager: AssetManager;
+  private expressionContext: ExpressionContext;
 
   constructor(
-    private sequences: SequenceDefinition[],
+    private sequencesDefinitions: SequenceDefinition[],
     assets: Asset[],
     private output: Output,
   ) {
     this.assetManager = new AssetManager(assets);
+    this.expressionContext = {
+      fragments: new Map<string, FragmentData>(),
+    };
   }
 
-  public build() {
-    let mainSequence: Sequence;
+  public build(): FilterBuffer {
+    let buf = new FilterBuffer();
+    let mainSequence: Sequence | null = null;
 
-    this.sequences.forEach((sequence) => {});
+    this.sequencesDefinitions.forEach((sequenceDefinition) => {
+      const seq = new Sequence(
+        buf,
+        sequenceDefinition,
+        this.getOutput(),
+        this.getAssetManager(),
+        this.expressionContext,
+      );
+      seq.build();
+
+      if (!mainSequence) {
+        mainSequence = seq;
+      } else {
+        mainSequence.overlayWith(seq);
+      }
+    });
+
+    if (mainSequence) {
+      const sequence: Sequence = mainSequence;
+      sequence.getVideoStream().endTo({
+        tag: 'outv',
+        isAudio: false,
+      });
+      sequence.getAudioStream().endTo({
+        tag: 'outa',
+        isAudio: true,
+      });
+    }
+
+    return buf;
   }
 
   public printStats() {
@@ -32,10 +68,6 @@ export class Project {
 
   public getAssetManager(): AssetManager {
     return this.assetManager;
-  }
-
-  public getSequences(): SequenceDefinition[] {
-    return this.sequences;
   }
 
   public getOutput(): Output {
