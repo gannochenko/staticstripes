@@ -52,8 +52,8 @@ Let me explain what each rule means:
    1.1 The asset can also be defined through an attribute of the fragment tag.
 2. `display` controls the `enabled` property. `display: none` sets the property to `false`, while anything else or abscense of such leads to `true`.
 3. `-duration` controls the `duration` property. It can be:
-   3.1 `auto` (by default, or if not set) - in this case the duration takes all duration of the asset plus possible -offset-start and -offset-end (which can be negative)
-   3.2 `percentage` (e.g. `100%`, `50%`, etc.) take the corresponding percentage of the asset's duration, and don't take offsets into account.
+   3.1 `auto` (by default, or if not set) - in this case the duration takes all duration of the asset minus possible `-trim-start`
+   3.2 `percentage` (e.g. `100%`, `50%`, etc.) take the corresponding percentage of the asset's duration, and don't take trim into account.
    3.3 `numerical value` (e.g. `5000ms`, `50s`, etc.) sets the duration to that value (with everything coverted to milliseconds)
 4. `-offset-start` defines the `overlayLeft`, it can be
    4.1 `numerical value`, just like duration (must be normalized to milliseconds), or
@@ -75,6 +75,7 @@ Let me explain what each rule means:
    9.3: `chromakeySimilarity` is a float value, but a canned constant can be used: `strict` = 0.1, `good` = 0.3, `forgiving` = 0.5, `loose` = 0.7
    9.4: `chromakeyColor` is a color constant with transparency
 10. `-overlay-start-z-index` defines `overlayZIndexLeft` and can be an integer.
-11. `-overlay-end-z-index` defines `overlayZIndexLeft` of the fragment next to the current one and can be an integer. If the fragment has its own definion of `-overlay-start-z-index`, it is ignored.
+11. `-overlay-end-z-index` defines `overlayZIndexLeft` of the fragment next to the current one and can be an integer, and is negated, e.g. `100` becomes `-100`. If the fragment has its own definion of `-overlay-start-z-index`, it is ignored.
+12. `-trim-start` defines `trimLeft` and is an integer with time units attached. Cannot be negative.
 
 The `id` field is defined from an attribute of the fragment tag. If there is no attribute, a random value is used.

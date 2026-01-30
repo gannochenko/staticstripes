@@ -48,27 +48,28 @@
   .outro_image {
     -asset: intro_image;
     -duration: 4000ms;
-    transition: fade-out 500ms;
+    -transition-end: fade-out 500ms;
   }
   .glitch {
     -asset: glitch;
     -duration: 500ms;
-    transition: fade-out 1000ms;
-    /* -offset: -250ms; */
-    -offset-start: -250ms; /* goes over */
-    -offset-end: -250ms; /* 1 - goes over, -1 - goes under */
-    -chromakey: 0.1 0.1 #000000;
+    -transition-end: fade-out 1000ms;
+    -offset-start: -250ms;
+    -overlay-start-z-index: 1;
+    -offset-end: -250ms;
+    -overlay-end-z-index: 1;
+    -chromakey: smooth strict #000000;
   }
   .intro_sound {
     -asset: guitar_music;
     -duration: 4000ms;
-    transition: fade-out 500ms;
+    -transition-end: fade-out 500ms;
   }
   .outro_sound {
     -asset: guitar_music;
     -duration: 4000ms;
     -offset-start: calc(url(#main.time.end) + 5s);
-    transition: fade-out 500ms;
+    -transition-end: fade-out 500ms;
   }
 </style>
 

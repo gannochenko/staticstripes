@@ -11,6 +11,10 @@ import { execFile } from 'child_process';
 import { promisify } from 'util';
 import { resolve, dirname } from 'path';
 import { Project } from './project';
+import {
+  parseValueLazy,
+  CompiledExpression,
+} from './expression-parser';
 
 const execFileAsync = promisify(execFile);
 
@@ -452,7 +456,10 @@ export class HTMLProjectParser {
     for (const sequenceElement of sequenceElements) {
       const fragmentElements = this.findFragmentChildren(sequenceElement);
       const rawFragments: Array<
-        Fragment & { overlayRight: number; blendModeRight: string }
+        Fragment & {
+          overlayRight: number | CompiledExpression;
+          overlayZIndexRight: number;
+        }
       > = [];
 
       for (const fragmentElement of fragmentElements) {
@@ -462,25 +469,53 @@ export class HTMLProjectParser {
         }
       }
 
-      // Normalize overlays and blend modes: combine prev's overlayRight/blendModeRight with current's overlayLeft/blendModeLeft
+      // Normalize overlays: combine prev's overlayRight with current's overlayLeft
       const fragments: Fragment[] = rawFragments.map((frag, idx) => {
+        const { overlayRight, overlayZIndexRight, ...rest } = frag;
+
         if (idx === 0) {
-          // First fragment: keep overlayLeft/blendModeLeft as-is, remove overlayRight/blendModeRight
-          const { overlayRight, blendModeRight, ...rest } = frag;
+          // First fragment: keep overlayLeft as-is
           return rest;
         }
 
         const prevOverlayRight = rawFragments[idx - 1].overlayRight;
-        const prevBlendModeRight = rawFragments[idx - 1].blendModeRight;
-        const { overlayRight, blendModeRight, blendModeLeft, ...rest } = frag;
+        const prevOverlayZIndexRight = rawFragments[idx - 1].overlayZIndexRight;
 
-        // Blend mode priority: current blendModeLeft > prev blendModeRight
-        const normalizedBlendModeLeft = blendModeLeft || prevBlendModeRight;
+        // Sum up overlayLeft with previous overlayRight
+        let normalizedOverlayLeft: number | CompiledExpression;
+        if (
+          typeof frag.overlayLeft === 'number' &&
+          typeof prevOverlayRight === 'number'
+        ) {
+          normalizedOverlayLeft = frag.overlayLeft + prevOverlayRight;
+        } else {
+          // If either is an expression, create a new calc() expression
+          const leftVal =
+            typeof frag.overlayLeft === 'number'
+              ? frag.overlayLeft.toString()
+              : frag.overlayLeft.original;
+          const rightVal =
+            typeof prevOverlayRight === 'number'
+              ? prevOverlayRight.toString()
+              : prevOverlayRight.original;
+          normalizedOverlayLeft = parseValueLazy(
+            `calc(${leftVal} + ${rightVal})`,
+          ) as CompiledExpression;
+        }
+
+        // OverlayZIndexLeft from previous fragment's overlayZIndexRight (negated), if not already set
+        // Note: overlayZIndexRight is negated as per spec (e.g. 100 becomes -100)
+        const normalizedOverlayZIndex =
+          frag.overlayZIndex !== 0
+            ? frag.overlayZIndex
+            : prevOverlayZIndexRight !== 0
+              ? -prevOverlayZIndexRight
+              : 0;
 
         return {
           ...rest,
-          overlayLeft: frag.overlayLeft + prevOverlayRight,
-          blendModeLeft: normalizedBlendModeLeft,
+          overlayLeft: normalizedOverlayLeft,
+          overlayZIndex: normalizedOverlayZIndex,
         };
       });
 
@@ -575,150 +610,182 @@ export class HTMLProjectParser {
   }
 
   /**
-   * Processes a single fragment element
-   * Returns fragment with temporary overlayRight and blendModeLeft/Right for normalization
+   * Processes a single fragment element according to Parser.md specification
+   * Returns fragment with temporary overlayRight and overlayZIndexRight for normalization
    */
   private processFragment(
     element: Element,
     assets: Map<string, Asset>,
-  ): (Fragment & { overlayRight: number; blendModeRight: string }) | null {
+  ): (Fragment & {
+    overlayRight: number | CompiledExpression;
+    overlayZIndexRight: number;
+  }) | null {
     const attrs = new Map(element.attrs.map((attr) => [attr.name, attr.value]));
     const styles = this.html.css.get(element) || {};
 
-    // Extract fragment ID from id attribute or generate one
+    // 1. Extract fragment ID from id attribute or generate one
     const id =
-      attrs.get('id') || `fragment_${Math.random().toString(36).substr(2, 9)}`;
+      attrs.get('id') || `fragment_${Math.random().toString(36).substring(2, 11)}`;
 
-    // Extract assetName from data-asset attribute or CSS -asset property
-    // If no asset is specified, use empty string (asset will be created on demand)
+    // 2. Extract assetName from attribute or CSS -asset property
     const assetName = attrs.get('data-asset') || styles['-asset'] || '';
 
-    // Extract zIndex from CSS z-index property (default to 0)
-    const zIndexStr = styles['z-index'];
-    const zIndex = zIndexStr ? parseInt(zIndexStr, 10) : 0;
+    // 3. Check enabled flag from display property
+    const enabled = this.parseEnabled(styles['display']);
 
-    // Extract duration from CSS width property
-    let duration = this.parseDuration(styles['width'], assetName, assets);
+    // 4. Parse trimLeft from -trim-start property
+    const trimLeft = this.parseTrimStart(styles['-trim-start']);
 
-    // Extract trimStart from CSS padding-left property (in ms)
-    const trimStart = this.parseTimeValue(styles['padding-left']);
+    // 5. Parse duration from -duration property
+    const duration = this.parseDurationProperty(
+      styles['-duration'],
+      assetName,
+      assets,
+      trimLeft,
+    );
 
-    // If trimStart is defined, subtract it from duration
-    if (trimStart > 0) {
-      duration = Math.max(0, duration - trimStart);
-    }
+    // 6. Parse -offset-start for overlayLeft (can be number or expression)
+    const overlayLeft = this.parseOffsetStart(styles['-offset-start']);
 
-    // Extract overlayLeft from CSS margin-left property (in ms, can be negative)
-    const overlayLeft = this.parseTimeValue(styles['margin-left']);
+    // 7. Parse -offset-end for overlayRight (temporary, will be normalized)
+    const overlayRight = this.parseOffsetEnd(styles['-offset-end']);
 
-    // Extract overlayRight from CSS margin-right property (in ms, can be negative)
-    // This is temporary and will be normalized in processSequences
-    const overlayRight = this.parseTimeValue(styles['margin-right']);
+    // 8. Parse -overlay-start-z-index for overlayZIndex
+    const overlayZIndex = this.parseZIndex(styles['-overlay-start-z-index']);
 
-    // Extract blend modes from CSS -blend-mode-left and -blend-mode-right
-    const blendModeLeft = this.parseBlendMode(styles['-blend-mode-left']);
-    const blendModeRight = this.parseBlendMode(styles['-blend-mode-right']);
+    // 9. Parse -overlay-end-z-index for overlayZIndexRight (temporary)
+    const overlayZIndexRight = this.parseZIndex(
+      styles['-overlay-end-z-index'],
+    );
 
-    // Extract transitions from CSS -transition-in and -transition-out
-    const transitionIn = this.parseTransition(styles['-transition-in']);
-    const transitionOut = this.parseTransition(styles['-transition-out']);
+    // 10. Parse -transition-start
+    const transitionIn = this.parseTransitionProperty(
+      styles['-transition-start'],
+    );
 
-    // Extract objectFit from CSS object-fit property (default: "cover")
-    const objectFit = this.parseObjectFit(styles['object-fit']);
+    // 11. Parse -transition-end
+    const transitionOut = this.parseTransitionProperty(styles['-transition-end']);
 
-    // Extract objectFitContain from CSS -object-fit-contain property (default: "ambient")
-    const objectFitContain: 'ambient' | 'pillarbox' =
-      styles['-object-fit-contain'] === 'pillarbox' ? 'pillarbox' : 'ambient';
+    // 12. Parse -object-fit
+    const objectFitData = this.parseObjectFitProperty(styles['-object-fit']);
+
+    // 13. Parse -chromakey
+    const chromakeyData = this.parseChromakeyProperty(styles['-chromakey']);
 
     return {
       id,
-      enabled: true,
+      enabled,
       assetName,
       duration,
-      trimLeft: trimStart,
+      trimLeft,
       overlayLeft,
-      overlayZIndex: 0,
+      overlayZIndex,
       overlayRight, // Temporary, will be normalized
-      blendModeLeft, // Will be normalized with prev blendModeRight
-      blendModeRight, // Temporary, will be normalized
+      overlayZIndexRight, // Temporary, will be normalized
       transitionIn: transitionIn.name,
       transitionInDuration: transitionIn.duration,
       transitionOut: transitionOut.name,
       transitionOutDuration: transitionOut.duration,
-      zIndex,
-      objectFit,
-      objectFitContain,
-      objectFitContainAmbientBlurStrength: 25,
-      objectFitContainAmbientBrightness: -0.1,
-      objectFitContainAmbientSaturation: 0.7,
-      objectFitContainPillarboxColor: '#000000',
-      chromakey: false,
-      chromakeyBlend: 0,
-      chromakeySimilarity: 0,
-      chromakeyColor: '#00FF00',
+      objectFit: objectFitData.objectFit,
+      objectFitContain: objectFitData.objectFitContain,
+      objectFitContainAmbientBlurStrength:
+        objectFitData.objectFitContainAmbientBlurStrength,
+      objectFitContainAmbientBrightness:
+        objectFitData.objectFitContainAmbientBrightness,
+      objectFitContainAmbientSaturation:
+        objectFitData.objectFitContainAmbientSaturation,
+      objectFitContainPillarboxColor:
+        objectFitData.objectFitContainPillarboxColor,
+      chromakey: chromakeyData.chromakey,
+      chromakeyBlend: chromakeyData.chromakeyBlend,
+      chromakeySimilarity: chromakeyData.chromakeySimilarity,
+      chromakeyColor: chromakeyData.chromakeyColor,
     };
   }
 
   /**
-   * Parses duration from CSS width value
-   * @param width - CSS width value (e.g., "5s", "100%", "50%", undefined)
-   * @param assetName - Name of the asset this fragment uses
-   * @param assets - Map of all assets
-   * @returns Duration in milliseconds
+   * Parses the 'display' CSS property for the enabled flag
+   * display: none -> false, anything else -> true
    */
-  private parseDuration(
-    width: string | undefined,
-    assetName: string,
-    assets: Map<string, Asset>,
-  ): number {
-    if (!width) {
+  private parseEnabled(display: string | undefined): boolean {
+    return display !== 'none';
+  }
+
+  /**
+   * Parses -trim-start property into trimLeft
+   * Cannot be negative
+   */
+  private parseTrimStart(trimStart: string | undefined): number {
+    if (!trimStart) {
       return 0;
     }
 
-    // Handle percentage (e.g., 100%, 50%, 70%)
-    if (width.endsWith('%')) {
-      let percentage = parseFloat(width);
+    const value = this.parseMilliseconds(trimStart);
+    // Ensure non-negative as per spec
+    return Math.max(0, value);
+  }
+
+  /**
+   * Parses the -duration CSS property
+   * Can be: "auto", percentage (e.g. "100%", "50%"), or time value (e.g. "5000ms", "5s")
+   */
+  private parseDurationProperty(
+    duration: string | undefined,
+    assetName: string,
+    assets: Map<string, Asset>,
+    trimLeft: number,
+  ): number {
+    if (!duration || duration.trim() === 'auto') {
+      // Auto: use asset duration minus trim-start
+      const asset = assets.get(assetName);
+      if (!asset) {
+        return 0;
+      }
+      return Math.max(0, asset.duration - trimLeft);
+    }
+
+    // Handle percentage (e.g., "100%", "50%")
+    if (duration.endsWith('%')) {
+      const percentage = parseFloat(duration);
       if (isNaN(percentage)) {
         return 0;
       }
 
-      // Cap percentages above 100% at 100%
-      if (percentage > 100) {
-        percentage = 100;
-      }
-
       const asset = assets.get(assetName);
       if (!asset) {
-        // No asset, return 0
         return 0;
       }
 
-      // Images don't have duration, so any percentage is 0
-      if (asset.type === 'image') {
-        return 0;
-      }
-
-      // Calculate percentage of asset duration
+      // Calculate percentage of asset duration (don't include trim)
       return Math.round((asset.duration * percentage) / 100);
     }
 
-    // Handle seconds (e.g., "5s")
-    return this.parseTimeValue(width);
+    // Handle time value (e.g., "5000ms", "5s")
+    return this.parseMilliseconds(duration);
   }
 
   /**
-   * Parses a time value from CSS (e.g., "0.5s", "-0.5s")
-   * @param value - CSS time value in seconds
-   * @returns Time in milliseconds (can be negative)
+   * Parses time value into milliseconds
+   * Supports: "5s", "5000ms", "1.5s", etc.
    */
-  private parseTimeValue(value: string | undefined): number {
+  private parseMilliseconds(value: string | undefined): number {
     if (!value) {
       return 0;
     }
 
-    // Handle seconds (e.g., "0.5s", "-0.5s")
-    if (value.endsWith('s')) {
-      const seconds = parseFloat(value);
+    const trimmed = value.trim();
+
+    // Handle milliseconds (e.g., "5000ms")
+    if (trimmed.endsWith('ms')) {
+      const ms = parseFloat(trimmed);
+      if (!isNaN(ms)) {
+        return Math.round(ms);
+      }
+    }
+
+    // Handle seconds (e.g., "5s", "1.5s")
+    if (trimmed.endsWith('s')) {
+      const seconds = parseFloat(trimmed);
       if (!isNaN(seconds)) {
         return Math.round(seconds * 1000);
       }
@@ -728,86 +795,252 @@ export class HTMLProjectParser {
   }
 
   /**
-   * Parses a blend mode value from CSS
-   * @param value - CSS blend mode value
-   * @returns Blend mode string (e.g., "screen", "overlay", "multiply") or empty string if invalid
+   * Parses -offset-start into overlayLeft
+   * Can be a time value or a calc() expression
    */
-  private parseBlendMode(value: string | undefined): string {
-    if (!value) {
-      return '';
+  private parseOffsetStart(
+    offsetStart: string | undefined,
+  ): number | CompiledExpression {
+    if (!offsetStart) {
+      return 0;
     }
 
-    const trimmed = value.trim();
+    const trimmed = offsetStart.trim();
 
-    // Allow common blend modes
-    const validBlendModes = [
-      'screen',
-      'multiply',
-      'overlay',
-      'darken',
-      'lighten',
-      'color-dodge',
-      'color-burn',
-      'hard-light',
-      'soft-light',
-      'difference',
-      'exclusion',
-    ];
-
-    if (validBlendModes.includes(trimmed)) {
-      return trimmed;
+    // Check if it's a calc() expression
+    if (trimmed.startsWith('calc(')) {
+      try {
+        return parseValueLazy(trimmed) as CompiledExpression;
+      } catch (error) {
+        console.error(`Failed to parse -offset-start expression: ${trimmed}`, error);
+        return 0;
+      }
     }
 
-    // Default to empty string for invalid blend modes
-    return '';
+    // Otherwise parse as time value
+    return this.parseMilliseconds(trimmed);
   }
 
   /**
-   * Parses a transition value from CSS (format: "[transition_name] [transition_duration]")
-   * @param value - CSS transition value (e.g., "fade-to-black 1s", "fade-out 0.5s")
-   * @returns Object with transition name and duration in milliseconds
+   * Parses -offset-end into overlayRight (for next fragment)
+   * Can be a time value or a calc() expression
    */
-  private parseTransition(value: string | undefined): {
-    name: string;
-    duration: number;
-  } {
-    if (!value) {
+  private parseOffsetEnd(
+    offsetEnd: string | undefined,
+  ): number | CompiledExpression {
+    if (!offsetEnd) {
+      return 0;
+    }
+
+    const trimmed = offsetEnd.trim();
+
+    // Check if it's a calc() expression
+    if (trimmed.startsWith('calc(')) {
+      try {
+        return parseValueLazy(trimmed) as CompiledExpression;
+      } catch (error) {
+        console.error(`Failed to parse -offset-end expression: ${trimmed}`, error);
+        return 0;
+      }
+    }
+
+    // Otherwise parse as time value
+    return this.parseMilliseconds(trimmed);
+  }
+
+  /**
+   * Parses z-index values (-overlay-start-z-index, -overlay-end-z-index)
+   */
+  private parseZIndex(zIndex: string | undefined): number {
+    if (!zIndex) {
+      return 0;
+    }
+
+    const parsed = parseInt(zIndex.trim(), 10);
+    return isNaN(parsed) ? 0 : parsed;
+  }
+
+  /**
+   * Parses -transition-start or -transition-end
+   * Format: "<transition-name> <duration>"
+   * Example: "fade-in 5s", "fade-out 500ms"
+   */
+  private parseTransitionProperty(
+    transition: string | undefined,
+  ): { name: string; duration: number } {
+    if (!transition) {
       return { name: '', duration: 0 };
     }
 
-    const trimmed = value.trim();
+    const trimmed = transition.trim();
     const parts = trimmed.split(/\s+/);
 
     if (parts.length === 0) {
       return { name: '', duration: 0 };
     }
 
-    // First part is the transition name
+    // First part is transition name
     const name = parts[0];
 
-    // Second part is the duration (if present)
-    const duration = parts.length > 1 ? this.parseTimeValue(parts[1]) : 0;
+    // Second part is duration (if present)
+    const duration = parts.length > 1 ? this.parseMilliseconds(parts[1]) : 0;
 
     return { name, duration };
   }
 
   /**
-   * Parses objectFit value from CSS
-   * @param value - CSS object-fit value
-   * @returns "cover" or "contain" (defaults to "cover")
+   * Parses -object-fit property
+   * Format: "<type> <settings>"
+   * Examples:
+   *   - "contain ambient 25 -0.1 0.7"
+   *   - "contain pillarbox #000000"
+   *   - "cover"
    */
-  private parseObjectFit(value: string | undefined): 'cover' | 'contain' {
-    if (!value) {
-      return 'cover';
+  private parseObjectFitProperty(objectFit: string | undefined): {
+    objectFit: 'cover' | 'contain';
+    objectFitContain: 'ambient' | 'pillarbox';
+    objectFitContainAmbientBlurStrength: number;
+    objectFitContainAmbientBrightness: number;
+    objectFitContainAmbientSaturation: number;
+    objectFitContainPillarboxColor: string;
+  } {
+    // Defaults
+    const defaults = {
+      objectFit: 'cover' as 'cover' | 'contain',
+      objectFitContain: 'ambient' as 'ambient' | 'pillarbox',
+      objectFitContainAmbientBlurStrength: 20,
+      objectFitContainAmbientBrightness: -0.3,
+      objectFitContainAmbientSaturation: 0.8,
+      objectFitContainPillarboxColor: '#000000',
+    };
+
+    if (!objectFit) {
+      return defaults;
     }
 
-    const trimmed = value.trim();
+    const trimmed = objectFit.trim();
+    const parts = trimmed.split(/\s+/);
 
-    if (trimmed === 'contain') {
-      return 'contain';
+    if (parts.length === 0) {
+      return defaults;
     }
 
-    // Default to cover for any other value
-    return 'cover';
+    const type = parts[0];
+
+    // Handle "cover"
+    if (type === 'cover') {
+      return { ...defaults, objectFit: 'cover' };
+    }
+
+    // Handle "contain" with sub-options
+    if (type === 'contain') {
+      const subType = parts[1];
+
+      // "contain ambient <blur> <brightness> <saturation>"
+      if (subType === 'ambient') {
+        const blur = parts[2] ? parseFloat(parts[2]) : defaults.objectFitContainAmbientBlurStrength;
+        const brightness = parts[3]
+          ? parseFloat(parts[3])
+          : defaults.objectFitContainAmbientBrightness;
+        const saturation = parts[4]
+          ? parseFloat(parts[4])
+          : defaults.objectFitContainAmbientSaturation;
+
+        return {
+          ...defaults,
+          objectFit: 'contain',
+          objectFitContain: 'ambient',
+          objectFitContainAmbientBlurStrength: isNaN(blur) ? defaults.objectFitContainAmbientBlurStrength : blur,
+          objectFitContainAmbientBrightness: isNaN(brightness)
+            ? defaults.objectFitContainAmbientBrightness
+            : brightness,
+          objectFitContainAmbientSaturation: isNaN(saturation)
+            ? defaults.objectFitContainAmbientSaturation
+            : saturation,
+        };
+      }
+
+      // "contain pillarbox <color>"
+      if (subType === 'pillarbox') {
+        const color = parts[2] || defaults.objectFitContainPillarboxColor;
+
+        return {
+          ...defaults,
+          objectFit: 'contain',
+          objectFitContain: 'pillarbox',
+          objectFitContainPillarboxColor: color,
+        };
+      }
+    }
+
+    // Default
+    return defaults;
+  }
+
+  /**
+   * Parses -chromakey property
+   * Format: "<blend> <similarity> <color>"
+   * Example: "0.1 0.3 #00FF00", "hard good #00FF00", "soft loose #123abc45"
+   * Blend: hard=0.0, smooth=0.1, soft=0.2
+   * Similarity: strict=0.1, good=0.3, forgiving=0.5, loose=0.7
+   */
+  private parseChromakeyProperty(chromakey: string | undefined): {
+    chromakey: boolean;
+    chromakeyBlend: number;
+    chromakeySimilarity: number;
+    chromakeyColor: string;
+  } {
+    // Defaults
+    const defaults = {
+      chromakey: false,
+      chromakeyBlend: 0,
+      chromakeySimilarity: 0,
+      chromakeyColor: '#00FF00',
+    };
+
+    if (!chromakey) {
+      return defaults;
+    }
+
+    const trimmed = chromakey.trim();
+    const parts = trimmed.split(/\s+/);
+
+    if (parts.length < 3) {
+      // Need at least 3 parts
+      return defaults;
+    }
+
+    // Parse blend (can be number or canned constant)
+    let blend = parseFloat(parts[0]);
+    if (isNaN(blend)) {
+      // Try canned constant
+      const blendStr = parts[0].toLowerCase();
+      if (blendStr === 'hard') blend = 0.0;
+      else if (blendStr === 'smooth') blend = 0.1;
+      else if (blendStr === 'soft') blend = 0.2;
+      else blend = 0.0;
+    }
+
+    // Parse similarity (can be number or canned constant)
+    let similarity = parseFloat(parts[1]);
+    if (isNaN(similarity)) {
+      // Try canned constant
+      const similarityStr = parts[1].toLowerCase();
+      if (similarityStr === 'strict') similarity = 0.1;
+      else if (similarityStr === 'good') similarity = 0.3;
+      else if (similarityStr === 'forgiving') similarity = 0.5;
+      else if (similarityStr === 'loose') similarity = 0.7;
+      else similarity = 0.3;
+    }
+
+    // Parse color
+    const color = parts[2] || defaults.chromakeyColor;
+
+    return {
+      chromakey: true, // If -chromakey is defined, it's enabled
+      chromakeyBlend: blend,
+      chromakeySimilarity: similarity,
+      chromakeyColor: color,
+    };
   }
 }
