@@ -32,6 +32,10 @@ export class Project {
         this.getAssetManager(),
         this.expressionContext,
       );
+      if (seq.isEmpty()) {
+        return;
+      }
+
       seq.build();
 
       if (!mainSequence) {

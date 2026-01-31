@@ -156,7 +156,7 @@ export class Sequence {
       }
 
       // transitions
-      if (fragment.transitionIn === 'fade') {
+      if (fragment.transitionIn === 'fade-in') {
         currentVideoStream.fade({
           fades: [
             {
@@ -176,7 +176,7 @@ export class Sequence {
           ],
         });
       }
-      if (fragment.transitionOut === 'fade') {
+      if (fragment.transitionOut === 'fade-out') {
         currentVideoStream.fade({
           fades: [
             {
@@ -279,6 +279,10 @@ export class Sequence {
 
       firstOne = false;
     });
+  }
+
+  isEmpty() {
+    return !this.definition.fragments.some((fragment) => fragment.enabled);
   }
 
   overlayWith(sequence: Sequence) {

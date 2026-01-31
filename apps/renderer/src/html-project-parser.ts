@@ -704,6 +704,40 @@ export class HTMLProjectParser {
   }
 
   /**
+   * Splits a string by whitespace, handling CSS-tree's various number formatting quirks:
+   * - Recombines standalone minus signs: "- 0.1" → "-0.1"
+   * - Splits concatenated numbers: "25-0.1" → ["25", "-0.1"]
+   */
+  private splitCssValue(value: string): string[] {
+    const rawParts = value.split(/\s+/);
+    const parts: string[] = [];
+
+    for (let i = 0; i < rawParts.length; i++) {
+      const part = rawParts[i];
+
+      // Handle standalone minus sign followed by number
+      if (part === '-' && i + 1 < rawParts.length) {
+        parts.push('-' + rawParts[i + 1]);
+        i++; // skip next part
+        continue;
+      }
+
+      // Handle concatenated numbers like "25-0.1" → ["25", "-0.1"]
+      // Match: <number><minus><number>
+      const match = part.match(/^(\d+(?:\.\d+)?)(-.+)$/);
+      if (match) {
+        parts.push(match[1]); // first number
+        parts.push(match[2]); // negative number
+        continue;
+      }
+
+      parts.push(part);
+    }
+
+    return parts;
+  }
+
+  /**
    * Parses the 'display' CSS property for the enabled flag
    * display: none -> false, anything else -> true
    */
@@ -873,7 +907,7 @@ export class HTMLProjectParser {
     }
 
     const trimmed = transition.trim();
-    const parts = trimmed.split(/\s+/);
+    const parts = this.splitCssValue(trimmed);
 
     if (parts.length === 0) {
       return { name: '', duration: 0 };
@@ -919,7 +953,7 @@ export class HTMLProjectParser {
     }
 
     const trimmed = objectFit.trim();
-    const parts = trimmed.split(/\s+/);
+    const parts = this.splitCssValue(trimmed);
 
     if (parts.length === 0) {
       return defaults;
@@ -1003,7 +1037,7 @@ export class HTMLProjectParser {
     }
 
     const trimmed = chromakey.trim();
-    const parts = trimmed.split(/\s+/);
+    const parts = this.splitCssValue(trimmed);
 
     if (parts.length < 3) {
       // Need at least 3 parts

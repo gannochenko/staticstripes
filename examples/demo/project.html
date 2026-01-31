@@ -2,16 +2,16 @@
   <sequence>
     <fragment class="intro_image" />
     <fragment class="clip_1" />
-    <fragment class="glitch disabled" />
-    <fragment class="clip_2 disabled" />
-    <fragment class="outro_image disabled" id="ending_screen" />
+    <fragment class="glitch" />
+    <fragment class="clip_2" />
+    <fragment class="outro_image" id="ending_screen" />
   </sequence>
-  <!-- <sequence>
+  <sequence>
     <fragment class="intro_sound" />
   </sequence>
   <sequence>
-    <fragment class="outro_sound" />
-  </sequence> -->
+    <fragment class="outro_sound disabled" />
+  </sequence>
 </project>
 
 <style>
@@ -32,7 +32,7 @@
   }
   .clip_1 {
     -asset: clip_01;
-    -offset-start: 3000ms;
+    -trim-start: 3000ms;
     -transition-start: fade-in 1000ms;
     -object-fit: contain ambient 25 -0.1 0.7;
   }
@@ -40,16 +40,17 @@
     -asset: clip_02;
     -duration: 3000ms;
     -object-fit: contain ambient 25 -0.1 0.7;
+    -transition-end: fade-out 1000ms;
   }
   .outro_image {
     -asset: intro_image;
     -duration: 4000ms;
+    -transition-start: fade-in 1000ms;
     -transition-end: fade-out 500ms;
   }
   .glitch {
     -asset: glitch;
     -duration: 500ms;
-    -transition-end: fade-out 1000ms;
     -offset-start: -250ms;
     -overlay-start-z-index: 1;
     -offset-end: -250ms;
