@@ -18,24 +18,20 @@ async function main() {
   // Use the default output name
   const outputName = 'youtube';
 
-  console.log('\n=== Project stats ===\n');
+  await project.renderContainers(outputName);
 
   project.printStats();
 
   const filterBuf = await project.build(outputName);
+  const filter = filterBuf.render();
 
-  const ffmpegCommand = makeFFmpegCommand(
-    project,
-    filterBuf.render(),
-    outputName,
-  );
+  console.log('\n=== Filter ===\n');
 
-  console.log('\n=== Command ===');
+  console.log(filter);
 
-  console.log(ffmpegCommand);
+  const ffmpegCommand = makeFFmpegCommand(project, filter, outputName);
 
-  console.log('\n=== Starting Render ===');
-  console.log('Progress:\n');
+  console.log('\n=== Starting Render ===\n');
 
   await runFFMpeg(ffmpegCommand);
 

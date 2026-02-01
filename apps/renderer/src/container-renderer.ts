@@ -1,5 +1,5 @@
 import puppeteer from 'puppeteer';
-import { writeFile, mkdir } from 'fs/promises';
+import { writeFile, mkdir, readdir, unlink } from 'fs/promises';
 import { resolve } from 'path';
 import { existsSync } from 'fs';
 import { createHash } from 'crypto';
@@ -45,6 +45,17 @@ export async function renderContainer(
   // Generate cache key from content hash
   const cacheKey = generateCacheKey(container.htmlContent, cssText);
   const screenshotPath = resolve(cacheDir, `${cacheKey}.png`);
+
+  // Check if cached version exists
+  if (existsSync(screenshotPath)) {
+    console.log(
+      `Using cached container "${container.id}" (hash: ${cacheKey}) from ${screenshotPath}`,
+    );
+    return {
+      container,
+      screenshotPath,
+    };
+  }
 
   // Build complete HTML document
   const html = `
@@ -114,6 +125,36 @@ export async function renderContainer(
 }
 
 /**
+ * Cleans up stale cache entries that are not in the active set
+ */
+async function cleanupStaleCache(
+  cacheDir: string,
+  activeCacheKeys: Set<string>,
+): Promise<void> {
+  if (!existsSync(cacheDir)) {
+    return;
+  }
+
+  const files = await readdir(cacheDir);
+  const pngFiles = files.filter((file) => file.endsWith('.png'));
+
+  let removedCount = 0;
+  for (const file of pngFiles) {
+    const cacheKey = file.replace('.png', '');
+    if (!activeCacheKeys.has(cacheKey)) {
+      const filePath = resolve(cacheDir, file);
+      await unlink(filePath);
+      console.log(`Removed stale cache entry: ${file}`);
+      removedCount++;
+    }
+  }
+
+  if (removedCount > 0) {
+    console.log(`Cleaned up ${removedCount} stale cache entries`);
+  }
+}
+
+/**
  * Renders multiple containers in sequence
  */
 export async function renderContainers(
@@ -124,8 +165,13 @@ export async function renderContainers(
   projectDir: string,
 ): Promise<ContainerRenderResult[]> {
   const results: ContainerRenderResult[] = [];
+  const activeCacheKeys = new Set<string>();
 
+  // Render all containers and collect active cache keys
   for (const container of containers) {
+    const cacheKey = generateCacheKey(container.htmlContent, cssText);
+    activeCacheKeys.add(cacheKey);
+
     const result = await renderContainer({
       container,
       cssText,
@@ -135,6 +181,10 @@ export async function renderContainers(
     });
     results.push(result);
   }
+
+  // Clean up stale cache entries
+  const cacheDir = resolve(projectDir, '.cache', 'containers');
+  await cleanupStaleCache(cacheDir, activeCacheKeys);
 
   return results;
 }

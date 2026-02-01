@@ -30,9 +30,6 @@ export class Project {
       throw new Error(`Output "${outputName}" not found`);
     }
 
-    // Render containers at the beginning
-    await this.renderContainers(output);
-
     let buf = new FilterBuffer();
     let mainSequence: Sequence | null = null;
 
@@ -73,6 +70,8 @@ export class Project {
   }
 
   public printStats() {
+    console.log('\n=== Project stats ===\n');
+    console.log('== Assets ==\n');
     this.assetManager.getAssetIndexMap().forEach((_index, assetName) => {
       const asset = this.assetManager.getAssetByName(assetName)!;
 
@@ -118,7 +117,12 @@ export class Project {
   /**
    * Renders all containers and creates virtual assets for them
    */
-  private async renderContainers(output: Output): Promise<void> {
+  public async renderContainers(outputName: string): Promise<void> {
+    const output = this.getOutput(outputName);
+    if (!output) {
+      throw new Error(`Output "${outputName}" not found`);
+    }
+
     // Collect all fragments with containers
     const fragmentsWithContainers = this.sequencesDefinitions.flatMap((seq) =>
       seq.fragments.filter((frag) => frag.container),
@@ -141,11 +145,9 @@ export class Project {
       projectDir,
     );
 
-    console.log(`\nRendered ${results.length} container(s)\n`);
-
     // Create virtual assets and update fragment assetNames
     for (const result of results) {
-      const virtualAssetName = `container_${result.container.id}`;
+      const virtualAssetName = result.container.id;
 
       // Create virtual asset
       const virtualAsset: Asset = {

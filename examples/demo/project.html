@@ -2,7 +2,7 @@
   <sequence>
     <fragment class="intro_image intro_duration" />
     <fragment class="clip_1 ambient" />
-    <fragment class="glitch" />
+    <fragment class="analog_static_03" />
     <fragment class="clip_2 ambient" />
     <fragment class="outro_image outro_duration" id="ending_screen" />
   </sequence>
@@ -13,10 +13,16 @@
     <fragment class="intro_image_message intro_duration">
       <container>
         <div class="main_container">
-          <div class="main_container_text">
-            <div class="main_container_text_outline">
+          <div class="text_alignment">
+            <div class="text_outline">
               <span>Christmas</span> <span>Morning</span> <span>in</span>
-              <span>Liberec ❄️ 🏔️ 🌨️</span>
+              <span>Liberec</span>
+            </div>
+            <div class="text_outline text_outline__small">
+              <span>Dec</span> <span>24</span> <span>2025</span>
+            </div>
+            <div class="text_outline text_outline__small">
+              <span>❄️ 🏔️ 🌨️</span>
             </div>
           </div>
         </div>
@@ -30,9 +36,11 @@
     <fragment class="outro_message outro_duration" id="outro_message">
       <container>
         <div class="main_container">
-          <div class="main_container_text">
-            <div class="main_container_text_outline">
+          <div class="text_alignment">
+            <div class="text_outline">
               <span>Thanks</span> <span>for</span> <span>watching!</span>
+            </div>
+            <div class="text_outline text_outline__small">
               <span>🫶</span>
             </div>
           </div>
@@ -54,24 +62,29 @@
     font-family: "Roboto", sans-serif;
     font-size: 6rem;
   }
-  .main_container_text {
+  .text_alignment {
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    color: black;
     padding-top: 20rem;
   }
-  .main_container_text_outline {
+
+  .text_outline {
     display: flex;
     flex-direction: row;
     flex-wrap: nowrap;
+    color: black;
   }
-  .main_container_text_outline span {
+  .text_outline span {
     background-color: white;
     padding: 0.5rem 1rem;
     margin: 0 -0.5rem;
     border-radius: 2.5rem;
+  }
+  .text_outline__small {
+    font-size: 3rem;
+    padding-top: 3rem;
   }
 
   /* todo: variable support would be cool */
@@ -98,6 +111,7 @@
   .intro_image {
     -asset: intro_image;
     -transition-end: fade-out 500ms;
+    filter: instagram-nashville;
   }
   .intro_image_message {
     -transition-end: fade-out 500ms;
@@ -143,6 +157,11 @@
     -overlay-end-z-index: 1;
     -chromakey: smooth strict #000000;
   }
+
+  .analog_static_03 {
+    -asset: analog_static_03;
+    -duration: 500ms;
+  }
 </style>
 
 <assets>
@@ -162,6 +181,10 @@
     data-author="FooBar"
   />
   <asset data-name="glitch" data-path="./effects/digital_glitch_01.mp4" />
+  <asset
+    data-name="analog_static_03"
+    data-path="./effects/analog_static_03.mp4"
+  />
   <asset
     data-name="guitar_music"
     data-path="./audio/instrumental-acoustic-guitar-music-401434.mp3"

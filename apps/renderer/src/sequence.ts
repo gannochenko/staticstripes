@@ -245,11 +245,13 @@ export class Sequence {
       } else {
         // here an overlay can only be positive
         if (calculatedOverlayLeft > 0) {
+          // padding video with a transparent fragment
           currentVideoStream.tPad({
             start: calculatedOverlayLeft,
             startMode: 'add',
             color: '#00000000',
           });
+          // padding audio with a slient fragment
           currentAudioStream.tPad({
             start: calculatedOverlayLeft,
           });
