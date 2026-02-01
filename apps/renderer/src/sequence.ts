@@ -43,9 +43,9 @@ export class Sequence {
         this.expressionContext,
       );
 
-      // if (fragment.id === 'outro_sound') {
-      //   debugger;
-      // }
+      if (fragment.id === 'outro_message') {
+        debugger;
+      }
 
       const timeContext: TimeData = {
         start: 0,
@@ -247,11 +247,11 @@ export class Sequence {
         if (calculatedOverlayLeft > 0) {
           currentVideoStream.tPad({
             start: calculatedOverlayLeft,
-            startMode: 'clone',
+            startMode: 'add',
+            color: '#00000000',
           });
           currentAudioStream.tPad({
             start: calculatedOverlayLeft,
-            startMode: 'clone',
           });
         } else if (calculatedOverlayLeft < 0) {
           throw new Error(

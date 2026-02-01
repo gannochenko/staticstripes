@@ -1,22 +1,22 @@
 <project>
   <sequence>
-    <fragment class="intro_image" />
+    <fragment class="intro_image intro_duration" />
     <fragment class="clip_1 ambient" />
     <fragment class="glitch" />
     <fragment class="clip_2 ambient" />
     <fragment class="outro_image outro_duration" id="ending_screen" />
   </sequence>
   <sequence>
-    <fragment class="intro_sound" />
+    <fragment class="intro_sound intro_duration" />
   </sequence>
   <sequence>
-    <fragment class="intro_image_message">
+    <fragment class="intro_image_message intro_duration">
       <container>
         <div class="main_container">
           <div class="main_container_text">
             <div class="main_container_text_outline">
               <span>Christmas</span> <span>Morning</span> <span>in</span>
-              <span>Liberec!</span>
+              <span>Liberec ❄️ 🏔️ 🌨️</span>
             </div>
           </div>
         </div>
@@ -25,6 +25,20 @@
   </sequence>
   <sequence>
     <fragment class="outro_sound outro_duration" id="outro_sound" />
+  </sequence>
+  <sequence>
+    <fragment class="outro_message outro_duration" id="outro_message">
+      <container>
+        <div class="main_container">
+          <div class="main_container_text">
+            <div class="main_container_text_outline">
+              <span>Thanks</span> <span>for</span> <span>watching!</span>
+              <span>🫶</span>
+            </div>
+          </div>
+        </div>
+      </container>
+    </fragment>
   </sequence>
 </project>
 
@@ -46,14 +60,17 @@
     align-items: center;
     justify-content: center;
     color: black;
+    padding-top: 20rem;
   }
   .main_container_text_outline {
-    width: 80%;
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
   }
   .main_container_text_outline span {
     background-color: white;
     padding: 0.5rem 1rem;
-    margin: 0 -1.2rem;
+    margin: 0 -0.5rem;
     border-radius: 2.5rem;
   }
 
@@ -74,15 +91,22 @@
     -duration: 5000ms;
   }
 
+  .intro_duration {
+    -duration: 8000ms;
+  }
+
   .intro_image {
     -asset: intro_image;
-    -duration: 4000ms;
     -transition-end: fade-out 500ms;
   }
   .intro_image_message {
-    -duration: 4000ms;
     -transition-end: fade-out 500ms;
   }
+  .intro_sound {
+    -asset: guitar_music;
+    -transition-end: fade-out 500ms;
+  }
+
   .clip_1 {
     -asset: clip_01;
     -trim-start: 3000ms;
@@ -93,11 +117,23 @@
     -duration: 3000ms;
     -transition-end: fade-out 1000ms;
   }
+
   .outro_image {
     -asset: intro_image;
     -transition-start: fade-in 1000ms;
     -transition-end: fade-out 500ms;
   }
+  .outro_sound {
+    -asset: guitar_music;
+    -offset-start: calc(url(#ending_screen.time.start));
+    -transition-end: fade-out 500ms;
+  }
+  .outro_message {
+    -offset-start: calc(url(#ending_screen.time.start));
+    -transition-start: fade-in 1000ms;
+    -transition-end: fade-out 500ms;
+  }
+
   .glitch {
     -asset: glitch;
     -duration: 500ms;
@@ -106,16 +142,6 @@
     -offset-end: -250ms;
     -overlay-end-z-index: 1;
     -chromakey: smooth strict #000000;
-  }
-  .intro_sound {
-    -asset: guitar_music;
-    -duration: 4000ms;
-    -transition-end: fade-out 500ms;
-  }
-  .outro_sound {
-    -asset: guitar_music;
-    -offset-start: calc(url(#ending_screen.time.start));
-    -transition-end: fade-out 500ms;
   }
 </style>
 
