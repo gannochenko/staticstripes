@@ -6,6 +6,7 @@ import {
   makeStream,
 } from './stream';
 
+// @ts-expect-error unused
 const addSampleStreams = (project: Project, buf: FilterBuffer) => {
   const glitchStream = makeStream(
     project.getAssetManager().getVideoInputLabelByAssetName('glitch'),

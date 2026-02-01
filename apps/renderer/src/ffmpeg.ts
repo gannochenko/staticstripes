@@ -671,6 +671,227 @@ export function makeEq(
 }
 
 /**
+ * Creates a colorchannelmixer filter for advanced color adjustment
+ * @param inputs - Input stream labels (must be video)
+ * @param options - Color channel mixing parameters
+ *   - rr: Red contribution to red channel (-2 to 2, default: 1)
+ *   - rg: Green contribution to red channel (-2 to 2, default: 0)
+ *   - rb: Blue contribution to red channel (-2 to 2, default: 0)
+ *   - ra: Alpha contribution to red channel (-2 to 2, default: 0)
+ *   - gr: Red contribution to green channel (-2 to 2, default: 0)
+ *   - gg: Green contribution to green channel (-2 to 2, default: 1)
+ *   - gb: Blue contribution to green channel (-2 to 2, default: 0)
+ *   - ga: Alpha contribution to green channel (-2 to 2, default: 0)
+ *   - br: Red contribution to blue channel (-2 to 2, default: 0)
+ *   - bg: Green contribution to blue channel (-2 to 2, default: 0)
+ *   - bb: Blue contribution to blue channel (-2 to 2, default: 1)
+ *   - ba: Alpha contribution to blue channel (-2 to 2, default: 0)
+ */
+export function makeColorChannelMixer(
+  inputs: Label[],
+  options: {
+    rr?: number;
+    rg?: number;
+    rb?: number;
+    ra?: number;
+    gr?: number;
+    gg?: number;
+    gb?: number;
+    ga?: number;
+    br?: number;
+    bg?: number;
+    bb?: number;
+    ba?: number;
+  } = {},
+): Filter {
+  const input = inputs[0];
+
+  if (input.isAudio) {
+    throw new Error(
+      `makeColorChannelMixer: input must be video, got audio (tag: ${input.tag})`,
+    );
+  }
+
+  const output = {
+    tag: getLabel(),
+    isAudio: false,
+  };
+
+  const params: string[] = [];
+  if (options.rr !== undefined) params.push(`rr=${options.rr}`);
+  if (options.rg !== undefined) params.push(`rg=${options.rg}`);
+  if (options.rb !== undefined) params.push(`rb=${options.rb}`);
+  if (options.ra !== undefined) params.push(`ra=${options.ra}`);
+  if (options.gr !== undefined) params.push(`gr=${options.gr}`);
+  if (options.gg !== undefined) params.push(`gg=${options.gg}`);
+  if (options.gb !== undefined) params.push(`gb=${options.gb}`);
+  if (options.ga !== undefined) params.push(`ga=${options.ga}`);
+  if (options.br !== undefined) params.push(`br=${options.br}`);
+  if (options.bg !== undefined) params.push(`bg=${options.bg}`);
+  if (options.bb !== undefined) params.push(`bb=${options.bb}`);
+  if (options.ba !== undefined) params.push(`ba=${options.ba}`);
+
+  const filterStr =
+    params.length > 0
+      ? `colorchannelmixer=${params.join(':')}`
+      : 'colorchannelmixer';
+
+  return new Filter(inputs, [output], filterStr);
+}
+
+/**
+ * Creates a curves filter for color grading (similar to Photoshop curves)
+ * @param inputs - Input stream labels (must be video)
+ * @param options - Curves parameters
+ *   - preset: Preset curve name (e.g., 'darker', 'lighter', 'increase_contrast', 'vintage', etc.)
+ *   - master: Master curve points (affects all channels, e.g., '0/0 0.5/0.6 1/1')
+ *   - red: Red channel curve points
+ *   - green: Green channel curve points
+ *   - blue: Blue channel curve points
+ *   - all: Apply same curve to all RGB channels
+ */
+export function makeCurves(
+  inputs: Label[],
+  options: {
+    preset?: string;
+    master?: string;
+    red?: string;
+    green?: string;
+    blue?: string;
+    all?: string;
+  } = {},
+): Filter {
+  const input = inputs[0];
+
+  if (input.isAudio) {
+    throw new Error(
+      `makeCurves: input must be video, got audio (tag: ${input.tag})`,
+    );
+  }
+
+  const output = {
+    tag: getLabel(),
+    isAudio: false,
+  };
+
+  const params: string[] = [];
+  if (options.preset !== undefined) params.push(`preset=${options.preset}`);
+  if (options.master !== undefined) params.push(`master='${options.master}'`);
+  if (options.red !== undefined) params.push(`red='${options.red}'`);
+  if (options.green !== undefined) params.push(`green='${options.green}'`);
+  if (options.blue !== undefined) params.push(`blue='${options.blue}'`);
+  if (options.all !== undefined) params.push(`all='${options.all}'`);
+
+  const filterStr = params.length > 0 ? `curves=${params.join(':')}` : 'curves';
+
+  return new Filter(inputs, [output], filterStr);
+}
+
+/**
+ * Creates a vignette filter to darken the corners/edges
+ * @param inputs - Input stream labels (must be video)
+ * @param options - Vignette parameters
+ *   - angle: Lens angle (0 to PI/2, default: PI/5)
+ *   - x0: X coordinate of vignette center (0 to 1, default: w/2)
+ *   - y0: Y coordinate of vignette center (0 to 1, default: h/2)
+ *   - mode: Vignette mode ('forward' or 'backward', default: 'forward')
+ *   - eval: When to evaluate expressions ('init' or 'frame', default: 'init')
+ */
+export function makeVignette(
+  inputs: Label[],
+  options: {
+    angle?: string;
+    x0?: string;
+    y0?: string;
+    mode?: 'forward' | 'backward';
+    eval?: 'init' | 'frame';
+  } = {},
+): Filter {
+  const input = inputs[0];
+
+  if (input.isAudio) {
+    throw new Error(
+      `makeVignette: input must be video, got audio (tag: ${input.tag})`,
+    );
+  }
+
+  const output = {
+    tag: getLabel(),
+    isAudio: false,
+  };
+
+  const params: string[] = [];
+  if (options.angle !== undefined) params.push(`angle='${options.angle}'`);
+  if (options.x0 !== undefined) params.push(`x0='${options.x0}'`);
+  if (options.y0 !== undefined) params.push(`y0='${options.y0}'`);
+  if (options.mode !== undefined) params.push(`mode=${options.mode}`);
+  if (options.eval !== undefined) params.push(`eval=${options.eval}`);
+
+  const filterStr =
+    params.length > 0 ? `vignette=${params.join(':').replace(/'/g, '')}` : 'vignette';
+
+  return new Filter(inputs, [output], filterStr);
+}
+
+/**
+ * Creates a colorbalance filter to adjust colors in shadows, midtones, and highlights
+ * @param inputs - Input stream labels (must be video)
+ * @param options - Color balance parameters
+ *   - rs: Red shift for shadows (-1 to 1, default: 0)
+ *   - gs: Green shift for shadows (-1 to 1, default: 0)
+ *   - bs: Blue shift for shadows (-1 to 1, default: 0)
+ *   - rm: Red shift for midtones (-1 to 1, default: 0)
+ *   - gm: Green shift for midtones (-1 to 1, default: 0)
+ *   - bm: Blue shift for midtones (-1 to 1, default: 0)
+ *   - rh: Red shift for highlights (-1 to 1, default: 0)
+ *   - gh: Green shift for highlights (-1 to 1, default: 0)
+ *   - bh: Blue shift for highlights (-1 to 1, default: 0)
+ */
+export function makeColorBalance(
+  inputs: Label[],
+  options: {
+    rs?: number;
+    gs?: number;
+    bs?: number;
+    rm?: number;
+    gm?: number;
+    bm?: number;
+    rh?: number;
+    gh?: number;
+    bh?: number;
+  } = {},
+): Filter {
+  const input = inputs[0];
+
+  if (input.isAudio) {
+    throw new Error(
+      `makeColorBalance: input must be video, got audio (tag: ${input.tag})`,
+    );
+  }
+
+  const output = {
+    tag: getLabel(),
+    isAudio: false,
+  };
+
+  const params: string[] = [];
+  if (options.rs !== undefined) params.push(`rs=${options.rs}`);
+  if (options.gs !== undefined) params.push(`gs=${options.gs}`);
+  if (options.bs !== undefined) params.push(`bs=${options.bs}`);
+  if (options.rm !== undefined) params.push(`rm=${options.rm}`);
+  if (options.gm !== undefined) params.push(`gm=${options.gm}`);
+  if (options.bm !== undefined) params.push(`bm=${options.bm}`);
+  if (options.rh !== undefined) params.push(`rh=${options.rh}`);
+  if (options.gh !== undefined) params.push(`gh=${options.gh}`);
+  if (options.bh !== undefined) params.push(`bh=${options.bh}`);
+
+  const filterStr =
+    params.length > 0 ? `colorbalance=${params.join(':')}` : 'colorbalance';
+
+  return new Filter(inputs, [output], filterStr);
+}
+
+/**
  * Creates a Gaussian blur filter
  * @param inputs - Input stream labels (must be video)
  * @param sigma - Blur strength (0.01 to 1024, default: 1.0)

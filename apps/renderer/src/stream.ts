@@ -22,6 +22,8 @@ import {
   makeAmix,
   makeAnullsrc,
   makeColor,
+  makeVignette,
+  makeColorBalance,
 } from './ffmpeg';
 
 export const PILLARBOX = 'pillarbox';
@@ -56,6 +58,31 @@ export enum Colors {
   Transparent = '#00000000',
 }
 
+export enum VisualFilter {
+  InstagramClarendon = 'instagram-clarendon',
+  InstagramGingham = 'instagram-gingham',
+  InstagramJuno = 'instagram-juno',
+  InstagramLark = 'instagram-lark',
+  InstagramLudwig = 'instagram-ludwig',
+  InstagramNashville = 'instagram-nashville',
+  InstagramValencia = 'instagram-valencia',
+  InstagramXProII = 'instagram-xpro2',
+  InstagramWillow = 'instagram-willow',
+  InstagramLoFi = 'instagram-lofi',
+  InstagramInkwell = 'instagram-inkwell',
+  InstagramMoon = 'instagram-moon',
+  InstagramHudson = 'instagram-hudson',
+  InstagramToaster = 'instagram-toaster',
+  InstagramWalden = 'instagram-walden',
+  InstagramRise = 'instagram-rise',
+  InstagramAmaro = 'instagram-amaro',
+  InstagramMayfair = 'instagram-mayfair',
+  InstagramEarlybird = 'instagram-earlybird',
+  InstagramSutro = 'instagram-sutro',
+  InstagramAden = 'instagram-aden',
+  InstagramCrema = 'instagram-crema',
+}
+
 export type ObjectFitContainOptions = {
   ambient?: {
     blurStrength?: number; // Gaussian blur sigma (default: 20)
@@ -83,7 +110,10 @@ export function makeStream(label: Label, buf: FilterBuffer): Stream {
   return new Stream(label, buf);
 }
 
-export function makeSilentStream(duration: Millisecond, buf: FilterBuffer): Stream {
+export function makeSilentStream(
+  duration: Millisecond,
+  buf: FilterBuffer,
+): Stream {
   const filter = makeAnullsrc({ duration });
   buf.append(filter);
   return new Stream(filter.outputs[0], buf);
@@ -96,7 +126,13 @@ export function makeBlankStream(
   fps: number,
   buf: FilterBuffer,
 ): Stream {
-  const filter = makeColor({ duration, width, height, fps, color: '#00000000' });
+  const filter = makeColor({
+    duration,
+    width,
+    height,
+    fps,
+    color: '#00000000',
+  });
   buf.append(filter);
   return new Stream(filter.outputs[0], buf);
 }
@@ -521,6 +557,447 @@ export class Stream {
     const res = makeNull([this.looseEnd]);
     res.outputs[0] = label;
     this.buf.append(res);
+
+    return this;
+  }
+
+  /**
+   * Applies an Instagram-style filter to the video stream
+   * @param filterName - The filter to apply
+   */
+  public filter(filterName: VisualFilter): Stream {
+    if (this.looseEnd.isAudio) {
+      throw new Error('filter() can only be applied to video streams');
+    }
+
+    switch (filterName) {
+      case VisualFilter.InstagramClarendon:
+        // Brightens, increases contrast and saturation
+        const clarendonEq = makeEq([this.looseEnd], {
+          contrast: 1.2,
+          brightness: 0.1,
+          saturation: 1.3,
+        });
+        this.looseEnd = clarendonEq.outputs[0];
+        this.buf.append(clarendonEq);
+        break;
+
+      case VisualFilter.InstagramGingham:
+        // Vintage washed-out look
+        const ginghamEq = makeEq([this.looseEnd], {
+          saturation: 0.6,
+          brightness: 0.05,
+        });
+        this.looseEnd = ginghamEq.outputs[0];
+        this.buf.append(ginghamEq);
+
+        const ginghamBalance = makeColorBalance([this.looseEnd], {
+          rm: 0.1,
+          bm: 0.05,
+        });
+        this.looseEnd = ginghamBalance.outputs[0];
+        this.buf.append(ginghamBalance);
+        break;
+
+      case VisualFilter.InstagramJuno:
+        // High contrast, saturated, cool tones
+        const junoEq = makeEq([this.looseEnd], {
+          contrast: 1.3,
+          saturation: 1.4,
+        });
+        this.looseEnd = junoEq.outputs[0];
+        this.buf.append(junoEq);
+
+        const junoBalance = makeColorBalance([this.looseEnd], {
+          bh: 0.15,
+          gh: 0.1,
+        });
+        this.looseEnd = junoBalance.outputs[0];
+        this.buf.append(junoBalance);
+        break;
+
+      case VisualFilter.InstagramLark:
+        // Brightens, desaturated, cool tones
+        const larkEq = makeEq([this.looseEnd], {
+          brightness: 0.15,
+          saturation: 0.7,
+        });
+        this.looseEnd = larkEq.outputs[0];
+        this.buf.append(larkEq);
+
+        const larkBalance = makeColorBalance([this.looseEnd], {
+          bm: 0.1,
+        });
+        this.looseEnd = larkBalance.outputs[0];
+        this.buf.append(larkBalance);
+        break;
+
+      case VisualFilter.InstagramLudwig:
+        // Cool tones, subtle vignette
+        const ludwigBalance = makeColorBalance([this.looseEnd], {
+          bm: 0.08,
+          bs: 0.05,
+        });
+        this.looseEnd = ludwigBalance.outputs[0];
+        this.buf.append(ludwigBalance);
+
+        const ludwigVignette = makeVignette([this.looseEnd], {
+          angle: 'PI/4',
+        });
+        this.looseEnd = ludwigVignette.outputs[0];
+        this.buf.append(ludwigVignette);
+        break;
+
+      case VisualFilter.InstagramNashville:
+        // Warm vintage, pink tint, vignette
+        const nashvilleBalance = makeColorBalance([this.looseEnd], {
+          rm: 0.2,
+          rh: 0.1,
+          bm: -0.1,
+        });
+        this.looseEnd = nashvilleBalance.outputs[0];
+        this.buf.append(nashvilleBalance);
+
+        const nashvilleEq = makeEq([this.looseEnd], {
+          contrast: 0.9,
+          saturation: 1.2,
+        });
+        this.looseEnd = nashvilleEq.outputs[0];
+        this.buf.append(nashvilleEq);
+
+        const nashvilleVignette = makeVignette([this.looseEnd], {
+          angle: 'PI/4.5',
+        });
+        this.looseEnd = nashvilleVignette.outputs[0];
+        this.buf.append(nashvilleVignette);
+        break;
+
+      case VisualFilter.InstagramValencia:
+        // Warm tones, slight fade
+        const valenciaBalance = makeColorBalance([this.looseEnd], {
+          rm: 0.15,
+          gm: 0.05,
+        });
+        this.looseEnd = valenciaBalance.outputs[0];
+        this.buf.append(valenciaBalance);
+
+        const valenciaEq = makeEq([this.looseEnd], {
+          contrast: 0.95,
+          brightness: 0.05,
+        });
+        this.looseEnd = valenciaEq.outputs[0];
+        this.buf.append(valenciaEq);
+        break;
+
+      case VisualFilter.InstagramXProII:
+        // High contrast, warm highlights, cool shadows, vignette
+        const xproBalance = makeColorBalance([this.looseEnd], {
+          rh: 0.2,
+          bs: 0.15,
+        });
+        this.looseEnd = xproBalance.outputs[0];
+        this.buf.append(xproBalance);
+
+        const xproEq = makeEq([this.looseEnd], {
+          contrast: 1.4,
+          saturation: 1.2,
+        });
+        this.looseEnd = xproEq.outputs[0];
+        this.buf.append(xproEq);
+
+        const xproVignette = makeVignette([this.looseEnd], {
+          angle: 'PI/4',
+        });
+        this.looseEnd = xproVignette.outputs[0];
+        this.buf.append(xproVignette);
+        break;
+
+      case VisualFilter.InstagramWillow:
+        // Black and white-ish, desaturated, slight yellow tint
+        const willowEq = makeEq([this.looseEnd], {
+          saturation: 0.2,
+          brightness: 0.05,
+        });
+        this.looseEnd = willowEq.outputs[0];
+        this.buf.append(willowEq);
+
+        const willowBalance = makeColorBalance([this.looseEnd], {
+          rm: 0.05,
+          gm: 0.05,
+        });
+        this.looseEnd = willowBalance.outputs[0];
+        this.buf.append(willowBalance);
+        break;
+
+      case VisualFilter.InstagramLoFi:
+        // High contrast, high saturation, vignette
+        const lofiEq = makeEq([this.looseEnd], {
+          contrast: 1.5,
+          saturation: 1.4,
+        });
+        this.looseEnd = lofiEq.outputs[0];
+        this.buf.append(lofiEq);
+
+        const lofiVignette = makeVignette([this.looseEnd], {
+          angle: 'PI/4',
+        });
+        this.looseEnd = lofiVignette.outputs[0];
+        this.buf.append(lofiVignette);
+        break;
+
+      case VisualFilter.InstagramInkwell:
+        // Classic black and white
+        const inkwellEq = makeEq([this.looseEnd], {
+          saturation: 0,
+          contrast: 1.1,
+        });
+        this.looseEnd = inkwellEq.outputs[0];
+        this.buf.append(inkwellEq);
+        break;
+
+      case VisualFilter.InstagramMoon:
+        // Black and white with high contrast and cool tone
+        const moonEq = makeEq([this.looseEnd], {
+          saturation: 0,
+          contrast: 1.4,
+          brightness: -0.05,
+        });
+        this.looseEnd = moonEq.outputs[0];
+        this.buf.append(moonEq);
+
+        const moonBalance = makeColorBalance([this.looseEnd], {
+          bs: 0.1,
+          bm: 0.08,
+        });
+        this.looseEnd = moonBalance.outputs[0];
+        this.buf.append(moonBalance);
+
+        const moonVignette = makeVignette([this.looseEnd], {
+          angle: 'PI/4.5',
+        });
+        this.looseEnd = moonVignette.outputs[0];
+        this.buf.append(moonVignette);
+        break;
+
+      case VisualFilter.InstagramHudson:
+        // Cool tones, high contrast, vignette
+        const hudsonBalance = makeColorBalance([this.looseEnd], {
+          bm: 0.2,
+          bs: 0.15,
+        });
+        this.looseEnd = hudsonBalance.outputs[0];
+        this.buf.append(hudsonBalance);
+
+        const hudsonEq = makeEq([this.looseEnd], {
+          contrast: 1.3,
+        });
+        this.looseEnd = hudsonEq.outputs[0];
+        this.buf.append(hudsonEq);
+
+        const hudsonVignette = makeVignette([this.looseEnd], {
+          angle: 'PI/4.5',
+        });
+        this.looseEnd = hudsonVignette.outputs[0];
+        this.buf.append(hudsonVignette);
+        break;
+
+      case VisualFilter.InstagramToaster:
+        // Warm tones, vignette
+        const toasterBalance = makeColorBalance([this.looseEnd], {
+          rm: 0.25,
+          rh: 0.15,
+        });
+        this.looseEnd = toasterBalance.outputs[0];
+        this.buf.append(toasterBalance);
+
+        const toasterEq = makeEq([this.looseEnd], {
+          contrast: 1.2,
+        });
+        this.looseEnd = toasterEq.outputs[0];
+        this.buf.append(toasterEq);
+
+        const toasterVignette = makeVignette([this.looseEnd], {
+          angle: 'PI/4',
+        });
+        this.looseEnd = toasterVignette.outputs[0];
+        this.buf.append(toasterVignette);
+        break;
+
+      case VisualFilter.InstagramWalden:
+        // Increased exposure, yellow tones
+        const waldenBalance = makeColorBalance([this.looseEnd], {
+          rm: 0.1,
+          gm: 0.1,
+        });
+        this.looseEnd = waldenBalance.outputs[0];
+        this.buf.append(waldenBalance);
+
+        const waldenEq = makeEq([this.looseEnd], {
+          brightness: 0.15,
+          saturation: 1.1,
+        });
+        this.looseEnd = waldenEq.outputs[0];
+        this.buf.append(waldenEq);
+        break;
+
+      case VisualFilter.InstagramRise:
+        // Soft, warm glow
+        const riseBalance = makeColorBalance([this.looseEnd], {
+          rm: 0.12,
+          rh: 0.08,
+        });
+        this.looseEnd = riseBalance.outputs[0];
+        this.buf.append(riseBalance);
+
+        const riseEq = makeEq([this.looseEnd], {
+          brightness: 0.1,
+          contrast: 0.9,
+          saturation: 1.15,
+        });
+        this.looseEnd = riseEq.outputs[0];
+        this.buf.append(riseEq);
+        break;
+
+      case VisualFilter.InstagramAmaro:
+        // Increases contrast, adds vignette, cool tone
+        const amaroBalance = makeColorBalance([this.looseEnd], {
+          bm: 0.1,
+        });
+        this.looseEnd = amaroBalance.outputs[0];
+        this.buf.append(amaroBalance);
+
+        const amaroEq = makeEq([this.looseEnd], {
+          contrast: 1.3,
+          saturation: 1.2,
+        });
+        this.looseEnd = amaroEq.outputs[0];
+        this.buf.append(amaroEq);
+
+        const amaroVignette = makeVignette([this.looseEnd], {
+          angle: 'PI/4.5',
+        });
+        this.looseEnd = amaroVignette.outputs[0];
+        this.buf.append(amaroVignette);
+        break;
+
+      case VisualFilter.InstagramMayfair:
+        // Warm center, cool edges, vignette
+        const mayfairBalance = makeColorBalance([this.looseEnd], {
+          rh: 0.15,
+          bs: 0.1,
+        });
+        this.looseEnd = mayfairBalance.outputs[0];
+        this.buf.append(mayfairBalance);
+
+        const mayfairEq = makeEq([this.looseEnd], {
+          contrast: 1.1,
+          saturation: 1.15,
+        });
+        this.looseEnd = mayfairEq.outputs[0];
+        this.buf.append(mayfairEq);
+
+        const mayfairVignette = makeVignette([this.looseEnd], {
+          angle: 'PI/4',
+        });
+        this.looseEnd = mayfairVignette.outputs[0];
+        this.buf.append(mayfairVignette);
+        break;
+
+      case VisualFilter.InstagramEarlybird:
+        // Vintage sepia, vignette
+        const earlybirdBalance = makeColorBalance([this.looseEnd], {
+          rm: 0.2,
+          gm: 0.1,
+          bm: -0.15,
+        });
+        this.looseEnd = earlybirdBalance.outputs[0];
+        this.buf.append(earlybirdBalance);
+
+        const earlybirdEq = makeEq([this.looseEnd], {
+          contrast: 1.2,
+          saturation: 1.1,
+        });
+        this.looseEnd = earlybirdEq.outputs[0];
+        this.buf.append(earlybirdEq);
+
+        const earlybirdVignette = makeVignette([this.looseEnd], {
+          angle: 'PI/4',
+        });
+        this.looseEnd = earlybirdVignette.outputs[0];
+        this.buf.append(earlybirdVignette);
+        break;
+
+      case VisualFilter.InstagramSutro:
+        // Muted colors, purple/brown tint, vignette
+        const sutroBalance = makeColorBalance([this.looseEnd], {
+          rm: 0.1,
+          bm: 0.15,
+        });
+        this.looseEnd = sutroBalance.outputs[0];
+        this.buf.append(sutroBalance);
+
+        const sutroEq = makeEq([this.looseEnd], {
+          saturation: 0.8,
+          contrast: 1.2,
+        });
+        this.looseEnd = sutroEq.outputs[0];
+        this.buf.append(sutroEq);
+
+        const sutroVignette = makeVignette([this.looseEnd], {
+          angle: 'PI/3.5',
+        });
+        this.looseEnd = sutroVignette.outputs[0];
+        this.buf.append(sutroVignette);
+        break;
+
+      case VisualFilter.InstagramAden:
+        // Muted, cool tones, slight vignette
+        const adenBalance = makeColorBalance([this.looseEnd], {
+          bm: 0.12,
+        });
+        this.looseEnd = adenBalance.outputs[0];
+        this.buf.append(adenBalance);
+
+        const adenEq = makeEq([this.looseEnd], {
+          saturation: 0.85,
+          brightness: 0.08,
+        });
+        this.looseEnd = adenEq.outputs[0];
+        this.buf.append(adenEq);
+
+        const adenVignette = makeVignette([this.looseEnd], {
+          angle: 'PI/5',
+        });
+        this.looseEnd = adenVignette.outputs[0];
+        this.buf.append(adenVignette);
+        break;
+
+      case VisualFilter.InstagramCrema:
+        // Creamy warmth, slight vignette
+        const cremaBalance = makeColorBalance([this.looseEnd], {
+          rm: 0.08,
+          gm: 0.05,
+        });
+        this.looseEnd = cremaBalance.outputs[0];
+        this.buf.append(cremaBalance);
+
+        const cremaEq = makeEq([this.looseEnd], {
+          brightness: 0.05,
+          contrast: 0.95,
+        });
+        this.looseEnd = cremaEq.outputs[0];
+        this.buf.append(cremaEq);
+
+        const cremaVignette = makeVignette([this.looseEnd], {
+          angle: 'PI/5',
+        });
+        this.looseEnd = cremaVignette.outputs[0];
+        this.buf.append(cremaVignette);
+        break;
+
+      default:
+        throw new Error(`Unknown Instagram filter: ${filterName}`);
+    }
 
     return this;
   }

@@ -55,6 +55,7 @@ export type Fragment = {
   chromakeyBlend: number;
   chromakeySimilarity: number;
   chromakeyColor: string;
+  visualFilter?: string; // Optional visual filter (e.g., 'instagram-nashville')
   container?: Container; // Optional container attached to this fragment
 };
 

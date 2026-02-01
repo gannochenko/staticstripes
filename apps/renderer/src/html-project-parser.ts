@@ -687,6 +687,9 @@ export class HTMLProjectParser {
     // 14. Parse -chromakey
     const chromakeyData = this.parseChromakeyProperty(styles['-chromakey']);
 
+    // 15. Parse -visual-filter
+    const visualFilter = this.parseVisualFilterProperty(styles['-visual-filter']);
+
     return {
       id,
       enabled,
@@ -715,8 +718,28 @@ export class HTMLProjectParser {
       chromakeyBlend: chromakeyData.chromakeyBlend,
       chromakeySimilarity: chromakeyData.chromakeySimilarity,
       chromakeyColor: chromakeyData.chromakeyColor,
+      ...(visualFilter && { visualFilter }), // Add visualFilter if present
       ...(container && { container }), // Add container if present
     };
+  }
+
+  /**
+   * Parses -visual-filter property
+   * Format: "<filter-name>"
+   * Example: "instagram-nashville", "instagram-moon"
+   */
+  private parseVisualFilterProperty(
+    visualFilter: string | undefined,
+  ): string | undefined {
+    if (!visualFilter) {
+      return undefined;
+    }
+
+    const trimmed = visualFilter.trim();
+
+    // Return the filter name as-is
+    // Validation will happen in the Stream.filter() method
+    return trimmed || undefined;
   }
 
   /**

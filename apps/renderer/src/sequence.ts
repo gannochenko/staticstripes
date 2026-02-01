@@ -14,6 +14,7 @@ import {
   ObjectFitContainOptions,
   PILLARBOX,
   Stream,
+  VisualFilter,
 } from './stream';
 import { Output, SequenceDefinition } from './type';
 
@@ -156,6 +157,11 @@ export class Sequence {
             similarity: fragment.chromakeySimilarity,
             color: fragment.chromakeyColor,
           });
+        }
+
+        // visual filter
+        if (fragment.visualFilter) {
+          currentVideoStream.filter(fragment.visualFilter as VisualFilter);
         }
       }
 
