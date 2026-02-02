@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="./logo.svg" alt="StaticStripes Logo" width="200"/>
+  <img src="./logo/logo.svg" alt="StaticStripes Logo" width="200"/>
 </p>
 
 <h1 align="center">StaticStripes</h1>
@@ -86,9 +86,11 @@ staticstripes bootstrap -n <project-name>
 ```
 
 **Options:**
+
 - `-n, --name <name>` - Name of the new project (required)
 
 **Example:**
+
 ```bash
 staticstripes bootstrap -n my-awesome-video
 ```
@@ -104,14 +106,17 @@ staticstripes add-assets [options]
 ```
 
 **Options:**
+
 - `-p, --project <path>` - Path to project directory (default: current directory)
 
 **Example:**
+
 ```bash
 staticstripes add-assets -p ./my-project
 ```
 
 Supported media formats:
+
 - **Video:** `.mp4`
 - **Audio:** `.mp3`
 - **Images:** `.jpg`, `.png`
@@ -127,11 +132,13 @@ staticstripes generate [options]
 ```
 
 **Options:**
+
 - `-p, --project <path>` - Path to project directory (default: current directory)
 - `-o, --output <name>` - Output name to render (renders all outputs if not specified)
 - `-d, --dev` - Use fast encoding preset for development (ultrafast)
 
 **Examples:**
+
 ```bash
 # Render specific output in development mode
 staticstripes generate -p . -o youtube_shorts -d
@@ -154,6 +161,7 @@ staticstripes upload [options]
 ```
 
 **Options:**
+
 - `-p, --project <path>` - Path to project directory (default: current directory)
 - `-u, --upload <platform>` - Platform to upload to (e.g., youtube)
 
@@ -187,7 +195,11 @@ The `project.html` file uses a custom HTML-based syntax:
 
 <outputs>
   <output data-name="youtube" data-path="./output/youtube.mp4" data-fps="30" />
-  <output data-name="youtube_shorts" data-path="./output/youtube_shorts.mp4" data-fps="30" />
+  <output
+    data-name="youtube_shorts"
+    data-path="./output/youtube_shorts.mp4"
+    data-fps="30"
+  />
 </outputs>
 
 <assets>
