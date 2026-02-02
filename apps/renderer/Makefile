@@ -8,11 +8,11 @@ install:
 build:
 	npm run build
 
-# Link the package globally (makes 'staticvid' command available)
+# Link the package globally (makes 'staticstripes' command available)
 link:
 	npm link
 
-# Unlink the package globally (removes 'staticvid' command)
+# Unlink the package globally (removes 'staticstripes' command)
 unlink:
 	npm unlink -g
 

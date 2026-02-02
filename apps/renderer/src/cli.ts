@@ -12,7 +12,7 @@ import { getAssetDuration } from './ffprobe.js';
 const program = new Command();
 
 program
-  .name('staticvid')
+  .name('staticstripes')
   .description('CLI tool for rendering video projects')
   .version('0.1.0');
 
@@ -169,7 +169,7 @@ program
       console.log('Next steps:');
       console.log(`  cd ${projectName}`);
       console.log('  # Edit project.html to customize your video');
-      console.log(`  staticvid generate -p . -o youtube -d\n`);
+      console.log(`  staticstripes generate -p . -o youtube -d\n`);
     } catch (error) {
       console.error('\n❌ Error:', error);
       process.exit(1);

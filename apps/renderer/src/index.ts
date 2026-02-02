@@ -1,6 +1,6 @@
 // This file is kept for backward compatibility
-// For CLI usage, use the 'staticvid' command instead
-// Example: npx staticvid generate -p ./examples/demo
+// For CLI usage, use the 'staticstripes' command instead
+// Example: npx staticstripes generate -p ./examples/demo
 
 export { HTMLParser } from './html-parser.js';
 export { HTMLProjectParser } from './html-project-parser.js';

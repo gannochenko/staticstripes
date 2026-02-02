@@ -4,7 +4,7 @@
   "description": "Video project renderer",
   "main": "dist/index.js",
   "bin": {
-    "staticvid": "./dist/cli.js"
+    "staticstripes": "./dist/cli.js"
   },
   "scripts": {
     "build": "tsc",
