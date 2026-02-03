@@ -238,6 +238,15 @@ The `project.html` file uses a custom HTML-based syntax:
 </container>
 ```
 
+## Platform Compatibility
+
+StaticStripes is fully cross-platform and works on:
+- ✅ **Windows** 10/11
+- ✅ **macOS** 10.15+
+- ✅ **Linux** (Ubuntu, Debian, Fedora, etc.)
+
+**Windows Note:** The Makefile uses Unix commands and won't work on Windows. Windows users should use npm scripts instead (documented below).
+
 ## Development
 
 ### Prerequisites
@@ -252,6 +261,9 @@ The `project.html` file uses a custom HTML-based syntax:
 # Clone the repository
 git clone <repository-url>
 cd staticstripes
+
+# Navigate to the renderer app (the working directory is apps/renderer)
+cd apps/renderer
 
 # Install dependencies
 npm install
@@ -291,40 +303,42 @@ npm run format
 npm run format:check
 ```
 
-### Makefile Commands
+### Makefile Commands (Unix/Linux/macOS only)
+
+**Note:** The Makefile is provided for convenience on Unix-like systems (macOS, Linux). **Windows users should use the npm scripts above instead** (e.g., `npm run build` instead of `make build`).
 
 ```bash
 # Install dependencies
-make install
+make install                    # or: npm install
 
 # Build project
-make build
+make build                      # or: npm run build
 
 # Link globally
-make link
+make link                       # or: npm link
 
 # Unlink globally
-make unlink
+make unlink                     # or: npm unlink -g
 
 # Run linter
-make lint
+make lint                       # or: npm run lint
 
 # Run linter with auto-fix
-make lint-fix
+make lint-fix                   # or: npm run lint:fix
 
 # Format code
-make format
+make format                     # or: npm run format
 
 # Run tests
-make test
+make test                       # or: npm run test:run
 
 # Generate demo video (development)
-make demo
+make demo                       # or: node dist/cli.js generate -p ../../examples/demo -o youtube -d
 
 # Generate demo video (production)
-make demo-prod
+make demo-prod                  # or: node dist/cli.js generate -p ../../examples/demo -o youtube
 
-# Clean build artifacts
+# Clean build artifacts (Unix only - no npm equivalent)
 make clean
 ```
 
