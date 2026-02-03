@@ -7,9 +7,6 @@ on:
 jobs:
   publish:
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: apps/renderer
 
     steps:
       - name: Checkout code
@@ -20,26 +17,31 @@ jobs:
         with:
           node-version: 20
           cache: "npm"
-          cache-dependency-path: apps/renderer/package-lock.json
+          cache-dependency-path: "apps/renderer/package-lock.json"
 
       - name: Install dependencies
+        working-directory: apps/renderer
         run: npm ci
 
       - name: Build
+        working-directory: apps/renderer
         run: npm run build
 
       - name: Run unit tests
+        working-directory: apps/renderer
         run: npm run test:run
 
       - name: Sync version with release tag
+        working-directory: apps/renderer
         run: npm version $(echo ${GITHUB_REF##*/} | sed 's/^v//') --no-git-tag-version --allow-same-version
 
       - name: Authenticate with npm
+        run: echo "//registry.npmjs.org/:_authToken=${{ secrets.NPM_TOKEN }}" > ~/.npmrc
         env:
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
-        run: echo "//registry.npmjs.org/:_authToken=${NPM_TOKEN}" > ~/.npmrc
 
       - name: Publish to npm
+        working-directory: apps/renderer
         run: npm publish --access public
 
       - name: Success notification
