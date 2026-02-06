@@ -2,11 +2,24 @@
 
 import { Command } from 'commander';
 import { resolve, dirname, relative } from 'path';
-import { existsSync, mkdirSync, cpSync, realpathSync, readdirSync, readFileSync, writeFileSync, statSync } from 'fs';
+import {
+  existsSync,
+  mkdirSync,
+  cpSync,
+  realpathSync,
+  readdirSync,
+  readFileSync,
+  writeFileSync,
+  statSync,
+} from 'fs';
 import { join } from 'path';
 import { HTMLParser } from './html-parser.js';
 import { HTMLProjectParser } from './html-project-parser.js';
-import { makeFFmpegCommand, runFFMpeg, checkFFmpegInstalled } from './ffmpeg.js';
+import {
+  makeFFmpegCommand,
+  runFFMpeg,
+  checkFFmpegInstalled,
+} from './ffmpeg.js';
 import { getAssetDuration } from './ffprobe.js';
 
 // Read version from package.json
@@ -39,7 +52,9 @@ function handleError(error: any, operation: string) {
     }
     console.error('\n========================\n');
   } else {
-    console.error('💡 Tip: Run with --debug flag for detailed error information\n');
+    console.error(
+      '💡 Tip: Run with --debug flag for detailed error information\n',
+    );
   }
 }
 
@@ -47,7 +62,7 @@ program
   .name('staticstripes')
   .description('CLI tool for rendering video projects')
   .version(version)
-  .option('--debug', 'Enable debug mode with detailed error messages')
+  .option('-d, --debug', 'Enable debug mode with detailed error messages')
   .hook('preAction', (thisCommand) => {
     // Check if --debug flag is set on any command
     const opts = thisCommand.opts();
@@ -61,8 +76,18 @@ program
   .command('generate')
   .description('Generate video output from a project')
   .option('-p, --project <path>', 'Path to project directory', '.')
-  .option('-o, --output <name>', 'Output name to render (renders all if not specified)')
-  .option('-d, --dev', 'Use fast encoding preset for development (ultrafast)')
+  .option(
+    '-o, --output <name>',
+    'Output name to render (renders all if not specified)',
+  )
+  .option(
+    '-p, --preview',
+    'Use fast encoding preset for development (ultrafast)',
+  )
+  .option(
+    '--ffmpeg-args <args>',
+    'Extra FFmpeg arguments to append (e.g., "-crf 23 -tune film")',
+  )
   .action(async (options) => {
     try {
       // Check if FFmpeg is installed
@@ -101,7 +126,9 @@ program
 
       // Validate requested output exists
       if (options.output && !allOutputs.includes(options.output)) {
-        console.error(`Error: Output "${options.output}" not found in project.html`);
+        console.error(
+          `Error: Output "${options.output}" not found in project.html`,
+        );
         console.error(`Available outputs: ${allOutputs.join(', ')}`);
         process.exit(1);
       }
@@ -139,11 +166,14 @@ program
         const filterBuf = await project.build(outputName);
         const filter = filterBuf.render();
 
-        console.log('\n=== Filter Graph ===\n');
-        console.log(filter);
-
         // Generate FFmpeg command with appropriate preset
-        const ffmpegCommand = makeFFmpegCommand(project, filter, outputName, preset);
+        const ffmpegCommand = makeFFmpegCommand(
+          project,
+          filter,
+          outputName,
+          preset,
+          options.ffmpegArgs,
+        );
 
         if (isDebugMode) {
           console.log('\n=== FFmpeg Command ===\n');
@@ -177,7 +207,9 @@ program
   .option('-u, --upload <platform>', 'Platform to upload to (e.g., youtube)')
   .action(() => {
     console.log('Upload command is not yet implemented.');
-    console.log('This feature will allow uploading videos to platforms like YouTube.');
+    console.log(
+      'This feature will allow uploading videos to platforms like YouTube.',
+    );
     process.exit(0);
   });
 
@@ -248,7 +280,11 @@ program
       console.log(`📄 Scanning for media files...\n`);
 
       // Find all media files recursively
-      const mediaFiles: { path: string; relativePath: string; type: 'video' | 'audio' | 'image' }[] = [];
+      const mediaFiles: {
+        path: string;
+        relativePath: string;
+        type: 'video' | 'audio' | 'image';
+      }[] = [];
 
       const scanDirectory = (dir: string) => {
         const entries = readdirSync(dir);
@@ -285,11 +321,13 @@ program
       mediaFiles.sort((a, b) => a.relativePath.localeCompare(b.relativePath));
 
       // Group by type and assign names
-      const videos = mediaFiles.filter(f => f.type === 'video');
-      const audios = mediaFiles.filter(f => f.type === 'audio');
-      const images = mediaFiles.filter(f => f.type === 'image');
+      const videos = mediaFiles.filter((f) => f.type === 'video');
+      const audios = mediaFiles.filter((f) => f.type === 'audio');
+      const images = mediaFiles.filter((f) => f.type === 'image');
 
-      console.log(`Found ${videos.length} video(s), ${audios.length} audio(s), ${images.length} image(s)\n`);
+      console.log(
+        `Found ${videos.length} video(s), ${audios.length} audio(s), ${images.length} image(s)\n`,
+      );
 
       if (mediaFiles.length === 0) {
         console.log('No media files found.');
@@ -301,19 +339,25 @@ program
 
       videos.forEach((file, index) => {
         const name = `clip_${index + 1}`;
-        assetTags.push(`  <asset data-name="${name}" data-path="./${file.relativePath}" />`);
+        assetTags.push(
+          `  <asset data-name="${name}" data-path="./${file.relativePath}" />`,
+        );
         console.log(`${name}: ${file.relativePath}`);
       });
 
       audios.forEach((file, index) => {
         const name = `track_${index + 1}`;
-        assetTags.push(`  <asset data-name="${name}" data-path="./${file.relativePath}" />`);
+        assetTags.push(
+          `  <asset data-name="${name}" data-path="./${file.relativePath}" />`,
+        );
         console.log(`${name}: ${file.relativePath}`);
       });
 
       images.forEach((file, index) => {
         const name = `image_${index + 1}`;
-        assetTags.push(`  <asset data-name="${name}" data-path="./${file.relativePath}" />`);
+        assetTags.push(
+          `  <asset data-name="${name}" data-path="./${file.relativePath}" />`,
+        );
         console.log(`${name}: ${file.relativePath}`);
       });
 
@@ -326,13 +370,19 @@ program
       if (assetsMatch) {
         // Replace existing assets section
         const newAssetsSection = `<assets>\n${assetTags.join('\n')}\n</assets>`;
-        content = content.replace(/<assets>[\s\S]*?<\/assets>/, newAssetsSection);
+        content = content.replace(
+          /<assets>[\s\S]*?<\/assets>/,
+          newAssetsSection,
+        );
       } else {
         // Add assets section before </project> or at the end
         const newAssetsSection = `\n<assets>\n${assetTags.join('\n')}\n</assets>\n`;
 
         if (content.includes('</outputs>')) {
-          content = content.replace('</outputs>', `</outputs>${newAssetsSection}`);
+          content = content.replace(
+            '</outputs>',
+            `</outputs>${newAssetsSection}`,
+          );
         } else if (content.includes('</style>')) {
           content = content.replace('</style>', `</style>${newAssetsSection}`);
         } else {

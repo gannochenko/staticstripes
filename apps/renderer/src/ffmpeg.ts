@@ -97,6 +97,7 @@ export function makeFFmpegCommand(
   filterComplex: string,
   outputName: string,
   preset: 'ultrafast' | 'medium' = 'medium',
+  extraArgs?: string,
 ): string {
   const parts: string[] = ['ffmpeg'];
 
@@ -162,6 +163,11 @@ export function makeFFmpegCommand(
   // Audio encoding parameters
   parts.push('-c:a aac'); // AAC audio codec
   parts.push('-b:a 192k'); // Audio bitrate
+
+  // Add extra FFmpeg arguments if provided
+  if (extraArgs) {
+    parts.push(extraArgs);
+  }
 
   // Add output path
   parts.push(`"${output.path}"`);

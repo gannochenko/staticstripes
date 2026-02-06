@@ -37,7 +37,7 @@ export async function renderContainer(
   const { container, cssText, width, height, projectDir } = options;
 
   // Create cache directory
-  const cacheDir = resolve(projectDir, '.cache', 'containers');
+  const cacheDir = resolve(projectDir, 'cache', 'containers');
   if (!existsSync(cacheDir)) {
     await mkdir(cacheDir, { recursive: true });
   }
@@ -183,7 +183,7 @@ export async function renderContainers(
   }
 
   // Clean up stale cache entries
-  const cacheDir = resolve(projectDir, '.cache', 'containers');
+  const cacheDir = resolve(projectDir, 'cache', 'containers');
   await cleanupStaleCache(cacheDir, activeCacheKeys);
 
   return results;
