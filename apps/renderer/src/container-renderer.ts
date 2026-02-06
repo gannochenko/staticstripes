@@ -11,6 +11,7 @@ export interface RenderContainerOptions {
   width: number;
   height: number;
   projectDir: string;
+  outputName: string;
 }
 
 export interface ContainerRenderResult {
@@ -19,12 +20,17 @@ export interface ContainerRenderResult {
 }
 
 /**
- * Generates a hash from container content and CSS
+ * Generates a hash from container content, CSS, and output name
  */
-function generateCacheKey(containerHtml: string, cssText: string): string {
+function generateCacheKey(
+  containerHtml: string,
+  cssText: string,
+  outputName: string,
+): string {
   const hash = createHash('sha256');
   hash.update(containerHtml);
   hash.update(cssText);
+  hash.update(outputName);
   return hash.digest('hex').substring(0, 16);
 }
 
@@ -34,7 +40,7 @@ function generateCacheKey(containerHtml: string, cssText: string): string {
 export async function renderContainer(
   options: RenderContainerOptions,
 ): Promise<ContainerRenderResult> {
-  const { container, cssText, width, height, projectDir } = options;
+  const { container, cssText, width, height, projectDir, outputName } = options;
 
   // Create cache directory
   const cacheDir = resolve(projectDir, 'cache', 'containers');
@@ -43,7 +49,7 @@ export async function renderContainer(
   }
 
   // Generate cache key from content hash
-  const cacheKey = generateCacheKey(container.htmlContent, cssText);
+  const cacheKey = generateCacheKey(container.htmlContent, cssText, outputName);
   const screenshotPath = resolve(cacheDir, `${cacheKey}.png`);
 
   // Check if cached version exists
@@ -163,13 +169,18 @@ export async function renderContainers(
   width: number,
   height: number,
   projectDir: string,
+  outputName: string,
 ): Promise<ContainerRenderResult[]> {
   const results: ContainerRenderResult[] = [];
   const activeCacheKeys = new Set<string>();
 
   // Render all containers and collect active cache keys
   for (const container of containers) {
-    const cacheKey = generateCacheKey(container.htmlContent, cssText);
+    const cacheKey = generateCacheKey(
+      container.htmlContent,
+      cssText,
+      outputName,
+    );
     activeCacheKeys.add(cacheKey);
 
     const result = await renderContainer({
@@ -178,6 +189,7 @@ export async function renderContainers(
       width,
       height,
       projectDir,
+      outputName,
     });
     results.push(result);
   }

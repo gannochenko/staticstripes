@@ -147,6 +147,7 @@ export class Project {
       output.resolution.width,
       output.resolution.height,
       projectDir,
+      outputName,
     );
 
     // Create virtual assets and update fragment assetNames

@@ -105,15 +105,15 @@ program
       console.log(`📁 Project: ${projectPath}`);
       console.log(`📄 Loading: ${projectFilePath}\n`);
 
-      // Parse the project HTML file
-      const parser = new HTMLProjectParser(
+      // Parse the project HTML file once to get output names
+      const initialParser = new HTMLProjectParser(
         await new HTMLParser().parseFile(projectFilePath),
         projectFilePath,
       );
-      const project = await parser.parse();
+      const initialProject = await initialParser.parse();
 
       // Determine which outputs to render
-      const allOutputs = Array.from(project.getOutputs().keys());
+      const allOutputs = Array.from(initialProject.getOutputs().keys());
       const outputsToRender = options.output ? [options.output] : allOutputs;
 
       if (outputsToRender.length === 0) {
@@ -137,6 +137,13 @@ program
 
       // Render each output
       for (const outputName of outputsToRender) {
+        // Re-parse the project for each output to ensure clean state
+        const parser = new HTMLProjectParser(
+          await new HTMLParser().parseFile(projectFilePath),
+          projectFilePath,
+        );
+        const project = await parser.parse();
+
         console.log(`\n${'='.repeat(60)}`);
         console.log(`📹 Rendering: ${outputName}`);
         console.log(`${'='.repeat(60)}\n`);
