@@ -1,7 +1,13 @@
 import { google, youtube_v3 } from 'googleapis';
 import { OAuth2Client } from 'google-auth-library';
-import { createReadStream, existsSync, readFileSync, writeFileSync } from 'fs';
-import { resolve } from 'path';
+import {
+  createReadStream,
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  writeFileSync,
+} from 'fs';
+import { resolve, dirname } from 'path';
 import { exec } from 'child_process';
 import { promisify } from 'util';
 import { YouTubeUpload } from './type';
@@ -35,6 +41,7 @@ export class YouTubeUploader {
   public getAuthUrl(): string {
     return this.oauth2Client.generateAuthUrl({
       access_type: 'offline',
+      prompt: 'consent', // Force consent screen to ensure refresh token is issued
       scope: SCOPES,
     });
   }
@@ -52,6 +59,13 @@ export class YouTubeUploader {
 
     // Save tokens to file
     const tokenPath = this.getTokenPath(projectDir, uploadName);
+
+    // Ensure the token directory exists
+    const tokenDir = dirname(tokenPath);
+    if (!existsSync(tokenDir)) {
+      mkdirSync(tokenDir, { recursive: true });
+    }
+
     writeFileSync(tokenPath, JSON.stringify(tokens, null, 2));
     console.log(`✅ Tokens saved to ${tokenPath}`);
   }
@@ -68,6 +82,23 @@ export class YouTubeUploader {
 
     const tokens = JSON.parse(readFileSync(tokenPath, 'utf-8'));
     this.oauth2Client.setCredentials(tokens);
+
+    // Set up auto-refresh: save updated tokens when they're refreshed
+    this.oauth2Client.on('tokens', (refreshedTokens) => {
+      // Merge with existing tokens (preserve refresh_token if not returned)
+      const currentTokens = this.oauth2Client.credentials;
+      const updatedTokens = { ...currentTokens, ...refreshedTokens };
+
+      // Ensure token directory exists
+      const tokenDir = dirname(tokenPath);
+      if (!existsSync(tokenDir)) {
+        mkdirSync(tokenDir, { recursive: true });
+      }
+
+      writeFileSync(tokenPath, JSON.stringify(updatedTokens, null, 2));
+      console.log('🔄 Access token refreshed automatically');
+    });
+
     return true;
   }
 
@@ -150,6 +181,12 @@ export class YouTubeUploader {
     timecode: number,
     outputPath: string,
   ): Promise<void> {
+    // Ensure the output directory exists
+    const outputDir = dirname(outputPath);
+    if (!existsSync(outputDir)) {
+      mkdirSync(outputDir, { recursive: true });
+    }
+
     const timeInSeconds = timecode / 1000;
     const command = `ffmpeg -y -ss ${timeInSeconds} -i "${videoPath}" -frames:v 1 -q:v 2 "${outputPath}"`;
 

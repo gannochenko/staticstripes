@@ -71,7 +71,3 @@ all: install build
 demoauth:
 	make build
 	node dist/cli.js auth -p ../../examples/demo --upload-name yt_primary
-
-demoauthc:
-	make build
-	node dist/cli.js auth-complete --upload-name yt_primary --code 4/0ASc3gC21v6czu31nwsu4JNPQd2BhbHZ3lRDXHwniBfFRoQrnVGH7HA5f6-t5q03LJfyMhQ --debug

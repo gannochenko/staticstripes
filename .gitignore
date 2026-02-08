@@ -34,3 +34,6 @@ audio/*
 *.test
 *.out
 go.sum
+
+# YouTube OAuth tokens
+.youtube-tokens/
