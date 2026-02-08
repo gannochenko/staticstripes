@@ -67,3 +67,7 @@ clean-cache:
 
 # Full build
 all: install build
+
+demoauth:
+	make build
+	node dist/cli.js auth -p ../../examples/demo --upload-name yt_primary

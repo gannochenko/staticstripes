@@ -247,19 +247,6 @@ program
   });
 
 program
-  .command('upload')
-  .description('Upload video to platforms (not yet implemented)')
-  .option('-p, --project <path>', 'Path to project directory', '.')
-  .option('-u, --upload <platform>', 'Platform to upload to (e.g., youtube)')
-  .action(() => {
-    console.log('Upload command is not yet implemented.');
-    console.log(
-      'This feature will allow uploading videos to platforms like YouTube.',
-    );
-    process.exit(0);
-  });
-
-program
   .command('bootstrap')
   .description('Create a new project from template')
   .requiredOption('-n, --name <name>', 'Name of the new project')
@@ -454,21 +441,60 @@ program
   .action(async (options) => {
     try {
       // Get OAuth credentials from environment variables
-      const clientId = process.env.GOOGLE_CLIENT_ID;
-      const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
+      const clientId = process.env.STATICSTRIPES_GOOGLE_CLIENT_ID;
+      const clientSecret = process.env.STATICSTRIPES_GOOGLE_CLIENT_SECRET;
 
       if (!clientId || !clientSecret) {
-        console.error(
-          'Error: GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET environment variables must be set',
-        );
-        console.error(
-          '\nTo set them, add to your ~/.bashrc or ~/.zshrc:',
-        );
-        console.error('  export GOOGLE_CLIENT_ID="your-client-id"');
-        console.error('  export GOOGLE_CLIENT_SECRET="your-client-secret"');
-        console.error(
-          '\nGet credentials from: https://console.cloud.google.com/apis/credentials',
-        );
+        console.error('❌ Error: STATICSTRIPES_GOOGLE_CLIENT_ID and STATICSTRIPES_GOOGLE_CLIENT_SECRET environment variables are not set\n');
+        console.error('📋 Getting Google OAuth Credentials:\n');
+        console.error('1. Go to Google Cloud Console:');
+        console.error('   https://console.cloud.google.com/\n');
+        console.error('2. Create or select a project\n');
+        console.error('3. Enable YouTube Data API v3:');
+        console.error('   - Go to "APIs & Services" > "Library"');
+        console.error('   - Search for "YouTube Data API v3"');
+        console.error('   - Click "Enable"\n');
+        console.error('4. Configure OAuth Consent Screen:');
+        console.error('   - Go to "APIs & Services" > "OAuth consent screen"');
+        console.error('   - Choose "External" user type');
+        console.error('   - Fill in app name and contact emails');
+        console.error('   - Add scope: https://www.googleapis.com/auth/youtube.upload');
+        console.error('   - Add your email as a test user\n');
+        console.error('5. Create OAuth 2.0 Credentials:');
+        console.error('   - Go to "APIs & Services" > "Credentials"');
+        console.error('   - Click "Create Credentials" > "OAuth client ID"');
+        console.error('   - Choose "Web application"');
+        console.error('   - Add redirect URI: http://localhost:3000/oauth2callback');
+        console.error('   - Click "Create"\n');
+        console.error('6. Copy your Client ID and Client Secret\n');
+        console.error('7. Set environment variables:\n');
+
+        // Platform-specific instructions
+        const platform = process.platform;
+        if (platform === 'win32') {
+          console.error('   PowerShell (Recommended) - Run as Administrator:');
+          console.error('     [System.Environment]::SetEnvironmentVariable("STATICSTRIPES_GOOGLE_CLIENT_ID", "your-client-id.apps.googleusercontent.com", "User")');
+          console.error('     [System.Environment]::SetEnvironmentVariable("STATICSTRIPES_GOOGLE_CLIENT_SECRET", "your-client-secret", "User")');
+          console.error('   Then restart your terminal\n');
+          console.error('   Or Command Prompt - Run as Administrator:');
+          console.error('     setx STATICSTRIPES_GOOGLE_CLIENT_ID "your-client-id.apps.googleusercontent.com"');
+          console.error('     setx STATICSTRIPES_GOOGLE_CLIENT_SECRET "your-client-secret"');
+          console.error('   Then restart your terminal\n');
+        } else if (platform === 'darwin') {
+          console.error('   Add to ~/.zshrc (or ~/.bash_profile for bash):');
+          console.error('     export STATICSTRIPES_GOOGLE_CLIENT_ID="your-client-id.apps.googleusercontent.com"');
+          console.error('     export STATICSTRIPES_GOOGLE_CLIENT_SECRET="your-client-secret"\n');
+          console.error('   Then reload your shell:');
+          console.error('     source ~/.zshrc\n');
+        } else {
+          // Linux and others
+          console.error('   Add to ~/.bashrc (or ~/.zshrc for zsh):');
+          console.error('     export STATICSTRIPES_GOOGLE_CLIENT_ID="your-client-id.apps.googleusercontent.com"');
+          console.error('     export STATICSTRIPES_GOOGLE_CLIENT_SECRET="your-client-secret"\n');
+          console.error('   Then reload your shell:');
+          console.error('     source ~/.bashrc  # or source ~/.zshrc\n');
+        }
+
         process.exit(1);
       }
 
@@ -521,11 +547,13 @@ program
   .requiredOption('--code <code>', 'Authorization code from OAuth flow')
   .action(async (options) => {
     try {
-      const clientId = process.env.GOOGLE_CLIENT_ID;
-      const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
+      const clientId = process.env.STATICSTRIPES_GOOGLE_CLIENT_ID;
+      const clientSecret = process.env.STATICSTRIPES_GOOGLE_CLIENT_SECRET;
 
       if (!clientId || !clientSecret) {
-        console.error('Error: OAuth credentials not set in environment');
+        console.error('❌ Error: STATICSTRIPES_GOOGLE_CLIENT_ID and STATICSTRIPES_GOOGLE_CLIENT_SECRET environment variables are not set');
+        console.error('\n💡 Run: staticstripes auth --help');
+        console.error('   for complete setup instructions\n');
         process.exit(1);
       }
 
@@ -549,11 +577,13 @@ program
   .requiredOption('--upload-name <name>', 'Name of the upload configuration')
   .action(async (options) => {
     try {
-      const clientId = process.env.GOOGLE_CLIENT_ID;
-      const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
+      const clientId = process.env.STATICSTRIPES_GOOGLE_CLIENT_ID;
+      const clientSecret = process.env.STATICSTRIPES_GOOGLE_CLIENT_SECRET;
 
       if (!clientId || !clientSecret) {
-        console.error('Error: OAuth credentials not set in environment');
+        console.error('❌ Error: STATICSTRIPES_GOOGLE_CLIENT_ID and STATICSTRIPES_GOOGLE_CLIENT_SECRET environment variables are not set');
+        console.error('\n💡 Run: staticstripes auth --help');
+        console.error('   for complete setup instructions\n');
         process.exit(1);
       }
 
