@@ -48,9 +48,9 @@
     "css-tree": "^3.1.0",
     "expr-eval": "^2.0.2",
     "googleapis": "^171.4.0",
+    "htmlparser2": "^10.1.0",
     "jsdom": "^25.0.1",
     "open": "^11.0.0",
-    "parse5": "^7.1.2",
     "puppeteer": "^24.36.1"
   }
 }

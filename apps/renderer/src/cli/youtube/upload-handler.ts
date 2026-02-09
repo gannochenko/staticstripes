@@ -1,6 +1,6 @@
 import { resolve } from 'path';
-import { YouTubeUploader } from '../../youtube-uploader.js';
-import { Project } from '../../project.js';
+import { YouTubeUploader } from '../../youtube-uploader';
+import { Project } from '../../project';
 
 export interface YouTubeUploadOptions {
   uploadName: string;
@@ -39,7 +39,10 @@ export async function handleYouTubeUpload(
 
   // Create uploader and load tokens
   const uploader = new YouTubeUploader(options.clientId, options.clientSecret);
-  const hasTokens = uploader.loadTokens(options.uploadName, options.projectPath);
+  const hasTokens = uploader.loadTokens(
+    options.uploadName,
+    options.projectPath,
+  );
 
   if (!hasTokens) {
     throw new Error(
@@ -61,7 +64,7 @@ export async function handleYouTubeUpload(
     );
     const thumbnailPath = resolve(
       options.projectPath,
-      '.youtube-tokens',
+      '.cache',
       'thumbnail.png',
     );
     await uploader.extractThumbnail(

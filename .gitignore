@@ -37,3 +37,6 @@ go.sum
 
 # YouTube OAuth tokens
 .youtube-tokens/
+
+# Cache folder (thumbnails, temporary files)
+.cache/

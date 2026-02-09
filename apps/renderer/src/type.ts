@@ -1,9 +1,8 @@
-import { type DefaultTreeAdapterMap } from 'parse5';
+import type { AnyNode, Document, Element } from 'domhandler';
 import { CompiledExpression } from './expression-parser';
 
-export type ASTNode = DefaultTreeAdapterMap['node'];
-export type Document = DefaultTreeAdapterMap['document'];
-export type Element = DefaultTreeAdapterMap['element'];
+export type ASTNode = AnyNode;
+export type { Document, Element };
 
 export type CSSProperties = {
   [key: string]: string;

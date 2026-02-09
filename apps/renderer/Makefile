@@ -40,10 +40,6 @@ test:
 test-ui:
 	npm run test:ui
 
-# Generate demo video (youtube output) with preview preset
-demo:
-	node dist/cli.js generate -p ../../examples/demo -o youtube --option meh --debug
-
 # Generate demo video with production quality
 demo-prod:
 	node dist/cli.js generate -p ../../examples/demo -o youtube --option production
@@ -68,6 +64,15 @@ clean-cache:
 # Full build
 all: install build
 
+# Generate demo video (youtube output) with preview preset
+demo:
+	make build
+	node dist/cli.js generate -p ../../examples/demo -o youtube --option meh --debug
+
 demoauth:
 	make build
 	node dist/cli.js auth -p ../../examples/demo --upload-name yt_primary
+
+demoupload:
+	make build
+	node dist/cli.js upload -p ../../examples/demo --upload-name yt_primary

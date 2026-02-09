@@ -1,12 +1,11 @@
-import { parse, type DefaultTreeAdapterMap } from 'parse5';
+import * as htmlparser2 from 'htmlparser2';
 import { readFile } from 'fs/promises';
 import * as csstree from 'css-tree';
 import { CSSProperties, ParsedHtml } from './type';
+import type { Element, AnyNode, Document } from 'domhandler';
 
-export type ASTNode = DefaultTreeAdapterMap['node'];
-export type Document = DefaultTreeAdapterMap['document'];
-export type Element = DefaultTreeAdapterMap['element'];
-// export type Attribute = DefaultTreeAdapterMap['attribute'];
+export type ASTNode = AnyNode;
+export type { Document, Element };
 
 export interface EnhancedElement extends Element {
   computedStyles?: CSSProperties;
@@ -34,7 +33,11 @@ export class HTMLParser {
    * @returns The parsed project with AST and computed styles
    */
   public parse(html: string): ParsedHtml {
-    const ast = parse(html);
+    const ast = htmlparser2.parseDocument(html, {
+      xmlMode: true, // Enable XML mode for proper self-closing tag support
+      lowerCaseTags: false, // Preserve case for custom tags
+      lowerCaseAttributeNames: false, // Preserve case for attributes
+    });
     const cssText = this.extractCSS(ast);
     const cssRules = csstree.parse(cssText);
     const elements = new Map<Element, CSSProperties>();
@@ -90,8 +93,8 @@ export class HTMLParser {
    * Gets the class attribute value from an element
    */
   private getClassNames(element: Element): string[] {
-    const classAttr = element.attrs.find((attr) => attr.name === 'class');
-    return classAttr ? classAttr.value.split(/\s+/).filter(Boolean) : [];
+    const classAttr = element.attribs?.class;
+    return classAttr ? classAttr.split(/\s+/).filter(Boolean) : [];
   }
 
   /**
@@ -108,14 +111,13 @@ export class HTMLParser {
 
     // Tag selector
     if (/^[a-z]+$/i.test(trimmedSelector)) {
-      return element.tagName === trimmedSelector;
+      return element.name === trimmedSelector;
     }
 
     // ID selector (basic support)
     if (trimmedSelector.startsWith('#')) {
       const id = trimmedSelector.slice(1);
-      const idAttr = element.attrs.find((attr) => attr.name === 'id');
-      return idAttr?.value === id;
+      return element.attribs?.id === id;
     }
 
     return false;
@@ -130,7 +132,7 @@ export class HTMLParser {
     elementsMap: Map<Element, CSSProperties>,
   ): void {
     const traverse = (currentNode: ASTNode) => {
-      if ('tagName' in currentNode) {
+      if (currentNode.type === 'tag') {
         const element = currentNode as Element;
         const computedStyles: CSSProperties = {};
 
@@ -144,8 +146,8 @@ export class HTMLParser {
         elementsMap.set(element, computedStyles);
       }
 
-      if ('childNodes' in currentNode && currentNode.childNodes) {
-        for (const child of currentNode.childNodes) {
+      if ('children' in currentNode && currentNode.children) {
+        for (const child of currentNode.children) {
           traverse(child);
         }
       }
@@ -168,12 +170,12 @@ export function findElementsByTagName(
   const results: Element[] = [];
 
   function traverse(currentNode: ASTNode) {
-    if ('tagName' in currentNode && currentNode.tagName === tagName) {
+    if (currentNode.type === 'tag' && (currentNode as Element).name === tagName) {
       results.push(currentNode as Element);
     }
 
-    if ('childNodes' in currentNode && currentNode.childNodes) {
-      for (const child of currentNode.childNodes) {
+    if ('children' in currentNode && currentNode.children) {
+      for (const child of currentNode.children) {
         traverse(child);
       }
     }
@@ -192,12 +194,12 @@ export function getTextContent(node: ASTNode): string {
   let text = '';
 
   function traverse(currentNode: ASTNode) {
-    if ('value' in currentNode && typeof currentNode.value === 'string') {
-      text += currentNode.value;
+    if (currentNode.type === 'text' && 'data' in currentNode) {
+      text += currentNode.data;
     }
 
-    if ('childNodes' in currentNode && currentNode.childNodes) {
-      for (const child of currentNode.childNodes) {
+    if ('children' in currentNode && currentNode.children) {
+      for (const child of currentNode.children) {
         traverse(child);
       }
     }

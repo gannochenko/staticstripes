@@ -19,6 +19,19 @@ import { parseValueLazy, CompiledExpression } from './expression-parser';
 
 const execFileAsync = promisify(execFile);
 
+/**
+ * Helper to get attributes as a Map from htmlparser2 element
+ */
+function getAttrs(element: Element): Map<string, string> {
+  const map = new Map<string, string>();
+  if (element.attribs) {
+    for (const [name, value] of Object.entries(element.attribs)) {
+      map.set(name, value);
+    }
+  }
+  return map;
+}
+
 export class HTMLProjectParser {
   private projectDir: string;
 
@@ -101,17 +114,17 @@ export class HTMLProjectParser {
     const results: Element[] = [];
 
     const traverse = (node: ASTNode) => {
-      if ('tagName' in node) {
+      if (node.type === 'tag') {
         const element = node as Element;
 
         // Check if element is an <asset> tag
-        if (element.tagName === 'asset') {
+        if (element.name === 'asset') {
           results.push(element);
         }
       }
 
-      if ('childNodes' in node && node.childNodes) {
-        for (const child of node.childNodes) {
+      if ('children' in node && node.children) {
+        for (const child of node.children) {
           traverse(child);
         }
       }
@@ -127,7 +140,7 @@ export class HTMLProjectParser {
   private async extractAssetFromElement(
     element: Element,
   ): Promise<Asset | null> {
-    const attrs = new Map(element.attrs.map((attr) => [attr.name, attr.value]));
+    const attrs = getAttrs(element);
 
     // Extract name (required)
     const name = attrs.get('data-name') || attrs.get('id');
@@ -157,7 +170,7 @@ export class HTMLProjectParser {
       type = explicitType;
     } else {
       // Infer from tag name or file extension
-      type = this.inferAssetType(element.tagName, relativePath);
+      type = this.inferAssetType(element.name, relativePath);
     }
 
     // Get duration using ffprobe (in ms) - only for audio/video
@@ -409,9 +422,7 @@ export class HTMLProjectParser {
 
     // Process each output element
     for (const element of outputElements) {
-      const attrs = new Map(
-        element.attrs.map((attr) => [attr.name, attr.value]),
-      );
+      const attrs = getAttrs(element);
 
       // Extract name
       const name = attrs.get('name') || 'output';
@@ -452,17 +463,17 @@ export class HTMLProjectParser {
     const results: Element[] = [];
 
     const traverse = (node: ASTNode) => {
-      if ('tagName' in node) {
+      if (node.type === 'tag') {
         const element = node as Element;
 
         // Check if element is an <output> tag
-        if (element.tagName === 'output') {
+        if (element.name === 'output') {
           results.push(element);
         }
       }
 
-      if ('childNodes' in node && node.childNodes) {
-        for (const child of node.childNodes) {
+      if ('children' in node && node.children) {
+        for (const child of node.children) {
           traverse(child);
         }
       }
@@ -482,14 +493,12 @@ export class HTMLProjectParser {
     // Process each <ffmpeg> element (should typically be only one)
     for (const ffmpegElement of ffmpegElements) {
       // Find all <option> child elements
-      if ('childNodes' in ffmpegElement && ffmpegElement.childNodes) {
-        for (const child of ffmpegElement.childNodes) {
-          if ('tagName' in child) {
+      if ('children' in ffmpegElement && ffmpegElement.children) {
+        for (const child of ffmpegElement.children) {
+          if (child.type === 'tag') {
             const childElement = child as Element;
-            if (childElement.tagName === 'option') {
-              const attrs = new Map(
-                childElement.attrs.map((attr) => [attr.name, attr.value]),
-              );
+            if (childElement.name === 'option') {
+              const attrs = getAttrs(childElement);
 
               const name = attrs.get('name');
               if (!name) {
@@ -498,10 +507,10 @@ export class HTMLProjectParser {
 
               // Get the text content (the FFmpeg arguments)
               let args = '';
-              if ('childNodes' in childElement && childElement.childNodes) {
-                for (const textNode of childElement.childNodes) {
-                  if ('value' in textNode) {
-                    args += textNode.value;
+              if ('children' in childElement && childElement.children) {
+                for (const textNode of childElement.children) {
+                  if (textNode.type === 'text' && 'data' in textNode) {
+                    args += textNode.data;
                   }
                 }
               }
@@ -531,17 +540,17 @@ export class HTMLProjectParser {
     const results: Element[] = [];
 
     const traverse = (node: ASTNode) => {
-      if ('tagName' in node) {
+      if (node.type === 'tag') {
         const element = node as Element;
 
         // Check if element is an <ffmpeg> tag
-        if (element.tagName === 'ffmpeg') {
+        if (element.name === 'ffmpeg') {
           results.push(element);
         }
       }
 
-      if ('childNodes' in node && node.childNodes) {
-        for (const child of node.childNodes) {
+      if ('children' in node && node.children) {
+        for (const child of node.children) {
           traverse(child);
         }
       }
@@ -559,11 +568,11 @@ export class HTMLProjectParser {
     const uploads = new Map<string, YouTubeUpload>();
 
     for (const uploadsElement of uploadsElements) {
-      if ('childNodes' in uploadsElement && uploadsElement.childNodes) {
-        for (const child of uploadsElement.childNodes) {
-          if ('tagName' in child) {
+      if ('children' in uploadsElement && uploadsElement.children) {
+        for (const child of uploadsElement.children) {
+          if (child.type === 'tag') {
             const childElement = child as Element;
-            if (childElement.tagName === 'youtube') {
+            if (childElement.name === 'youtube') {
               const upload = this.parseYouTubeElement(childElement);
               if (upload) {
                 uploads.set(upload.name, upload);
@@ -581,7 +590,7 @@ export class HTMLProjectParser {
    * Parses a single <youtube> element
    */
   private parseYouTubeElement(element: Element): YouTubeUpload | null {
-    const attrs = new Map(element.attrs.map((attr) => [attr.name, attr.value]));
+    const attrs = getAttrs(element);
 
     const name = attrs.get('name');
     const outputName = attrs.get('data-output-name');
@@ -603,18 +612,18 @@ export class HTMLProjectParser {
     let description = '';
     let thumbnailTimecode: number | undefined;
 
-    if ('childNodes' in element && element.childNodes) {
-      for (const child of element.childNodes) {
-        if ('tagName' in child) {
+    if ('children' in element && element.children) {
+      for (const child of element.children) {
+        if (child.type === 'tag') {
           const childElement = child as Element;
 
-          switch (childElement.tagName) {
+          switch (childElement.name) {
             case 'title': {
               // Get text content
-              if ('childNodes' in childElement && childElement.childNodes) {
-                for (const textNode of childElement.childNodes) {
-                  if ('value' in textNode) {
-                    uploadTitle = (uploadTitle || '') + textNode.value;
+              if ('children' in childElement && childElement.children) {
+                for (const textNode of childElement.children) {
+                  if (textNode.type === 'text' && 'data' in textNode) {
+                    uploadTitle = (uploadTitle || '') + textNode.data;
                   }
                 }
               }
@@ -634,9 +643,7 @@ export class HTMLProjectParser {
               madeForKids = true;
               break;
             case 'tag': {
-              const tagAttrs = new Map(
-                childElement.attrs.map((attr) => [attr.name, attr.value]),
-              );
+              const tagAttrs = getAttrs(childElement);
               const tagName = tagAttrs.get('name');
               if (tagName) {
                 tags.push(tagName);
@@ -644,9 +651,7 @@ export class HTMLProjectParser {
               break;
             }
             case 'category': {
-              const catAttrs = new Map(
-                childElement.attrs.map((attr) => [attr.name, attr.value]),
-              );
+              const catAttrs = getAttrs(childElement);
               const catName = catAttrs.get('name');
               if (catName) {
                 category = catName;
@@ -654,9 +659,7 @@ export class HTMLProjectParser {
               break;
             }
             case 'language': {
-              const langAttrs = new Map(
-                childElement.attrs.map((attr) => [attr.name, attr.value]),
-              );
+              const langAttrs = getAttrs(childElement);
               const langName = langAttrs.get('name');
               if (langName) {
                 language = langName;
@@ -665,19 +668,17 @@ export class HTMLProjectParser {
             }
             case 'pre': {
               // Get text content
-              if ('childNodes' in childElement && childElement.childNodes) {
-                for (const textNode of childElement.childNodes) {
-                  if ('value' in textNode) {
-                    description += textNode.value;
+              if ('children' in childElement && childElement.children) {
+                for (const textNode of childElement.children) {
+                  if (textNode.type === 'text' && 'data' in textNode) {
+                    description += textNode.data;
                   }
                 }
               }
               break;
             }
             case 'thumbnail': {
-              const thumbAttrs = new Map(
-                childElement.attrs.map((attr) => [attr.name, attr.value]),
-              );
+              const thumbAttrs = getAttrs(childElement);
               const timecode = thumbAttrs.get('data-timecode');
               if (timecode) {
                 // Parse timecode (e.g., "1000ms" or "1s")
@@ -724,10 +725,10 @@ export class HTMLProjectParser {
     const titleElement = titleElements[0];
     let title = '';
 
-    if ('childNodes' in titleElement && titleElement.childNodes) {
-      for (const textNode of titleElement.childNodes) {
-        if ('value' in textNode) {
-          title += textNode.value;
+    if ('children' in titleElement && titleElement.children) {
+      for (const textNode of titleElement.children) {
+        if (textNode.type === 'text' && 'data' in textNode) {
+          title += textNode.data;
         }
       }
     }
@@ -741,24 +742,26 @@ export class HTMLProjectParser {
   private findTitleElements(): Element[] {
     const results: Element[] = [];
 
-    const traverse = (node: ASTNode, depth: number = 0) => {
-      if ('tagName' in node) {
+    const traverse = (node: ASTNode, insideUploads: boolean = false) => {
+      if (node.type === 'tag') {
         const element = node as Element;
 
-        // Only find top-level <title> tags, not inside <youtube> elements
-        if (element.tagName === 'title' && depth === 0) {
+        // Find top-level <title> tags (not inside <youtube> elements in <uploads>)
+        if (element.name === 'title' && !insideUploads) {
           results.push(element);
         }
 
-        // Don't traverse into <uploads> sections
-        if (element.tagName === 'uploads') {
-          return;
-        }
-      }
+        // Mark that we're inside an uploads section
+        const isUploadsSection = element.name === 'uploads';
 
-      if ('childNodes' in node && node.childNodes) {
-        for (const child of node.childNodes) {
-          traverse(child, depth + 1);
+        if ('children' in node && node.children) {
+          for (const child of node.children) {
+            traverse(child, insideUploads || isUploadsSection);
+          }
+        }
+      } else if ('children' in node && node.children) {
+        for (const child of node.children) {
+          traverse(child, insideUploads);
         }
       }
     };
@@ -774,16 +777,16 @@ export class HTMLProjectParser {
     const results: Element[] = [];
 
     const traverse = (node: ASTNode) => {
-      if ('tagName' in node) {
+      if (node.type === 'tag') {
         const element = node as Element;
 
-        if (element.tagName === 'uploads') {
+        if (element.name === 'uploads') {
           results.push(element);
         }
       }
 
-      if ('childNodes' in node && node.childNodes) {
-        for (const child of node.childNodes) {
+      if ('children' in node && node.children) {
+        for (const child of node.children) {
           traverse(child);
         }
       }
@@ -888,11 +891,11 @@ export class HTMLProjectParser {
 
     // Get direct sequence children only
     const sequences: Element[] = [];
-    if ('childNodes' in projectElement && projectElement.childNodes) {
-      for (const child of projectElement.childNodes) {
-        if ('tagName' in child) {
+    if ('children' in projectElement && projectElement.children) {
+      for (const child of projectElement.children) {
+        if (child.type === 'tag') {
           const element = child as Element;
-          if (element.tagName === 'sequence') {
+          if (element.name === 'sequence') {
             sequences.push(element);
           }
         }
@@ -907,15 +910,15 @@ export class HTMLProjectParser {
    */
   private findProjectElement(): Element | null {
     const traverse = (node: ASTNode): Element | null => {
-      if ('tagName' in node) {
+      if (node.type === 'tag') {
         const element = node as Element;
-        if (element.tagName === 'project') {
+        if (element.name === 'project') {
           return element;
         }
       }
 
-      if ('childNodes' in node && node.childNodes) {
-        for (const child of node.childNodes) {
+      if ('children' in node && node.children) {
+        for (const child of node.children) {
           const result = traverse(child);
           if (result) return result;
         }
@@ -935,23 +938,23 @@ export class HTMLProjectParser {
     const fragments: Element[] = [];
 
     const traverse = (node: ASTNode) => {
-      if ('tagName' in node) {
+      if (node.type === 'tag') {
         const element = node as Element;
-        if (element.tagName === 'fragment') {
+        if (element.name === 'fragment') {
           fragments.push(element);
         }
       }
 
-      if ('childNodes' in node && node.childNodes) {
-        for (const child of node.childNodes) {
+      if ('children' in node && node.children) {
+        for (const child of node.children) {
           traverse(child);
         }
       }
     };
 
     // Start traversing from the sequence element's children
-    if ('childNodes' in sequenceElement && sequenceElement.childNodes) {
-      for (const child of sequenceElement.childNodes) {
+    if ('children' in sequenceElement && sequenceElement.children) {
+      for (const child of sequenceElement.children) {
         traverse(child);
       }
     }
@@ -972,7 +975,7 @@ export class HTMLProjectParser {
         overlayZIndexRight: number;
       })
     | null {
-    const attrs = new Map(element.attrs.map((attr) => [attr.name, attr.value]));
+    const attrs = getAttrs(element);
     const styles = this.html.css.get(element) || {};
 
     // 1. Extract fragment ID from id attribute or generate one
@@ -1088,20 +1091,17 @@ export class HTMLProjectParser {
    */
   private extractFragmentContainer(element: Element): Container | undefined {
     // Find first container child
-    if (!('childNodes' in element) || !element.childNodes) {
+    if (!('children' in element) || !element.children) {
       return undefined;
     }
 
-    for (const child of element.childNodes) {
-      if ('tagName' in child && child.tagName === 'container') {
+    for (const child of element.children) {
+      if (child.type === 'tag' && child.name === 'container') {
         const containerElement = child as Element;
 
         // Get id attribute
-        const idAttr = containerElement.attrs.find(
-          (attr) => attr.name === 'id',
-        );
         const id =
-          idAttr?.value ||
+          containerElement.attribs?.id ||
           `container_${Math.random().toString(36).substring(2, 11)}`;
 
         // Get innerHTML (serialize all children)
@@ -1124,37 +1124,39 @@ export class HTMLProjectParser {
     let html = '';
 
     const traverse = (node: ASTNode) => {
-      if ('nodeName' in node && node.nodeName === '#text') {
+      if (node.type === 'text') {
         // Text node
-        if ('value' in node && typeof node.value === 'string') {
-          html += node.value;
+        if ('data' in node && typeof node.data === 'string') {
+          html += node.data;
         }
-      } else if ('tagName' in node) {
+      } else if (node.type === 'tag') {
         // Element node
         const el = node as Element;
-        html += `<${el.tagName}`;
+        html += `<${el.name}`;
 
         // Add attributes
-        for (const attr of el.attrs) {
-          html += ` ${attr.name}="${attr.value}"`;
+        if (el.attribs) {
+          for (const [name, value] of Object.entries(el.attribs)) {
+            html += ` ${name}="${value}"`;
+          }
         }
 
         html += '>';
 
         // Process children
-        if ('childNodes' in el && el.childNodes) {
-          for (const child of el.childNodes) {
+        if ('children' in el && el.children) {
+          for (const child of el.children) {
             traverse(child);
           }
         }
 
-        html += `</${el.tagName}>`;
+        html += `</${el.name}>`;
       }
     };
 
     // Serialize all children
-    if ('childNodes' in element && element.childNodes) {
-      for (const child of element.childNodes) {
+    if ('children' in element && element.children) {
+      for (const child of element.children) {
         traverse(child);
       }
     }
