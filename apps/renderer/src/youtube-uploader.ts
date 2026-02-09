@@ -16,7 +16,7 @@ const execAsync = promisify(exec);
 
 // OAuth2 configuration
 const SCOPES = ['https://www.googleapis.com/auth/youtube.upload'];
-const TOKEN_DIR = '.youtube-tokens'; // Directory to store tokens (excluded from git)
+const TOKEN_DIR = '.auth'; // Directory to store authentication tokens (excluded from git)
 
 export class YouTubeUploader {
   private oauth2Client: OAuth2Client;

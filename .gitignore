@@ -35,8 +35,8 @@ audio/*
 *.out
 go.sum
 
-# YouTube OAuth tokens
-.youtube-tokens/
+# Authentication tokens (YouTube, S3, etc.)
+.auth/
 
 # Cache folder (thumbnails, temporary files)
 .cache/

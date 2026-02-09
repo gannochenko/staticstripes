@@ -3,7 +3,7 @@ import {
   Output,
   SequenceDefinition,
   FFmpegOption,
-  YouTubeUpload,
+  Upload,
 } from './type';
 import { Label } from './ffmpeg';
 import { AssetManager } from './asset-manager';
@@ -22,7 +22,7 @@ export class Project {
     assets: Asset[],
     private outputs: Map<string, Output>,
     private ffmpegOptions: Map<string, FFmpegOption>,
-    private youtubeUploads: Map<string, YouTubeUpload>,
+    private uploads: Map<string, Upload>,
     private title: string,
     private cssText: string,
     private projectPath: string,
@@ -110,12 +110,21 @@ export class Project {
     return this.ffmpegOptions.get(name);
   }
 
-  public getYouTubeUploads(): Map<string, YouTubeUpload> {
-    return this.youtubeUploads;
+  public getUploads(): Map<string, Upload> {
+    return this.uploads;
   }
 
-  public getYouTubeUpload(name: string): YouTubeUpload | undefined {
-    return this.youtubeUploads.get(name);
+  public getUpload(name: string): Upload | undefined {
+    return this.uploads.get(name);
+  }
+
+  // Legacy aliases for backward compatibility
+  public getYouTubeUploads(): Map<string, Upload> {
+    return this.getUploads();
+  }
+
+  public getYouTubeUpload(name: string): Upload | undefined {
+    return this.getUpload(name);
   }
 
   public getTitle(): string {

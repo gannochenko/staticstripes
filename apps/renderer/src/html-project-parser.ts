@@ -8,7 +8,7 @@ import {
   Fragment,
   Container,
   FFmpegOption,
-  YouTubeUpload,
+  Upload,
 } from './type';
 import { execFile } from 'child_process';
 import { promisify } from 'util';
@@ -50,7 +50,7 @@ export class HTMLProjectParser {
 
     const outputs = this.processOutputs();
     const ffmpegOptions = this.processFfmpegOptions();
-    const youtubeUploads = this.processYouTubeUploads();
+    const uploads = this.processUploads();
     const title = this.processTitle();
     const sequences = this.processSequences(assets);
     const cssText = this.html.cssText;
@@ -60,7 +60,7 @@ export class HTMLProjectParser {
       assets,
       outputs,
       ffmpegOptions,
-      youtubeUploads,
+      uploads,
       title,
       cssText,
       this.projectPath,
@@ -698,6 +698,7 @@ export class HTMLProjectParser {
 
     return {
       name,
+      tag: element.name, // e.g., "youtube", "s3", etc.
       outputName,
       title: uploadTitle,
       videoId,

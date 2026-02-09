@@ -78,11 +78,12 @@ export type FFmpegOption = {
   args: string; // e.g. "-c:v h264_nvenc -preset fast"
 };
 
-export type YouTubeUpload = {
-  name: string; // e.g. "yt_primary"
+export type Upload = {
+  name: string; // e.g. "yt_primary", "s3_backup"
+  tag: string; // e.g. "youtube", "s3" - used to identify upload provider
   outputName: string; // e.g. "youtube" - references Output name
   title?: string; // Upload-specific title (optional, falls back to global title)
-  videoId?: string; // YouTube video ID after upload
+  videoId?: string; // Video ID after upload (YouTube, etc.)
   privacy: 'public' | 'unlisted' | 'private';
   madeForKids: boolean;
   tags: string[];
@@ -91,6 +92,9 @@ export type YouTubeUpload = {
   description: string; // Pre-processed description (can contain EJS)
   thumbnailTimecode?: number; // Milliseconds, if thumbnail should be extracted from video
 };
+
+// Legacy alias for backward compatibility
+export type YouTubeUpload = Upload;
 
 export type ProjectStructure = {
   sequences: SequenceDefinition[];

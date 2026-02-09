@@ -6,8 +6,8 @@ import { readFileSync } from 'fs';
 import { registerGenerateCommand } from './cli/commands/generate.js';
 import { registerBootstrapCommand } from './cli/commands/bootstrap.js';
 import { registerAddAssetsCommand } from './cli/commands/add-assets.js';
-import { registerAuthCommands } from './cli/commands/auth.js';
 import { registerUploadCommand } from './cli/commands/upload.js';
+import { registerYouTubeCommands } from './cli/youtube/cli.js';
 
 // Read version from package.json
 // In built code, this file is at dist/cli.js, package.json is at ../package.json
@@ -63,7 +63,9 @@ program
 registerGenerateCommand(program, () => isDebugMode, handleError);
 registerBootstrapCommand(program, handleError);
 registerAddAssetsCommand(program, handleError);
-registerAuthCommands(program);
 registerUploadCommand(program, handleError);
+
+// Register provider-specific commands (auth, etc.)
+registerYouTubeCommands(program);
 
 program.parse(process.argv);
