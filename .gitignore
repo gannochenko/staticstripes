@@ -7,6 +7,9 @@ env/
 venv/
 .env
 
+# Dependencies
+node_modules/
+
 # Project specific
 config/youtube_credentials.json
 config/token.json

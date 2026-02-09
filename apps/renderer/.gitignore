@@ -35,5 +35,6 @@ yarn-error.log*
 coverage/
 .nyc_output/
 
+# Auth tokens and credentials
 .youtube-tokens/
-nd('upload
+.auth/
