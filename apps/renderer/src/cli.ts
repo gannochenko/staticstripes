@@ -7,7 +7,7 @@ import { registerGenerateCommand } from './cli/commands/generate.js';
 import { registerBootstrapCommand } from './cli/commands/bootstrap.js';
 import { registerAddAssetsCommand } from './cli/commands/add-assets.js';
 import { registerUploadCommand } from './cli/commands/upload.js';
-import { registerYouTubeCommands } from './cli/youtube/cli.js';
+import { registerAuthCommand } from './cli/commands/auth.js';
 
 // Read version from package.json
 // In built code, this file is at dist/cli.js, package.json is at ../package.json
@@ -64,8 +64,6 @@ registerGenerateCommand(program, () => isDebugMode, handleError);
 registerBootstrapCommand(program, handleError);
 registerAddAssetsCommand(program, handleError);
 registerUploadCommand(program, handleError);
-
-// Register provider-specific commands (auth, etc.)
-registerYouTubeCommands(program);
+registerAuthCommand(program, handleError);
 
 program.parse(process.argv);

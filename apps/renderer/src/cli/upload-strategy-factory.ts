@@ -1,6 +1,7 @@
 import { UploadStrategy } from './upload-strategy';
 import { YouTubeUploadStrategy } from './youtube/youtube-upload-strategy';
 import { S3UploadStrategy } from './s3/s3-upload-strategy';
+import { InstagramUploadStrategy } from './instagram/instagram-upload-strategy';
 
 /**
  * Factory for creating upload strategies based on upload tag
@@ -17,7 +18,7 @@ export class UploadStrategyFactory {
 
   /**
    * Gets a strategy for the given tag
-   * @param tag The upload provider tag (e.g., "youtube", "s3")
+   * @param tag The upload provider tag (e.g., "youtube", "s3", "instagram")
    * @returns The strategy for this tag
    * @throws Error if no strategy is registered for the tag
    */
@@ -41,17 +42,13 @@ export class UploadStrategyFactory {
   static createDefault(): UploadStrategyFactory {
     const factory = new UploadStrategyFactory();
 
-    // Register YouTube strategy (validation happens during execute)
-    const youtubeClientId = process.env.STATICSTRIPES_GOOGLE_CLIENT_ID || '';
-    const youtubeClientSecret =
-      process.env.STATICSTRIPES_GOOGLE_CLIENT_SECRET || '';
-
-    factory.register(
-      new YouTubeUploadStrategy(youtubeClientId, youtubeClientSecret),
-    );
+    factory.register(new YouTubeUploadStrategy());
 
     // Register S3 strategy
     factory.register(new S3UploadStrategy());
+
+    // Register Instagram strategy
+    factory.register(new InstagramUploadStrategy());
 
     return factory;
   }

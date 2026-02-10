@@ -99,6 +99,14 @@ export type Upload = {
     path: string; // e.g. "videos/${slug}/${output}.mp4"
     acl?: string; // e.g. "public-read", "private"
   };
+  // Instagram-specific configuration
+  instagram?: {
+    caption: string; // Caption/description for the Reel
+    shareToFeed: boolean; // Whether to share to Feed in addition to Reels tab
+    thumbOffset?: number; // Thumbnail frame location in milliseconds
+    coverUrl?: string; // Optional cover image URL
+    videoUrl?: string; // Public URL to video (if not auto-generated from S3)
+  };
 };
 
 // Legacy alias for backward compatibility

@@ -578,6 +578,8 @@ export class HTMLProjectParser {
               upload = this.parseYouTubeElement(childElement);
             } else if (childElement.name === 's3') {
               upload = this.parseS3Element(childElement);
+            } else if (childElement.name === 'instagram') {
+              upload = this.parseInstagramElement(childElement);
             }
 
             if (upload) {
@@ -792,6 +794,90 @@ export class HTMLProjectParser {
         bucket,
         path,
         acl,
+      },
+    };
+  }
+
+  /**
+   * Parses a single <instagram> element
+   */
+  private parseInstagramElement(element: Element): Upload | null {
+    const attrs = getAttrs(element);
+
+    const name = attrs.get('name');
+    const outputName = attrs.get('data-output-name');
+
+    if (!name || !outputName) {
+      console.warn('Instagram upload missing name or data-output-name attribute');
+      return null;
+    }
+
+    // Parse Instagram-specific child elements
+    let caption = '';
+    let shareToFeed = false;
+    let thumbOffset: number | undefined;
+    let coverUrl: string | undefined;
+    let videoUrl: string | undefined;
+
+    if ('children' in element && element.children) {
+      for (const child of element.children) {
+        if (child.type === 'tag') {
+          const childElement = child as Element;
+          const childAttrs = getAttrs(childElement);
+
+          switch (childElement.name) {
+            case 'caption': {
+              // Get text content
+              if ('children' in childElement && childElement.children) {
+                for (const textNode of childElement.children) {
+                  if (textNode.type === 'text' && 'data' in textNode) {
+                    caption += textNode.data;
+                  }
+                }
+              }
+              caption = caption.trim();
+              break;
+            }
+            case 'share-to-feed': {
+              shareToFeed = true;
+              break;
+            }
+            case 'thumb-offset': {
+              const offset = childAttrs.get('value');
+              if (offset) {
+                thumbOffset = parseInt(offset, 10);
+              }
+              break;
+            }
+            case 'cover-url': {
+              coverUrl = childAttrs.get('value');
+              break;
+            }
+            case 'video-url': {
+              videoUrl = childAttrs.get('value');
+              break;
+            }
+          }
+        }
+      }
+    }
+
+    return {
+      name,
+      tag: element.name, // "instagram"
+      outputName,
+      privacy: 'private', // Default values (not used but required by Upload type)
+      madeForKids: false,
+      tags: [],
+      category: '',
+      language: '',
+      description: '',
+      instagram: {
+        caption,
+        shareToFeed,
+        thumbOffset,
+        coverUrl,
+        videoUrl,
       },
     };
   }

@@ -7,10 +7,13 @@ import { handleYouTubeUpload } from './upload-handler';
  * YouTube upload strategy implementation
  */
 export class YouTubeUploadStrategy implements UploadStrategy {
-  constructor(
-    private clientId: string,
-    private clientSecret: string,
-  ) {}
+  private clientId: string;
+  private clientSecret: string;
+
+  constructor() {
+    this.clientId = process.env.STATICSTRIPES_GOOGLE_CLIENT_ID || '';
+    this.clientSecret = process.env.STATICSTRIPES_GOOGLE_CLIENT_SECRET || '';
+  }
 
   getTag(): string {
     return 'youtube';
