@@ -842,7 +842,22 @@ export class HTMLProjectParser {
               shareToFeed = true;
               break;
             }
+            case 'thumbnail': {
+              // Unified syntax like YouTube: <thumbnail data-timecode="1000ms" />
+              const timecode = childAttrs.get('data-timecode');
+              if (timecode) {
+                // Parse timecode (e.g., "1000ms" or "1s")
+                const match = timecode.match(/^(\d+(?:\.\d+)?)(ms|s)$/);
+                if (match) {
+                  const value = parseFloat(match[1]);
+                  const unit = match[2];
+                  thumbOffset = unit === 's' ? value * 1000 : value;
+                }
+              }
+              break;
+            }
             case 'thumb-offset': {
+              // Legacy syntax (deprecated, but still supported)
               const offset = childAttrs.get('value');
               if (offset) {
                 thumbOffset = parseInt(offset, 10);

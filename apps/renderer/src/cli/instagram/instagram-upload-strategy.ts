@@ -14,11 +14,11 @@ interface InstagramCredentials {
 
 /**
  * Instagram upload strategy implementation
- * Uses Facebook Graph API to post Reels/Videos
+ * Uses Instagram Graph API to post Reels/Videos
  */
 export class InstagramUploadStrategy implements UploadStrategy {
   private readonly API_VERSION = 'v21.0';
-  private readonly GRAPH_API_BASE = 'https://graph.facebook.com';
+  private readonly GRAPH_API_BASE = 'https://graph.instagram.com';
 
   constructor() {}
 
@@ -124,15 +124,21 @@ export class InstagramUploadStrategy implements UploadStrategy {
 
     console.log(`✅ Container created: ${containerId}`);
 
-    // Step 2: Publish the Reel
-    console.log('\n📤 Step 2: Publishing Reel...');
+    // Step 2: Wait for container to be ready
+    console.log('\n⏳ Step 2: Waiting for Instagram to process video...');
+    await this.waitForContainerReady(credentials, containerId);
+
+    // Step 3: Publish the Reel
+    console.log('\n📤 Step 3: Publishing Reel...');
     const mediaId = await this.publishMedia(credentials, containerId);
 
+    // Step 4: Get permalink
+    console.log('\n🔗 Getting permalink...');
+    const permalink = await this.getPermalink(credentials, mediaId);
+
     console.log(`\n✅ Reel published successfully!`);
-    console.log(
-      `🔗 Media ID: ${mediaId}\n` +
-        `   View at: https://www.instagram.com/p/${this.getShortcode(mediaId)}/\n`,
-    );
+    console.log(`🔗 Media ID: ${mediaId}`);
+    console.log(`📺 View at: ${permalink}\n`);
   }
 
   /**
@@ -198,6 +204,65 @@ export class InstagramUploadStrategy implements UploadStrategy {
           `- Instagram User ID must be correct`,
       );
     }
+  }
+
+  /**
+   * Waits for the container to be ready for publishing
+   * Polls the status endpoint until status_code is FINISHED
+   */
+  private async waitForContainerReady(
+    credentials: InstagramCredentials,
+    containerId: string,
+  ): Promise<void> {
+    const maxAttempts = 60; // Maximum 60 attempts (5 minutes)
+    const delayMs = 5000; // 5 seconds between checks
+
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      const params = new URLSearchParams({
+        fields: 'status_code',
+        access_token: credentials.accessToken,
+      });
+
+      const url = `${this.GRAPH_API_BASE}/${this.API_VERSION}/${containerId}?${params.toString()}`;
+
+      try {
+        const response = await fetch(url);
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(
+            `Failed to check status: ${JSON.stringify(errorData, null, 2)}`,
+          );
+        }
+
+        const data = (await response.json()) as { status_code?: string };
+
+        if (data.status_code === 'FINISHED') {
+          console.log(`✅ Video processed and ready!`);
+          return;
+        } else if (data.status_code === 'ERROR') {
+          throw new Error('Instagram failed to process the video');
+        } else if (data.status_code === 'IN_PROGRESS') {
+          console.log(`   Processing... (${attempt}/${maxAttempts})`);
+        } else {
+          console.log(
+            `   Status: ${data.status_code || 'UNKNOWN'} (${attempt}/${maxAttempts})`,
+          );
+        }
+      } catch (error) {
+        console.log(`   Warning: Status check failed, continuing...`);
+      }
+
+      // Wait before next check
+      if (attempt < maxAttempts) {
+        await new Promise((resolve) => setTimeout(resolve, delayMs));
+      }
+    }
+
+    // If we get here, we timed out, but let's try to publish anyway
+    console.log(
+      `⚠️  Timeout waiting for status. Attempting to publish anyway...`,
+    );
   }
 
   /**
@@ -305,11 +370,40 @@ export class InstagramUploadStrategy implements UploadStrategy {
   }
 
   /**
-   * Extracts Instagram shortcode from media ID (approximation)
+   * Gets the permalink (URL) for the published media
    */
-  private getShortcode(mediaId: string): string {
-    // Note: This is a simplified version. The actual conversion is more complex.
-    // For production, you might want to fetch the permalink from the Graph API
-    return mediaId;
+  private async getPermalink(
+    credentials: InstagramCredentials,
+    mediaId: string,
+  ): Promise<string> {
+    const params = new URLSearchParams({
+      fields: 'permalink',
+      access_token: credentials.accessToken,
+    });
+
+    const url = `${this.GRAPH_API_BASE}/${this.API_VERSION}/${mediaId}?${params.toString()}`;
+
+    try {
+      const response = await fetch(url);
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        console.log(
+          `   Warning: Failed to get permalink: ${JSON.stringify(errorData)}`,
+        );
+        return `https://www.instagram.com/ (check your profile)`;
+      }
+
+      const data = (await response.json()) as { permalink?: string };
+
+      if (!data.permalink) {
+        return `https://www.instagram.com/ (check your profile)`;
+      }
+
+      return data.permalink;
+    } catch (error) {
+      console.log(`   Warning: Failed to get permalink: ${error}`);
+      return `https://www.instagram.com/ (check your profile)`;
+    }
   }
 }
