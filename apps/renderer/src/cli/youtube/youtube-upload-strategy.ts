@@ -4,6 +4,7 @@ import { YouTubeUpload } from '../../type';
 import { resolve } from 'path';
 import { YouTubeUploader } from '../../youtube-uploader';
 import ejs from 'ejs';
+import { readFileSync, existsSync } from 'fs';
 
 export interface YouTubeUploadOptions {
   uploadName: string;
@@ -16,29 +17,12 @@ export interface YouTubeUploadOptions {
  * YouTube upload strategy implementation
  */
 export class YouTubeUploadStrategy implements UploadStrategy {
-  private clientId: string;
-  private clientSecret: string;
-
-  constructor() {
-    this.clientId = process.env.STATICSTRIPES_GOOGLE_CLIENT_ID || '';
-    this.clientSecret = process.env.STATICSTRIPES_GOOGLE_CLIENT_SECRET || '';
-  }
-
   getTag(): string {
     return 'youtube';
   }
 
   validate(): void {
-    if (!this.clientId || !this.clientSecret) {
-      const error = new Error(
-        '❌ Error: STATICSTRIPES_GOOGLE_CLIENT_ID and STATICSTRIPES_GOOGLE_CLIENT_SECRET environment variables are not set\n\n' +
-          '📖 View setup instructions:\n' +
-          '   staticstripes auth-help youtube\n\n' +
-          '💡 After setting env vars, run authentication:\n' +
-          '   staticstripes auth --upload-name YOUR_UPLOAD_NAME\n',
-      );
-      throw error;
-    }
+    // Validation now happens in execute() when we read credentials
   }
 
   async execute(
@@ -46,12 +30,43 @@ export class YouTubeUploadStrategy implements UploadStrategy {
     upload: YouTubeUpload,
     projectPath: string,
   ): Promise<void> {
+    // Read credentials from .auth file
+    const authDir = resolve(projectPath, '.auth');
+    const credentialsPath = resolve(authDir, `${upload.name}.json`);
+
+    if (!existsSync(credentialsPath)) {
+      throw new Error(
+        `❌ Error: YouTube credentials not found\n\n` +
+          `Expected location: ${credentialsPath}\n\n` +
+          `💡 Run authentication wizard:\n` +
+          `   staticstripes auth --upload-name ${upload.name}\n\n` +
+          `📖 Or view setup instructions:\n` +
+          `   staticstripes auth-help youtube\n`,
+      );
+    }
+
+    let credentials: { clientId?: string; clientSecret?: string };
+    try {
+      const credentialsJson = readFileSync(credentialsPath, 'utf-8');
+      credentials = JSON.parse(credentialsJson);
+
+      if (!credentials.clientId || !credentials.clientSecret) {
+        throw new Error('Missing clientId or clientSecret');
+      }
+    } catch (error) {
+      throw new Error(
+        `❌ Error: Failed to parse YouTube credentials from ${credentialsPath}\n` +
+          `Ensure the file contains clientId and clientSecret.\n` +
+          `Error: ${error instanceof Error ? error.message : String(error)}`,
+      );
+    }
+
     // Delegate to existing handler
     await handleYouTubeUpload(project, {
       uploadName: upload.name,
       projectPath,
-      clientId: this.clientId,
-      clientSecret: this.clientSecret,
+      clientId: credentials.clientId,
+      clientSecret: credentials.clientSecret,
     });
   }
 }

@@ -3,29 +3,64 @@ import { YouTubeUploader } from '../../youtube-uploader.js';
 import open from 'open';
 import http from 'http';
 import { parse as parseUrl } from 'url';
+import * as readline from 'readline';
+import { writeFileSync } from 'fs';
+import { resolve } from 'path';
 
 /**
  * YouTube authentication strategy
  * Uses OAuth 2.0 flow with local callback server
  */
 export class YouTubeAuthStrategy implements AuthStrategy {
-  private clientId: string;
-  private clientSecret: string;
-
-  constructor() {
-    this.clientId = process.env.STATICSTRIPES_GOOGLE_CLIENT_ID || '';
-    this.clientSecret = process.env.STATICSTRIPES_GOOGLE_CLIENT_SECRET || '';
-  }
-
   getTag(): string {
     return 'youtube';
   }
 
   async execute(uploadName: string, projectPath: string): Promise<void> {
-    console.log(`🔐 Authenticating: ${uploadName}\n`);
+    console.log(`🔐 YouTube Authentication Setup\n`);
 
-    // Create uploader instance
-    const uploader = new YouTubeUploader(this.clientId, this.clientSecret);
+    const rl = readline.createInterface({
+      input: process.stdin,
+      output: process.stdout,
+    });
+
+    const question = (prompt: string): Promise<string> => {
+      return new Promise((resolve) => {
+        rl.question(prompt, (answer) => {
+          resolve(answer);
+        });
+      });
+    };
+
+    try {
+      console.log('━'.repeat(60));
+      console.log('STEP 1: Enter YouTube API Credentials');
+      console.log('━'.repeat(60));
+      console.log('');
+      console.log('💡 Run `staticstripes auth-help youtube` for setup instructions\n');
+
+      const clientId = await question('Enter your OAuth Client ID: ');
+      if (!clientId || clientId.trim().length < 10) {
+        throw new Error('Invalid Client ID');
+      }
+
+      const clientSecret = await question('Enter your OAuth Client Secret: ');
+      if (!clientSecret || clientSecret.trim().length < 10) {
+        throw new Error('Invalid Client Secret');
+      }
+
+      console.log('\n━'.repeat(60));
+      console.log('STEP 2: Authorize with Google');
+      console.log('━'.repeat(60));
+      console.log('');
+
+      rl.close();
+
+      // Create uploader instance
+      const uploader = new YouTubeUploader(
+        clientId.trim(),
+        clientSecret.trim(),
+      );
 
     // Get authorization URL
     const authUrl = uploader.getAuthUrl();
@@ -148,88 +183,137 @@ export class YouTubeAuthStrategy implements AuthStrategy {
     console.log('🔑 Authorization code received\n');
     console.log('💾 Saving authentication tokens...\n');
 
-    // Complete authentication
-    await uploader.authenticate(code, uploadName, projectPath);
+      // Complete authentication - saves OAuth tokens to .auth file
+      await uploader.authenticate(code, uploadName, projectPath);
 
-    console.log(`✅ Authentication complete for ${uploadName}!\n`);
+      // Now add clientId and clientSecret to the saved file
+      const authDir = resolve(projectPath, '.auth');
+      const credentialsPath = resolve(authDir, `${uploadName}.json`);
+
+      // Read the tokens that were just saved
+      const { readFileSync } = await import('fs');
+      const savedTokens = JSON.parse(readFileSync(credentialsPath, 'utf-8'));
+
+      // Add clientId and clientSecret
+      const fullCredentials = {
+        clientId: clientId.trim(),
+        clientSecret: clientSecret.trim(),
+        ...savedTokens,
+      };
+
+      // Save back with all credentials
+      writeFileSync(
+        credentialsPath,
+        JSON.stringify(fullCredentials, null, 2),
+        'utf-8',
+      );
+
+      console.log(`✅ Authentication complete for ${uploadName}!\n`);
+      console.log(`📁 Credentials saved to: ${credentialsPath}\n`);
+    } catch (error) {
+      throw error;
+    }
   }
 
   getSetupInstructions(): string {
-    const platform = process.platform;
-    let envInstructions = '';
-
-    if (platform === 'win32') {
-      envInstructions = `
-   PowerShell (Recommended) - Run as Administrator:
-     [System.Environment]::SetEnvironmentVariable("STATICSTRIPES_GOOGLE_CLIENT_ID", "your-client-id.apps.googleusercontent.com", "User")
-     [System.Environment]::SetEnvironmentVariable("STATICSTRIPES_GOOGLE_CLIENT_SECRET", "your-client-secret", "User")
-   Then restart your terminal
-
-   Or Command Prompt - Run as Administrator:
-     setx STATICSTRIPES_GOOGLE_CLIENT_ID "your-client-id.apps.googleusercontent.com"
-     setx STATICSTRIPES_GOOGLE_CLIENT_SECRET "your-client-secret"
-   Then restart your terminal
-`;
-    } else if (platform === 'darwin') {
-      envInstructions = `
-   Add to ~/.zshrc (or ~/.bash_profile for bash):
-     export STATICSTRIPES_GOOGLE_CLIENT_ID="your-client-id.apps.googleusercontent.com"
-     export STATICSTRIPES_GOOGLE_CLIENT_SECRET="your-client-secret"
-
-   Then reload your shell:
-     source ~/.zshrc
-`;
-    } else {
-      envInstructions = `
-   Add to ~/.bashrc (or ~/.zshrc for zsh):
-     export STATICSTRIPES_GOOGLE_CLIENT_ID="your-client-id.apps.googleusercontent.com"
-     export STATICSTRIPES_GOOGLE_CLIENT_SECRET="your-client-secret"
-
-   Then reload your shell:
-     source ~/.bashrc  # or source ~/.zshrc
-`;
-    }
-
     return `
-YouTube Authentication Setup:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+YouTube Authentication Setup
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-1. Go to Google Cloud Console:
-   https://console.cloud.google.com/
+Interactive OAuth 2.0 flow - no environment variables needed!
 
-2. Create or select a project
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+STEP 1: Go to Google Cloud Console
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+URL: https://console.cloud.google.com/
 
-3. Enable YouTube Data API v3:
-   - Go to "APIs & Services" > "Library"
-   - Search for "YouTube Data API v3"
-   - Click "Enable"
+1. Create or select a project
 
-4. Configure OAuth Consent Screen:
-   - Go to "APIs & Services" > "OAuth consent screen"
-   - Choose "External" user type
-   - Fill in app name and contact emails
-   - Add scope: https://www.googleapis.com/auth/youtube.upload
-   - Add your email as a test user
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+STEP 2: Enable YouTube Data API v3
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+1. Go to "APIs & Services" > "Library"
+2. Search for "YouTube Data API v3"
+3. Click "Enable"
 
-5. Create OAuth 2.0 Credentials:
-   - Go to "APIs & Services" > "Credentials"
-   - Click "Create Credentials" > "OAuth client ID"
-   - Choose "Web application"
-   - Add redirect URI: http://localhost:3000/oauth2callback
-   - Click "Create"
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+STEP 3: Configure OAuth Consent Screen
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+1. Go to "APIs & Services" > "OAuth consent screen"
+2. Choose "External" user type
+3. Fill in:
+   • App name: "My YouTube Uploader"
+   • User support email: your.email@example.com
+   • Developer contact email: your.email@example.com
+4. Click "Save and Continue"
+5. Add scope: https://www.googleapis.com/auth/youtube.upload
+6. Click "Save and Continue"
+7. Add your email as a test user
+8. Click "Save and Continue"
 
-6. Copy your Client ID and Client Secret
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+STEP 4: Create OAuth 2.0 Credentials
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+1. Go to "APIs & Services" > "Credentials"
+2. Click "Create Credentials" > "OAuth client ID"
+3. Choose "Web application"
+4. Name: "YouTube Uploader"
+5. Add redirect URI: http://localhost:3000/oauth2callback
+   (Make sure it's exactly this - no trailing slash!)
+6. Click "Create"
+7. Copy your Client ID (looks like: xxx.apps.googleusercontent.com)
+8. Copy your Client Secret
 
-7. Publish your OAuth app (IMPORTANT):
-   - Go to "APIs & Services" > "OAuth consent screen"
-   - Click "PUBLISH APP" button
-   - This makes refresh tokens permanent (otherwise they expire in 7 days)
-   - Note: For personal use, you don't need Google verification
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+STEP 5: Publish Your OAuth App (IMPORTANT!)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+1. Go to "APIs & Services" > "OAuth consent screen"
+2. Click "PUBLISH APP" button
+3. This makes refresh tokens permanent (otherwise they expire in 7 days)
+4. Note: For personal use, you don't need Google verification
 
-8. Set environment variables:
-${envInstructions}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+STEP 6: Run Authentication Wizard
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Run:
+  staticstripes auth --upload-name YOUR_UPLOAD_NAME
 
-9. Run authentication command:
-   staticstripes auth --upload-name YOUR_UPLOAD_NAME
+The wizard will:
+1. Ask you to enter your OAuth Client ID
+2. Ask you to enter your OAuth Client Secret
+3. Start local server on port 3000
+4. Open browser automatically for Google authorization
+5. Automatically exchange authorization code for tokens
+6. Save ALL credentials to .auth/YOUR_UPLOAD_NAME.json
+
+Done! Interactive and secure - no environment variables needed!
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+TROUBLESHOOTING
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+❌ "redirect_uri_mismatch"
+   → Make sure redirect URI is exactly: http://localhost:3000/oauth2callback
+   → No trailing slash, no typos!
+
+❌ "Invalid client" error
+   → Double-check your Client ID and Client Secret
+   → Make sure you copied them correctly
+
+❌ Tokens expire after 7 days
+   → Publish your OAuth app (Step 5)
+   → This makes refresh tokens last indefinitely
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+REFERENCE LINKS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+• Google Cloud Console:
+  https://console.cloud.google.com/
+
+• YouTube Data API docs:
+  https://developers.google.com/youtube/v3
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 `;
   }
 }

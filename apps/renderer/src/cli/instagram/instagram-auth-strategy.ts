@@ -4,95 +4,127 @@ import { resolve } from 'path';
 import open from 'open';
 import http from 'http';
 import { parse as parseUrl } from 'url';
+import * as readline from 'readline';
 
 /**
  * Instagram authentication strategy
  * Automatic OAuth flow with browser redirect (like YouTube)
  */
 export class InstagramAuthStrategy implements AuthStrategy {
-  private appId: string;
-  private appSecret: string;
-  private redirectUri: string =
-    'https://ede4-2a01-5241-a05-9c00-648f-7ca4-1ee6-f7ef.ngrok-free.app/oauth2callback';
-
-  constructor() {
-    this.appId = process.env.STATICSTRIPES_INSTAGRAM_APP_ID || '';
-    this.appSecret = process.env.STATICSTRIPES_INSTAGRAM_APP_SECRET || '';
-  }
+  private redirectUri: string = 'http://localhost:3000/oauth2callback';
 
   getTag(): string {
     return 'instagram';
   }
 
   async execute(uploadName: string, projectPath: string): Promise<void> {
-    console.log(`🔐 Authenticating Instagram: ${uploadName}\n`);
+    console.log(`🔐 Instagram Authentication Setup\n`);
 
-    // Validate environment variables
-    if (!this.appId || !this.appSecret) {
-      throw new Error(
-        '❌ Error: STATICSTRIPES_INSTAGRAM_APP_ID and STATICSTRIPES_INSTAGRAM_APP_SECRET environment variables are not set\n\n' +
-          '📖 View setup instructions:\n' +
-          '   staticstripes auth-help instagram\n',
-      );
-    }
+    const rl = readline.createInterface({
+      input: process.stdin,
+      output: process.stdout,
+    });
 
-    console.log('🌐 Starting local server on http://localhost:3000...\n');
-
-    // Wait for OAuth callback
-    const authCode = await this.waitForAuthCode();
-
-    console.log('🔑 Authorization code received\n');
-    console.log('🔄 Exchanging for access token...\n');
-
-    // Exchange code for short-lived token
-    const shortLivedToken = await this.exchangeCodeForToken(authCode);
-
-    console.log('✅ Short-lived token received\n');
-    console.log('🔄 Exchanging for long-lived token (60 days)...\n');
-
-    // Exchange for long-lived token
-    const longLivedToken =
-      await this.exchangeForLongLivedToken(shortLivedToken);
-
-    console.log('✅ Long-lived token received\n');
-    console.log('🔍 Fetching Instagram account info...\n');
-
-    // Get Instagram user ID
-    const { id, username } = await this.getInstagramUserId(longLivedToken);
-
-    console.log(`✅ Account: @${username}`);
-    console.log(`✅ Instagram User ID: ${id}\n`);
-    console.log('💾 Saving credentials...\n');
-
-    // Save credentials
-    const authDir = resolve(projectPath, '.auth');
-    if (!existsSync(authDir)) {
-      mkdirSync(authDir, { recursive: true });
-    }
-
-    const credentialsPath = resolve(authDir, `${uploadName}.json`);
-    const credentials = {
-      accessToken: longLivedToken,
-      igUserId: id,
+    const question = (prompt: string): Promise<string> => {
+      return new Promise((resolve) => {
+        rl.question(prompt, (answer) => {
+          resolve(answer);
+        });
+      });
     };
 
-    writeFileSync(
-      credentialsPath,
-      JSON.stringify(credentials, null, 2),
-      'utf-8',
-    );
+    try {
+      console.log('━'.repeat(60));
+      console.log('STEP 1: Enter Instagram App Credentials');
+      console.log('━'.repeat(60));
+      console.log('');
+      console.log('💡 Run `staticstripes auth-help instagram` for setup instructions\n');
 
-    console.log(`✅ Authentication complete for ${uploadName}!\n`);
-    console.log(`📁 Credentials saved to: ${credentialsPath}\n`);
-    console.log('⚠️  Token expires in 60 days - set a reminder to refresh!\n');
+      const appId = await question('Enter your Instagram App ID: ');
+      if (!appId || appId.trim().length < 5) {
+        throw new Error('Invalid App ID');
+      }
+
+      const appSecret = await question('Enter your Instagram App Secret: ');
+      if (!appSecret || appSecret.trim().length < 10) {
+        throw new Error('Invalid App Secret');
+      }
+
+      console.log('\n━'.repeat(60));
+      console.log('STEP 2: Authorize with Instagram');
+      console.log('━'.repeat(60));
+      console.log('');
+
+      rl.close();
+
+      console.log('🌐 Starting local server on http://localhost:3000...\n');
+
+      // Wait for OAuth callback
+      const authCode = await this.waitForAuthCode(appId.trim());
+
+      console.log('🔑 Authorization code received\n');
+      console.log('🔄 Exchanging for access token...\n');
+
+      // Exchange code for short-lived token
+      const shortLivedToken = await this.exchangeCodeForToken(
+        authCode,
+        appId.trim(),
+        appSecret.trim(),
+      );
+
+      console.log('✅ Short-lived token received\n');
+      console.log('🔄 Exchanging for long-lived token (60 days)...\n');
+
+      // Exchange for long-lived token
+      const longLivedToken = await this.exchangeForLongLivedToken(
+        shortLivedToken,
+        appSecret.trim(),
+      );
+
+      console.log('✅ Long-lived token received\n');
+      console.log('🔍 Fetching Instagram account info...\n');
+
+      // Get Instagram user ID
+      const { id, username } = await this.getInstagramUserId(longLivedToken);
+
+      console.log(`✅ Account: @${username}`);
+      console.log(`✅ Instagram User ID: ${id}\n`);
+      console.log('💾 Saving credentials...\n');
+
+      // Save credentials
+      const authDir = resolve(projectPath, '.auth');
+      if (!existsSync(authDir)) {
+        mkdirSync(authDir, { recursive: true });
+      }
+
+      const credentialsPath = resolve(authDir, `${uploadName}.json`);
+      const credentials = {
+        appId: appId.trim(),
+        appSecret: appSecret.trim(),
+        accessToken: longLivedToken,
+        igUserId: id,
+      };
+
+      writeFileSync(
+        credentialsPath,
+        JSON.stringify(credentials, null, 2),
+        'utf-8',
+      );
+
+      console.log(`✅ Authentication complete for ${uploadName}!\n`);
+      console.log(`📁 Credentials saved to: ${credentialsPath}\n`);
+      console.log('⚠️  Token expires in 60 days - set a reminder to refresh!\n');
+    } catch (error) {
+      throw error;
+    }
   }
 
   /**
    * Generates Instagram OAuth authorization URL
    */
-  private getAuthUrl(): string {
+  private getAuthUrl(appId: string): string {
     const params = new URLSearchParams({
-      client_id: this.appId,
+      client_id: appId,
       redirect_uri: this.redirectUri,
       scope: 'instagram_business_basic,instagram_business_content_publish',
       response_type: 'code',
@@ -105,7 +137,7 @@ export class InstagramAuthStrategy implements AuthStrategy {
   /**
    * Starts local HTTP server and waits for OAuth callback
    */
-  private async waitForAuthCode(): Promise<string> {
+  private async waitForAuthCode(appId: string): Promise<string> {
     return new Promise<string>((resolve, reject) => {
       const connections = new Set<any>();
 
@@ -182,7 +214,7 @@ export class InstagramAuthStrategy implements AuthStrategy {
           `🌐 Opening browser for authorization, redirect url = ${this.redirectUri}\n`,
         );
 
-        const authUrl = this.getAuthUrl();
+        const authUrl = this.getAuthUrl(appId);
         try {
           await open(authUrl);
           console.log('✅ Browser opened successfully\n');
@@ -211,10 +243,14 @@ export class InstagramAuthStrategy implements AuthStrategy {
   /**
    * Exchanges authorization code for short-lived access token
    */
-  private async exchangeCodeForToken(code: string): Promise<string> {
+  private async exchangeCodeForToken(
+    code: string,
+    appId: string,
+    appSecret: string,
+  ): Promise<string> {
     const params = new URLSearchParams({
-      client_id: this.appId,
-      client_secret: this.appSecret,
+      client_id: appId,
+      client_secret: appSecret,
       grant_type: 'authorization_code',
       redirect_uri: this.redirectUri,
       code: code,
@@ -249,10 +285,11 @@ export class InstagramAuthStrategy implements AuthStrategy {
    */
   private async exchangeForLongLivedToken(
     shortLivedToken: string,
+    appSecret: string,
   ): Promise<string> {
     const params = new URLSearchParams({
       grant_type: 'ig_exchange_token',
-      client_secret: this.appSecret,
+      client_secret: appSecret,
       access_token: shortLivedToken,
     });
 
@@ -308,41 +345,6 @@ export class InstagramAuthStrategy implements AuthStrategy {
   }
 
   getSetupInstructions(): string {
-    const platform = process.platform;
-    let envInstructions = '';
-
-    if (platform === 'win32') {
-      envInstructions = `
-   PowerShell (Recommended) - Run as Administrator:
-     [System.Environment]::SetEnvironmentVariable("STATICSTRIPES_INSTAGRAM_APP_ID", "your-app-id", "User")
-     [System.Environment]::SetEnvironmentVariable("STATICSTRIPES_INSTAGRAM_APP_SECRET", "your-app-secret", "User")
-   Then restart your terminal
-
-   Or Command Prompt - Run as Administrator:
-     setx STATICSTRIPES_INSTAGRAM_APP_ID "your-app-id"
-     setx STATICSTRIPES_INSTAGRAM_APP_SECRET "your-app-secret"
-   Then restart your terminal
-`;
-    } else if (platform === 'darwin') {
-      envInstructions = `
-   Add to ~/.zshrc (or ~/.bash_profile for bash):
-     export STATICSTRIPES_INSTAGRAM_APP_ID="your-app-id"
-     export STATICSTRIPES_INSTAGRAM_APP_SECRET="your-app-secret"
-
-   Then reload your shell:
-     source ~/.zshrc
-`;
-    } else {
-      envInstructions = `
-   Add to ~/.bashrc (or ~/.zshrc for zsh):
-     export STATICSTRIPES_INSTAGRAM_APP_ID="your-app-id"
-     export STATICSTRIPES_INSTAGRAM_APP_SECRET="your-app-secret"
-
-   Then reload your shell:
-     source ~/.bashrc  # or source ~/.zshrc
-`;
-    }
-
     return `
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 Instagram Authentication Setup (Automatic OAuth Flow)
@@ -426,24 +428,20 @@ Accept the invitation on Instagram:
 7. Accept the tester invitation
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-STEP 5: Set Environment Variables
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-${envInstructions}
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-STEP 6: Run Authentication Command
+STEP 5: Run Authentication Wizard
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 Run:
   staticstripes auth --upload-name YOUR_UPLOAD_NAME
 
 The wizard will:
-1. Start local server on port 3000
-2. Open browser automatically
-3. Ask you to authorize the app
-4. Automatically exchange tokens
-5. Save credentials to .auth/YOUR_UPLOAD_NAME.json
+1. Ask you to enter your App ID and App Secret
+2. Start local server on port 3000
+3. Open browser automatically
+4. Ask you to authorize the app
+5. Automatically exchange tokens
+6. Save ALL credentials to .auth/YOUR_UPLOAD_NAME.json
 
-Done! Just like YouTube auth - one click and forget!
+Done! Just like YouTube auth - interactive and easy!
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 TOKEN REFRESH (Every 60 Days)
