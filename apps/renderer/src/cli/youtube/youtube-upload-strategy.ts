@@ -108,6 +108,9 @@ export async function handleYouTubeUpload(
   // Get timecodes and process description with EJS
   const timecodes = project.getTimecodes();
 
+  // Format tags (space-separated, no hashtags for YouTube)
+  const formattedTags = upload.tags.join(' ');
+
   // Convert ${variable} syntax to <%= variable %> for EJS compatibility
   const ejsDescription = upload.description.replace(
     /\$\{(\w+)\}/g,
@@ -115,6 +118,8 @@ export async function handleYouTubeUpload(
   );
 
   const processedDescription = ejs.render(ejsDescription, {
+    title,
+    tags: formattedTags,
     timecodes: timecodes.join('\n'),
   });
 

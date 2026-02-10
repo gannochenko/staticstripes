@@ -3,6 +3,7 @@ import { Project } from '../../project';
 import { Upload } from '../../type';
 import { readFileSync, existsSync } from 'fs';
 import { resolve } from 'path';
+import ejs from 'ejs';
 
 /**
  * Instagram credentials format stored in .auth/<upload-name>.json
@@ -103,8 +104,24 @@ export class InstagramUploadStrategy implements UploadStrategy {
       }
     }
 
+    // Determine title (use upload-specific title or fall back to project title)
+    const title = upload.title || project.getTitle();
+
+    // Format tags with # and space-separated (Instagram style)
+    const formattedTags = upload.tags.map((tag) => `#${tag}`).join(' ');
+
+    // Convert ${variable} syntax to <%= variable %> for EJS compatibility
+    const ejsCaption = caption.replace(/\$\{(\w+)\}/g, '<%= $1 %>');
+
+    const processedCaption = ejs.render(ejsCaption, {
+      title,
+      tags: formattedTags,
+    });
+
     console.log(`\n📸 Preparing Instagram Reel upload...`);
-    console.log(`   Caption: ${caption.substring(0, 50)}${caption.length > 50 ? '...' : ''}`);
+    console.log(`   Title: ${title}`);
+    console.log(`   Tags: ${formattedTags}`);
+    console.log(`   Caption: ${processedCaption.substring(0, 50)}${processedCaption.length > 50 ? '...' : ''}`);
     console.log(`   Share to Feed: ${shareToFeed ? 'Yes' : 'No'}`);
     if (thumbOffset) {
       console.log(`   Thumbnail offset: ${thumbOffset}ms`);
@@ -116,7 +133,7 @@ export class InstagramUploadStrategy implements UploadStrategy {
     const containerId = await this.createMediaContainer(
       credentials,
       publicVideoUrl,
-      caption,
+      processedCaption,
       shareToFeed,
       thumbOffset,
       coverUrl,

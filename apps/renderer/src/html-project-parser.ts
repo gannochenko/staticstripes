@@ -50,8 +50,9 @@ export class HTMLProjectParser {
 
     const outputs = this.processOutputs();
     const ffmpegOptions = this.processFfmpegOptions();
-    const uploads = this.processUploads();
     const title = this.processTitle();
+    const globalTags = this.processGlobalTags();
+    const uploads = this.processUploads(title, globalTags);
     const sequences = this.processSequences(assets);
     const cssText = this.html.cssText;
 
@@ -563,7 +564,10 @@ export class HTMLProjectParser {
   /**
    * Processes all uploads (YouTube, S3, etc.) from the parsed HTML
    */
-  private processUploads(): Map<string, Upload> {
+  private processUploads(
+    projectTitle: string,
+    globalTags: string[],
+  ): Map<string, Upload> {
     const uploadsElements = this.findUploadsElements();
     const uploads = new Map<string, Upload>();
 
@@ -575,11 +579,19 @@ export class HTMLProjectParser {
             let upload: Upload | null = null;
 
             if (childElement.name === 'youtube') {
-              upload = this.parseYouTubeElement(childElement);
+              upload = this.parseYouTubeElement(
+                childElement,
+                projectTitle,
+                globalTags,
+              );
             } else if (childElement.name === 's3') {
               upload = this.parseS3Element(childElement);
             } else if (childElement.name === 'instagram') {
-              upload = this.parseInstagramElement(childElement);
+              upload = this.parseInstagramElement(
+                childElement,
+                projectTitle,
+                globalTags,
+              );
             }
 
             if (upload) {
@@ -596,7 +608,11 @@ export class HTMLProjectParser {
   /**
    * Parses a single <youtube> element
    */
-  private parseYouTubeElement(element: Element): Upload | null {
+  private parseYouTubeElement(
+    element: Element,
+    projectTitle: string,
+    globalTags: string[],
+  ): Upload | null {
     const attrs = getAttrs(element);
 
     const name = attrs.get('name');
@@ -613,7 +629,7 @@ export class HTMLProjectParser {
     let uploadTitle: string | undefined;
     let privacy: 'public' | 'unlisted' | 'private' = 'private';
     let madeForKids = false;
-    const tags: string[] = [];
+    const localTags: string[] = [];
     let category = 'entertainment';
     let language = 'en';
     let description = '';
@@ -653,7 +669,7 @@ export class HTMLProjectParser {
               const tagAttrs = getAttrs(childElement);
               const tagName = tagAttrs.get('name');
               if (tagName) {
-                tags.push(tagName);
+                localTags.push(tagName);
               }
               break;
             }
@@ -703,15 +719,21 @@ export class HTMLProjectParser {
       }
     }
 
+    // Merge global tags + local tags (global first)
+    const allTags = [...globalTags, ...localTags];
+
+    // Use project title if upload doesn't have its own
+    const finalTitle = uploadTitle || projectTitle;
+
     return {
       name,
       tag: element.name, // e.g., "youtube", "s3", etc.
       outputName,
-      title: uploadTitle,
+      title: finalTitle,
       videoId,
       privacy,
       madeForKids,
-      tags,
+      tags: allTags,
       category,
       language,
       description: description.trim(),
@@ -801,7 +823,11 @@ export class HTMLProjectParser {
   /**
    * Parses a single <instagram> element
    */
-  private parseInstagramElement(element: Element): Upload | null {
+  private parseInstagramElement(
+    element: Element,
+    projectTitle: string,
+    globalTags: string[],
+  ): Upload | null {
     const attrs = getAttrs(element);
 
     const name = attrs.get('name');
@@ -818,6 +844,7 @@ export class HTMLProjectParser {
     let thumbOffset: number | undefined;
     let coverUrl: string | undefined;
     let videoUrl: string | undefined;
+    const localTags: string[] = [];
 
     if ('children' in element && element.children) {
       for (const child of element.children) {
@@ -826,8 +853,19 @@ export class HTMLProjectParser {
           const childAttrs = getAttrs(childElement);
 
           switch (childElement.name) {
+            case 'pre': {
+              // Get text content (unified with YouTube description)
+              if ('children' in childElement && childElement.children) {
+                for (const textNode of childElement.children) {
+                  if (textNode.type === 'text' && 'data' in textNode) {
+                    caption += textNode.data;
+                  }
+                }
+              }
+              break;
+            }
             case 'caption': {
-              // Get text content
+              // Legacy syntax (deprecated, but still supported)
               if ('children' in childElement && childElement.children) {
                 for (const textNode of childElement.children) {
                   if (textNode.type === 'text' && 'data' in textNode) {
@@ -872,29 +910,80 @@ export class HTMLProjectParser {
               videoUrl = childAttrs.get('value');
               break;
             }
+            case 'tag': {
+              const tagName = childAttrs.get('name');
+              if (tagName) {
+                localTags.push(tagName);
+              }
+              break;
+            }
           }
         }
       }
     }
 
+    // Merge global tags + local tags
+    const allTags = [...globalTags, ...localTags];
+
     return {
       name,
       tag: element.name, // "instagram"
       outputName,
+      title: projectTitle,
       privacy: 'private', // Default values (not used but required by Upload type)
       madeForKids: false,
-      tags: [],
+      tags: allTags,
       category: '',
       language: '',
       description: '',
       instagram: {
-        caption,
+        caption, // Raw caption with ${variables}, will be rendered by upload strategy
         shareToFeed,
         thumbOffset,
         coverUrl,
         videoUrl,
       },
     };
+  }
+
+  /**
+   * Processes global tags from the top of the HTML file (before <project>)
+   */
+  private processGlobalTags(): string[] {
+    const tags: string[] = [];
+
+    const traverse = (node: ASTNode, insideProject: boolean = false) => {
+      if (node.type === 'tag') {
+        const element = node as Element;
+
+        // Stop when we hit <project>, <uploads>, or <outputs>
+        if (
+          element.name === 'project' ||
+          element.name === 'uploads' ||
+          element.name === 'outputs'
+        ) {
+          insideProject = true;
+        }
+
+        // Only parse <tag> elements outside of project/uploads/outputs
+        if (!insideProject && element.name === 'tag') {
+          const attrs = getAttrs(element);
+          const tagName = attrs.get('name');
+          if (tagName) {
+            tags.push(tagName);
+          }
+        }
+      }
+
+      if ('children' in node && node.children) {
+        for (const child of node.children) {
+          traverse(child, insideProject);
+        }
+      }
+    };
+
+    traverse(this.html.ast);
+    return tags;
   }
 
   /**
