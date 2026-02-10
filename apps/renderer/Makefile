@@ -69,14 +69,30 @@ demo:
 	make build
 	node dist/cli.js generate -p ../../examples/demo -o youtube --option meh --debug
 
+demoi:
+	make build
+	node dist/cli.js generate -p ../../examples/demo -o instagram_shorts
+
 demoauth:
 	make build
 	node dist/cli.js auth -p ../../examples/demo --upload-name yt_primary
+
+demoauthi:
+	make build
+	node dist/cli.js auth -p ../../examples/demo --upload-name ig_primary
 
 demoupload:
 	make build
 	node dist/cli.js upload -p ../../examples/demo --upload-name yt_primary
 
+demouploadi:
+	make build
+	node dist/cli.js upload -p ../../examples/demo --upload-name ig_primary
+
 demouploads3:
 	make build
 	node dist/cli.js upload -p ../../examples/demo --upload-name s3_primary
+
+authhelpi:
+	make build
+	node dist/cli.js auth-help instagram

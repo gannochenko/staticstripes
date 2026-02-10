@@ -5,20 +5,30 @@ import * as readline from 'readline';
 
 /**
  * Instagram authentication strategy
- * Guides users through manual token generation process
+ * Semi-automatic flow: user provides short-lived token, we handle the rest
  */
 export class InstagramAuthStrategy implements AuthStrategy {
+  private appSecret: string;
+
+  constructor() {
+    this.appSecret = process.env.STATICSTRIPES_INSTAGRAM_APP_SECRET || '';
+  }
+
   getTag(): string {
     return 'instagram';
   }
 
   async execute(uploadName: string, projectPath: string): Promise<void> {
     console.log('🔐 Instagram Authentication Setup\n');
-    console.log(
-      '📝 Instagram uses Facebook Graph API, which requires manual token generation.',
-    );
-    console.log('   This wizard will guide you through the process.\n');
-    console.log('💡 Tip: Run `staticstripes auth-help instagram` for detailed setup instructions\n');
+
+    // Validate environment variables
+    if (!this.appSecret) {
+      throw new Error(
+        '❌ Error: STATICSTRIPES_INSTAGRAM_APP_SECRET environment variable is not set\n\n' +
+          '📖 View setup instructions:\n' +
+          '   staticstripes auth-help instagram\n',
+      );
+    }
 
     const rl = readline.createInterface({
       input: process.stdin,
@@ -35,62 +45,38 @@ export class InstagramAuthStrategy implements AuthStrategy {
 
     try {
       console.log('━'.repeat(60));
-      console.log('STEP 1: Get Long-Lived Access Token');
+      console.log('STEP 1: Get Short-Lived Token');
       console.log('━'.repeat(60));
       console.log('');
-      console.log('1. Go to https://developers.facebook.com/tools/explorer/');
-      console.log('2. Select your app');
+      console.log('1. Go to: https://developers.facebook.com/tools/explorer/');
+      console.log('2. Select your Instagram app from dropdown');
       console.log('3. Click "Generate Access Token"');
-      console.log('4. Exchange for long-lived token using cURL:\n');
-      console.log('   curl -X GET "https://graph.instagram.com/access_token\\');
-      console.log('     ?grant_type=ig_exchange_token\\');
-      console.log('     &client_secret={APP_SECRET}\\');
-      console.log('     &access_token={SHORT_LIVED_TOKEN}"\n');
-
-      const accessToken = await question('Enter your long-lived access token: ');
-
-      if (!accessToken || accessToken.trim().length < 10) {
-        throw new Error('Invalid access token');
-      }
-
-      console.log('\n━'.repeat(60));
-      console.log('STEP 2: Get Instagram User ID');
-      console.log('━'.repeat(60));
-      console.log('');
-      console.log('Run this cURL command:\n');
-      console.log(
-        `   curl -X GET "https://graph.facebook.com/v21.0/me/accounts\\`,
-      );
-      console.log(`     ?fields=instagram_business_account{id}\\`);
-      console.log(`     &access_token=${accessToken.substring(0, 20)}..."\n`);
-      console.log(
-        'Look for "instagram_business_account" → "id" in the response\n',
-      );
-
-      const igUserId = await question('Enter your Instagram User ID: ');
-
-      if (!igUserId || igUserId.trim().length < 10) {
-        throw new Error('Invalid Instagram User ID');
-      }
-
-      console.log('\n━'.repeat(60));
-      console.log('STEP 3: Verify Configuration');
-      console.log('━'.repeat(60));
-      console.log('');
-      console.log(`Upload Name:     ${uploadName}`);
-      console.log(`Access Token:    ${accessToken.substring(0, 20)}...`);
-      console.log(`IG User ID:      ${igUserId}`);
+      console.log('4. Grant permissions when prompted');
+      console.log('5. Copy the token (starts with IGAA...)');
       console.log('');
 
-      const confirm = await question(
-        'Save these credentials? (yes/no): ',
+      const shortLivedToken = await question('Enter your short-lived token: ');
+
+      if (!shortLivedToken || shortLivedToken.trim().length < 20) {
+        throw new Error('Invalid token');
+      }
+
+      console.log('\n🔄 Exchanging for long-lived token (60 days)...\n');
+
+      // Exchange for long-lived token
+      const longLivedToken = await this.exchangeForLongLivedToken(
+        shortLivedToken.trim(),
       );
 
-      if (confirm.toLowerCase() !== 'yes' && confirm.toLowerCase() !== 'y') {
-        console.log('\n❌ Authentication cancelled\n');
-        rl.close();
-        process.exit(0);
-      }
+      console.log('✅ Long-lived token received\n');
+      console.log('🔍 Fetching Instagram account info...\n');
+
+      // Get Instagram user ID
+      const { id, username } = await this.getInstagramUserId(longLivedToken);
+
+      console.log(`✅ Account: @${username}`);
+      console.log(`✅ Instagram User ID: ${id}\n`);
+      console.log('💾 Saving credentials...\n');
 
       // Save credentials
       const authDir = resolve(projectPath, '.auth');
@@ -100,8 +86,8 @@ export class InstagramAuthStrategy implements AuthStrategy {
 
       const credentialsPath = resolve(authDir, `${uploadName}.json`);
       const credentials = {
-        accessToken: accessToken.trim(),
-        igUserId: igUserId.trim(),
+        accessToken: longLivedToken,
+        igUserId: id,
       };
 
       writeFileSync(
@@ -110,17 +96,11 @@ export class InstagramAuthStrategy implements AuthStrategy {
         'utf-8',
       );
 
-      console.log('\n✅ Authentication complete!\n');
-      console.log(`📁 Credentials saved to: ${credentialsPath}`);
-      console.log('');
-      console.log('⚠️  IMPORTANT: Token expires in 60 days');
-      console.log('   Refresh before expiry using:\n');
-      console.log(
-        '   curl -X GET "https://graph.instagram.com/refresh_access_token\\',
-      );
-      console.log('     ?grant_type=ig_refresh_token\\');
-      console.log(`     &access_token=${accessToken.substring(0, 20)}..."\n`);
-      console.log(`🎬 Ready to upload! Run: staticstripes upload --upload-name ${uploadName}\n`);
+      console.log(`✅ Authentication complete for ${uploadName}!\n`);
+      console.log(`📁 Credentials saved to: ${credentialsPath}\n`);
+      console.log('⚠️  Token expires in 60 days - set a reminder to refresh!\n');
+      console.log('🎬 Ready to upload! Run:\n');
+      console.log(`   staticstripes upload --upload-name ${uploadName}\n`);
 
       rl.close();
     } catch (error) {
@@ -129,168 +109,205 @@ export class InstagramAuthStrategy implements AuthStrategy {
     }
   }
 
+
+  /**
+   * Exchanges short-lived token for long-lived token (60 days)
+   */
+  private async exchangeForLongLivedToken(
+    shortLivedToken: string,
+  ): Promise<string> {
+    const params = new URLSearchParams({
+      grant_type: 'ig_exchange_token',
+      client_secret: this.appSecret,
+      access_token: shortLivedToken,
+    });
+
+    const response = await fetch(
+      `https://graph.instagram.com/access_token?${params.toString()}`,
+    );
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(
+        `Failed to exchange for long-lived token: ${response.status} ${errorText}`,
+      );
+    }
+
+    const data = (await response.json()) as { access_token?: string };
+
+    if (!data.access_token) {
+      throw new Error('No long-lived access token in response');
+    }
+
+    return data.access_token;
+  }
+
+  /**
+   * Gets the Instagram user ID and username from the /me endpoint
+   */
+  private async getInstagramUserId(
+    accessToken: string,
+  ): Promise<{ id: string; username: string }> {
+    const params = new URLSearchParams({
+      fields: 'id,username',
+      access_token: accessToken,
+    });
+
+    const response = await fetch(
+      `https://graph.instagram.com/me?${params.toString()}`,
+    );
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(
+        `Failed to get Instagram user info: ${response.status} ${errorText}`,
+      );
+    }
+
+    const data = (await response.json()) as { id?: string; username?: string };
+
+    if (!data.id || !data.username) {
+      throw new Error('No user ID or username in response');
+    }
+
+    return { id: data.id, username: data.username };
+  }
+
   getSetupInstructions(): string {
+    const platform = process.platform;
+    let envInstructions = '';
+
+    if (platform === 'win32') {
+      envInstructions = `
+   PowerShell (Recommended) - Run as Administrator:
+     [System.Environment]::SetEnvironmentVariable("STATICSTRIPES_INSTAGRAM_APP_SECRET", "your-app-secret", "User")
+   Then restart your terminal
+
+   Or Command Prompt - Run as Administrator:
+     setx STATICSTRIPES_INSTAGRAM_APP_SECRET "your-app-secret"
+   Then restart your terminal
+`;
+    } else if (platform === 'darwin') {
+      envInstructions = `
+   Add to ~/.zshrc (or ~/.bash_profile for bash):
+     export STATICSTRIPES_INSTAGRAM_APP_SECRET="your-app-secret"
+
+   Then reload your shell:
+     source ~/.zshrc
+`;
+    } else {
+      envInstructions = `
+   Add to ~/.bashrc (or ~/.zshrc for zsh):
+     export STATICSTRIPES_INSTAGRAM_APP_SECRET="your-app-secret"
+
+   Then reload your shell:
+     source ~/.bashrc  # or source ~/.zshrc
+`;
+    }
+
     return `
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Instagram Authentication Setup Guide
+Instagram Authentication Setup (Simplified Semi-Automatic Flow)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+This method uses a semi-automatic approach: you get a token from Facebook's
+Graph API Explorer, and our CLI handles the rest automatically!
 
 ⚠️  PREREQUISITES
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-You MUST have:
-  ✅ Instagram Business or Creator account (NOT personal account)
-  ✅ Connected to a Facebook Page
-  ✅ Admin/Editor role on that Facebook Page
+  ✅ Instagram Business or Creator account (NOT personal)
+  ✅ Facebook account (for creating the app)
 
-To convert personal to business:
-  1. Instagram → Settings → Account
-  2. Switch to Professional Account → Business/Creator
-  3. Connect to Facebook Page (create one if needed)
+Convert to Business/Creator if needed:
+  Instagram app → Profile → Menu → Settings → Account
+  → "Switch to Professional Account" → Choose Business or Creator
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-STEP 1: Create Facebook App
+STEP 1: Create Facebook Developer App
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 1. Go to: https://developers.facebook.com
-2. Click "My Apps" → "Create App"
-3. Choose "Business" as app type
-4. Fill in:
-   • App Name: (e.g., "My Video Uploader")
-   • App Contact Email: Your email
-5. Click "Create App"
+2. Click "Get Started" → Log in → Complete registration
+3. Click "My Apps" → "Create App"
+4. When asked about use case, select:
+   "Manage messaging & content on Instagram" (or similar)
+5. Select app type: "Business"
+6. Fill in:
+   • App name: "My Instagram Uploader"
+   • Contact email: your.email@example.com
+7. Click "Create App"
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-STEP 2: Add Instagram Product
+STEP 2: Get Your App Secret
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-1. In your app dashboard, find "Instagram" under Products
-2. Click "Set Up"
-3. Choose "API Setup with Instagram Login"
-   ⚠️  NOT "API Setup with Facebook Login"!
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-STEP 3: Generate Short-Lived Token
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-1. Go to: https://developers.facebook.com/tools/explorer/
-2. Select your app from the dropdown (top right)
-3. Click "Generate Access Token"
-4. Click "Add account"
-5. Log in to Instagram and authorize
-6. Copy the token (valid for 1 hour)
+1. In app dashboard, click "Customize" on the Instagram use case
+2. You'll see:
+   • Instagram app ID
+   • Instagram app secret (click "Show" to reveal)
+3. Copy the Instagram app secret
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-STEP 4: Exchange for Long-Lived Token (60 days)
+STEP 3: Add Yourself as Tester
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Get your App Secret:
-  • Go to your app dashboard
-  • Settings → Basic
-  • Click "Show" next to App Secret
+1. In app dashboard → "Roles" (left sidebar)
+2. Scroll to "Instagram Testers" section
+3. Click "Add Instagram Testers"
+4. Enter your Instagram username (without @)
+5. Click "Submit"
 
-Run this cURL command:
-
-  curl -X GET "https://graph.instagram.com/access_token\\
-    ?grant_type=ig_exchange_token\\
-    &client_secret={YOUR_APP_SECRET}\\
-    &access_token={SHORT_LIVED_TOKEN}"
-
-Response:
-  {
-    "access_token": "LONG_LIVED_TOKEN_HERE",
-    "token_type": "bearer",
-    "expires_in": 5183944
-  }
-
-📋 Save this access_token - it's valid for 60 days!
+Accept the invitation on Instagram:
+6. Instagram mobile app → Settings → Business → Apps and websites
+   (or Settings → For Professionals → Invitations)
+7. Accept the tester invitation
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-STEP 5: Get Instagram User ID
+STEP 4: Set Environment Variable
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Method 1 - Graph API Explorer:
-  1. Go to: https://developers.facebook.com/tools/explorer/
-  2. Paste your long-lived token
-  3. Enter endpoint: me/accounts?fields=instagram_business_account
-  4. Click "Submit"
-  5. Look for "instagram_business_account" → "id"
-
-Method 2 - cURL:
-
-  curl -X GET "https://graph.facebook.com/v21.0/me/accounts\\
-    ?fields=instagram_business_account{id,username}\\
-    &access_token={LONG_LIVED_TOKEN}"
-
-Response:
-  {
-    "data": [
-      {
-        "instagram_business_account": {
-          "id": "17841401234567890",  ← This is your IG User ID
-          "username": "your_username"
-        }
-      }
-    ]
-  }
-
-⚠️  Make sure you get the Instagram Business Account ID
-    (typically starts with "17841...")
-    NOT the Facebook Page ID!
+${envInstructions}
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-STEP 6: Run Authentication Command
+STEP 5: Run Authentication Command
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  staticstripes auth --upload-name ig_primary
+Run:
+  staticstripes auth --upload-name YOUR_UPLOAD_NAME
 
-The wizard will prompt you to enter:
-  • Long-lived access token
-  • Instagram User ID
-
-Credentials will be saved to: .auth/ig_primary.json
+The wizard will:
+1. Ask you to get a short-lived token from Graph API Explorer
+2. Automatically exchange it for a long-lived token (60 days)
+3. Automatically fetch your Instagram User ID
+4. Save credentials to .auth/YOUR_UPLOAD_NAME.json
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 TOKEN REFRESH (Every 60 Days)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Tokens expire after 60 days. Refresh before expiry:
+Tokens expire after 60 days. To refresh:
 
-  curl -X GET "https://graph.instagram.com/refresh_access_token\\
-    ?grant_type=ig_refresh_token\\
-    &access_token={CURRENT_LONG_LIVED_TOKEN}"
-
-Requirements:
-  • Token must be at least 24 hours old
-  • Token must not be expired
-  • Refreshed token is valid for another 60 days
+  curl -X GET "https://graph.instagram.com/refresh_access_token?grant_type=ig_refresh_token&access_token=YOUR_CURRENT_TOKEN"
 
 💡 Set a calendar reminder for 50 days!
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 TROUBLESHOOTING
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+❌ "Insufficient Developer Role"
+   → Make sure you added yourself as Instagram Tester (Step 3)
+   → Accept the invitation in Instagram mobile app
+
 ❌ "Invalid OAuth access token"
-   → Token expired (refresh it)
-   → Wrong token format
-   → App permissions not granted
+   → Token expired (they expire in 1 hour, get a new one)
+   → Make sure you're using your Instagram app (not Facebook app)
 
-❌ "Invalid Instagram User ID"
-   → Make sure it's the Business Account ID, not Page ID
-   → IDs typically start with "17841..."
-
-❌ "Video URL not accessible"
-   → Ensure S3 ACL is set to "public-read"
-   → Test the S3 URL in your browser first
-
-❌ "Unsupported video format"
-   → Must be MP4 format
-   → Max 100MB file size
-   → Must meet Instagram's encoding requirements
+❌ "OAuthException"
+   → Check that INSTAGRAM_APP_SECRET is correct
+   → Verify you accepted the tester invitation
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 REFERENCE LINKS
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-• Graph API Explorer:
-  https://developers.facebook.com/tools/explorer/
-
-• Instagram Graph API Docs:
-  https://developers.facebook.com/docs/instagram-api/
-
 • Facebook Apps Dashboard:
   https://developers.facebook.com/apps/
+
+• Graph API Explorer (to get tokens):
+  https://developers.facebook.com/tools/explorer/
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 `;

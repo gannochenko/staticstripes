@@ -58,12 +58,16 @@ export class S3UploadStrategy implements UploadStrategy {
 
     if (!existsSync(credentialsPath)) {
       throw new Error(
-        `❌ Error: S3 credentials not found at ${credentialsPath}\n\n` +
-          `💡 Create a JSON file with the following format:\n` +
+        `❌ Error: S3 credentials not found\n\n` +
+          `Expected location: ${credentialsPath}\n\n` +
+          `💡 Create a JSON file with your S3 credentials:\n` +
           `{\n` +
           `  "accessKeyId": "YOUR_ACCESS_KEY",\n` +
           `  "secretAccessKey": "YOUR_SECRET_KEY"\n` +
-          `}\n`,
+          `}\n\n` +
+          `📖 Get credentials from:\n` +
+          `   • AWS: IAM → Users → Security Credentials\n` +
+          `   • DigitalOcean: API → Spaces Keys\n`,
       );
     }
 

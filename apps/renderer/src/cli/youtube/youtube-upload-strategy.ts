@@ -23,8 +23,10 @@ export class YouTubeUploadStrategy implements UploadStrategy {
     if (!this.clientId || !this.clientSecret) {
       const error = new Error(
         '❌ Error: STATICSTRIPES_GOOGLE_CLIENT_ID and STATICSTRIPES_GOOGLE_CLIENT_SECRET environment variables are not set\n\n' +
-          '💡 Run: staticstripes auth --help\n' +
-          '   for complete setup instructions',
+          '📖 View setup instructions:\n' +
+          '   staticstripes auth-help youtube\n\n' +
+          '💡 After setting env vars, run authentication:\n' +
+          '   staticstripes auth --upload-name YOUR_UPLOAD_NAME\n',
       );
       throw error;
     }

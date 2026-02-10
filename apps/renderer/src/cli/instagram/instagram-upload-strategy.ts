@@ -51,13 +51,12 @@ export class InstagramUploadStrategy implements UploadStrategy {
 
     if (!existsSync(credentialsPath)) {
       throw new Error(
-        `❌ Error: Instagram credentials not found at ${credentialsPath}\n\n` +
-          `💡 Create a JSON file with the following format:\n` +
-          `{\n` +
-          `  "accessToken": "YOUR_LONG_LIVED_ACCESS_TOKEN",\n` +
-          `  "igUserId": "YOUR_INSTAGRAM_USER_ID"\n` +
-          `}\n\n` +
-          `See https://developers.facebook.com/docs/instagram-api/ for setup instructions`,
+        `❌ Error: Instagram credentials not found\n\n` +
+          `Expected location: ${credentialsPath}\n\n` +
+          `💡 Run authentication wizard:\n` +
+          `   staticstripes auth --upload-name ${upload.name}\n\n` +
+          `📖 Or view detailed setup instructions:\n` +
+          `   staticstripes auth-help instagram\n`,
       );
     }
 
