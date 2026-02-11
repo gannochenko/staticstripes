@@ -6,13 +6,13 @@ Similar to uploads, you define AI providers in the project file:
 
 ```html
 <ai>
-  <music-api-ai name="music-api">
-    <model name="sonic-v3-5" />
-  </music-api-ai>
+  <ai-music-api-ai name="music_api">
+    <model name="sonic-v4-5" />
+  </ai-music-api-ai>
 </ai>
 ```
 
-The `<model>` element is optional. If not specified, the default model for the provider will be used (e.g., `sonic-v3-5` for MusicAPI.AI).
+The `<model>` element is optional. If not specified, the default model for the provider will be used (e.g., `sonic-v4-5` for AIMusicAPI.ai).
 
 ## Asset AI Configuration
 
@@ -52,17 +52,19 @@ For example, for the `music-api` provider, create `.auth/music-api.json` in your
 ## Strategy Pattern
 
 The implementation uses a strategy pattern:
-- Each AI provider tag (e.g., `<music-api-ai>`) maps to a specific strategy implementation
+- Each AI provider tag (e.g., `<ai-music-api-ai>`) maps to a specific strategy implementation
 - The strategy handles authentication, API requests, and file downloads
 - Strategies are registered in `AIGenerationStrategyFactory`
 
 ## Supported Providers
 
-### AI Music API (`<music-api-ai>`)
+### AIMusicAPI.ai (`<ai-music-api-ai>`)
 
 Generates music using AIMusicAPI.ai's API (https://aimusicapi.ai).
 
-**Note**: This uses **aimusicapi.ai**, NOT musicapi.ai (different services!)
+**Important**: This uses **aimusicapi.ai**, NOT musicapi.ai (these are completely different services!)
+
+**Provider tag:** `<ai-music-api-ai>`
 
 **Configuration:**
 - `<model name="sonic-v4-5" />` - Optional model selection (default: sonic-v4-5)
@@ -71,7 +73,7 @@ Generates music using AIMusicAPI.ai's API (https://aimusicapi.ai).
 - `<prompt>` - Description of the music to generate (required)
 - `<duration value="30" />` - Duration in seconds (optional, default: 30)
 
-**Credentials format** (`.auth/<provider-name>.json`):
+**Credentials format** (`.auth/<integration-name>.json`):
 ```json
 {
   "apiKey": "your-aimusicapi-ai-api-key"

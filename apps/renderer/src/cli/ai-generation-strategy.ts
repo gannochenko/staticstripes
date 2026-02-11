@@ -12,11 +12,11 @@ export interface AIAssetConfig {
 
 /**
  * Interface for AI generation strategies
- * Each AI provider (MusicAPI.AI, etc.) implements this interface
+ * Each AI provider (AIMusicAPI.ai, etc.) implements this interface
  */
 export interface AIGenerationStrategy {
   /**
-   * Returns the tag name this strategy handles (e.g., "music-api-ai")
+   * Returns the tag name this strategy handles (e.g., "ai-music-api-ai")
    */
   getTag(): string;
 

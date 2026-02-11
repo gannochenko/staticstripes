@@ -1,5 +1,5 @@
 import { AIGenerationStrategy } from './ai-generation-strategy';
-import { MusicAPIGenerationStrategy } from './music-api/music-api-generation-strategy';
+import { AIMusicAPIGenerationStrategy } from './ai-music-api-ai/ai-music-api-ai-generation-strategy';
 
 /**
  * Factory for creating AI generation strategies based on provider tag
@@ -16,7 +16,7 @@ export class AIGenerationStrategyFactory {
 
   /**
    * Gets a strategy for the given tag
-   * @param tag The AI provider tag (e.g., "music-api-ai")
+   * @param tag The AI provider tag (e.g., "ai-music-api-ai")
    * @returns The strategy for this tag
    * @throws Error if no strategy is registered for the tag
    */
@@ -40,8 +40,8 @@ export class AIGenerationStrategyFactory {
   static createDefault(): AIGenerationStrategyFactory {
     const factory = new AIGenerationStrategyFactory();
 
-    // Register MusicAPI.AI strategy
-    factory.register(new MusicAPIGenerationStrategy());
+    // Register AIMusicAPI.ai strategy
+    factory.register(new AIMusicAPIGenerationStrategy());
 
     return factory;
   }

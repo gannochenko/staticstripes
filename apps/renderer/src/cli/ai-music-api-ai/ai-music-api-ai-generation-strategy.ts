@@ -1,8 +1,7 @@
 import { AIGenerationStrategy, AIAssetConfig } from '../ai-generation-strategy';
 import { resolve } from 'path';
 import { existsSync, readFileSync, writeFileSync } from 'fs';
-import https from 'https';
-import http from 'http';
+import { makeRequest, downloadFile } from '../../lib/net';
 
 interface MusicAPICredentials {
   apiKey: string;
@@ -22,10 +21,10 @@ interface MusicAPITaskResponse {
 }
 
 /**
- * MusicAPI.AI generation strategy
- * Generates music using MusicAPI.AI's API
+ * AIMusicAPI.ai generation strategy
+ * Generates music using AIMusicAPI.ai's API (https://aimusicapi.ai)
  */
-export class MusicAPIGenerationStrategy implements AIGenerationStrategy {
+export class AIMusicAPIGenerationStrategy implements AIGenerationStrategy {
   private readonly API_BASE_URL = 'https://api.aimusicapi.ai/api/v1';
   private readonly POLL_INTERVAL_MS = 20000; // 20 seconds
   private readonly MAX_POLL_ATTEMPTS = 60; // 20 minutes max
@@ -33,7 +32,7 @@ export class MusicAPIGenerationStrategy implements AIGenerationStrategy {
   private readonly DEFAULT_DURATION = 30; // Default duration in seconds if none specified
 
   getTag(): string {
-    return 'music-api-ai';
+    return 'ai-music-api-ai';
   }
 
   validate(): void {
@@ -132,12 +131,14 @@ export class MusicAPIGenerationStrategy implements AIGenerationStrategy {
       duration,
     };
 
-    const response = await this.makeRequest<MusicAPICreateResponse>(
-      endpoint,
-      apiKey,
-      'POST',
-      requestBody,
-    );
+    const response = await makeRequest<MusicAPICreateResponse>({
+      url: endpoint,
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+      },
+      body: requestBody,
+    });
 
     if (!response.task_id) {
       throw new Error(
@@ -159,11 +160,13 @@ export class MusicAPIGenerationStrategy implements AIGenerationStrategy {
     const endpoint = `${this.API_BASE_URL}/sonic/task/${taskId}`;
 
     for (let attempt = 0; attempt < this.MAX_POLL_ATTEMPTS; attempt++) {
-      const response = await this.makeRequest<MusicAPITaskResponse>(
-        endpoint,
-        apiKey,
-        'GET',
-      );
+      const response = await makeRequest<MusicAPITaskResponse>({
+        url: endpoint,
+        method: 'GET',
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+        },
+      });
 
       if (response.state === 'succeeded') {
         if (!response.audio_url) {
@@ -196,97 +199,8 @@ export class MusicAPIGenerationStrategy implements AIGenerationStrategy {
    * Downloads audio from URL to file
    */
   private async downloadAudio(url: string, outputPath: string): Promise<void> {
-    return new Promise((resolve, reject) => {
-      const protocol = url.startsWith('https') ? https : http;
-
-      protocol
-        .get(url, (response) => {
-          if (response.statusCode !== 200) {
-            reject(
-              new Error(
-                `Failed to download audio: HTTP ${response.statusCode}`,
-              ),
-            );
-            return;
-          }
-
-          const chunks: Buffer[] = [];
-          response.on('data', (chunk) => chunks.push(chunk));
-          response.on('end', () => {
-            try {
-              const buffer = Buffer.concat(chunks);
-              writeFileSync(outputPath, buffer);
-              resolve();
-            } catch (error) {
-              reject(error);
-            }
-          });
-        })
-        .on('error', reject);
-    });
-  }
-
-  /**
-   * Makes an HTTP request to the MusicAPI.AI API
-   */
-  private async makeRequest<T>(
-    url: string,
-    apiKey: string,
-    method: 'GET' | 'POST',
-    body?: unknown,
-  ): Promise<T> {
-    return new Promise((resolve, reject) => {
-      const urlObj = new URL(url);
-      const options = {
-        hostname: urlObj.hostname,
-        port: urlObj.port || 443,
-        path: urlObj.pathname + urlObj.search,
-        method,
-        headers: {
-          Authorization: `Bearer ${apiKey}`,
-          'Content-Type': 'application/json',
-        },
-      };
-
-      const req = https.request(options, (res) => {
-        const chunks: Buffer[] = [];
-
-        res.on('data', (chunk) => chunks.push(chunk));
-        res.on('end', () => {
-          try {
-            const responseText = Buffer.concat(chunks).toString('utf-8');
-            const data = JSON.parse(responseText) as T;
-
-            if (res.statusCode && res.statusCode >= 400) {
-              reject(
-                new Error(
-                  `API request failed with status ${res.statusCode}: ${responseText}`,
-                ),
-              );
-              return;
-            }
-
-            resolve(data);
-          } catch (error) {
-            reject(
-              new Error(
-                `Failed to parse API response: ${error instanceof Error ? error.message : String(error)}`,
-              ),
-            );
-          }
-        });
-      });
-
-      req.on('error', (error) => {
-        reject(new Error(`API request failed: ${error.message}`));
-      });
-
-      if (body) {
-        req.write(JSON.stringify(body));
-      }
-
-      req.end();
-    });
+    const buffer = await downloadFile(url);
+    writeFileSync(outputPath, buffer);
   }
 
   /**
