@@ -4,6 +4,7 @@ import {
   SequenceDefinition,
   FFmpegOption,
   Upload,
+  AIProvider,
 } from './type';
 import { Label } from './ffmpeg';
 import { AssetManager } from './asset-manager';
@@ -23,6 +24,7 @@ export class Project {
     private outputs: Map<string, Output>,
     private ffmpegOptions: Map<string, FFmpegOption>,
     private uploads: Map<string, Upload>,
+    private aiProviders: Map<string, AIProvider>,
     private title: string,
     private cssText: string,
     private projectPath: string,
@@ -125,6 +127,14 @@ export class Project {
 
   public getYouTubeUpload(name: string): Upload | undefined {
     return this.getUpload(name);
+  }
+
+  public getAIProviders(): Map<string, AIProvider> {
+    return this.aiProviders;
+  }
+
+  public getAIProvider(name: string): AIProvider | undefined {
+    return this.aiProviders.get(name);
   }
 
   public getTitle(): string {

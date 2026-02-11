@@ -19,6 +19,10 @@ export class AssetManager {
     return this.assets.find((assetItem) => assetItem.name === name);
   }
 
+  public getAssets(): Asset[] {
+    return this.assets;
+  }
+
   public getVideoInputLabelByAssetName(name: string): Label {
     const assetIndex = this.assetIndexMap.get(name);
     const asset = this.getAssetByName(name);

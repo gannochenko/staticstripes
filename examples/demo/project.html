@@ -203,6 +203,19 @@
     data-path="./audio/instrumental-acoustic-guitar-music-401434.mp3"
     data-author="Baz"
   />
+  <asset
+    data-name="mysterious_music"
+    data-path="./audio/mysterious_music_01.mp3"
+  >
+    <ai data-integration-name="music_api">
+      <prompt>
+        10-second instrumental acoustic guitar piece, calm and relaxing mood,
+        soft fingerpicking, warm analog tone, subtle ambient background texture,
+        slow tempo (65-75 BPM), light room reverb, smooth fade-out,
+        minimalistic, no vocals, no percussion.
+      </prompt>
+    </ai>
+  </asset>
 </assets>
 
 <outputs>
@@ -264,6 +277,12 @@ ${tags}
     </pre>
   </instagram>
 </uploads>
+
+<ai>
+  <music-api-ai name="ai_music_api_ai">
+    <model name="sonic-v4-5" />
+  </music-api-ai>
+</ai>
 
 <ffmpeg>
   <option name="preview">

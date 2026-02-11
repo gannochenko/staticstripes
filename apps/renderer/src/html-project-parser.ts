@@ -9,6 +9,7 @@ import {
   Container,
   FFmpegOption,
   Upload,
+  AIProvider,
 } from './type';
 import { execFile } from 'child_process';
 import { promisify } from 'util';
@@ -42,7 +43,60 @@ export class HTMLProjectParser {
     this.projectDir = dirname(projectPath);
   }
 
+  /**
+   * Extracts AI asset generation requirements without full parsing
+   * Used to generate AI assets before full project parsing
+   */
+  public extractAIGenerationRequirements(): {
+    providers: Map<string, AIProvider>;
+    assetsToGenerate: Array<{
+      name: string;
+      path: string;
+      integrationName: string;
+      prompt: string;
+      duration?: number;
+    }>;
+  } {
+    const providers = this.processAIProviders();
+    const assetsToGenerate: Array<{
+      name: string;
+      path: string;
+      integrationName: string;
+      prompt: string;
+      duration?: number;
+    }> = [];
+
+    const assetElements = this.findAssetElements();
+
+    for (const element of assetElements) {
+      const attrs = getAttrs(element);
+      const name = attrs.get('data-name') || attrs.get('id');
+      const relativePath = attrs.get('data-path') || attrs.get('src');
+
+      if (!name || !relativePath) {
+        continue;
+      }
+
+      const absolutePath = resolve(this.projectDir, relativePath);
+      const aiConfig = this.extractAssetAIConfig(element);
+
+      // Only include if it has AI config and file doesn't exist
+      if (aiConfig && !existsSync(absolutePath)) {
+        assetsToGenerate.push({
+          name,
+          path: absolutePath,
+          integrationName: aiConfig.integrationName,
+          prompt: aiConfig.prompt,
+          duration: aiConfig.duration,
+        });
+      }
+    }
+
+    return { providers, assetsToGenerate };
+  }
+
   public async parse(): Promise<Project> {
+    const aiProviders = this.processAIProviders();
     const assets = await this.processAssets();
 
     // Preflight check: verify all assets exist
@@ -62,6 +116,7 @@ export class HTMLProjectParser {
       outputs,
       ffmpegOptions,
       uploads,
+      aiProviders,
       title,
       cssText,
       this.projectPath,
@@ -71,11 +126,17 @@ export class HTMLProjectParser {
   /**
    * Validates that all asset files exist on the filesystem
    * Throws an error with a list of missing files if any are not found
+   * Note: Assets with AI configuration are skipped if they don't exist (will be generated)
    */
   private validateAssetFiles(assets: Asset[]): void {
     const missingFiles: string[] = [];
 
     for (const asset of assets) {
+      // Skip validation for assets with AI config (they will be generated if missing)
+      if (asset.ai) {
+        continue;
+      }
+
       if (!existsSync(asset.path)) {
         missingFiles.push(asset.path);
       }
@@ -192,6 +253,9 @@ export class HTMLProjectParser {
     // Extract author (optional)
     const author = attrs.get('data-author');
 
+    // Extract AI configuration from child <ai> element (optional)
+    const aiConfig = this.extractAssetAIConfig(element);
+
     return {
       name,
       path: absolutePath,
@@ -203,7 +267,78 @@ export class HTMLProjectParser {
       hasVideo,
       hasAudio,
       ...(author && { author }),
+      ...(aiConfig && { ai: aiConfig }),
     };
+  }
+
+  /**
+   * Extracts AI configuration from an asset's child <ai> element
+   */
+  private extractAssetAIConfig(
+    element: Element,
+  ): { integrationName: string; prompt: string; duration?: number } | null {
+    // Find first <ai> child
+    if (!('children' in element) || !element.children) {
+      return null;
+    }
+
+    for (const child of element.children) {
+      if (child.type === 'tag' && child.name === 'ai') {
+        const aiElement = child as Element;
+        const attrs = getAttrs(aiElement);
+
+        const integrationName = attrs.get('data-integration-name');
+        if (!integrationName) {
+          console.warn('Asset <ai> element missing data-integration-name attribute');
+          return null;
+        }
+
+        // Extract prompt and duration from child elements
+        let prompt = '';
+        let duration: number | undefined;
+
+        if ('children' in aiElement && aiElement.children) {
+          for (const aiChild of aiElement.children) {
+            if (aiChild.type === 'tag') {
+              const aiChildElement = aiChild as Element;
+
+              if (aiChildElement.name === 'prompt') {
+                if ('children' in aiChildElement && aiChildElement.children) {
+                  for (const textNode of aiChildElement.children) {
+                    if (textNode.type === 'text' && 'data' in textNode) {
+                      prompt += textNode.data;
+                    }
+                  }
+                }
+              } else if (aiChildElement.name === 'duration') {
+                const durationAttrs = getAttrs(aiChildElement);
+                const durationValue = durationAttrs.get('value');
+                if (durationValue) {
+                  const parsed = parseInt(durationValue, 10);
+                  if (!isNaN(parsed)) {
+                    duration = parsed;
+                  }
+                }
+              }
+            }
+          }
+        }
+
+        prompt = prompt.trim();
+        if (!prompt) {
+          console.warn('Asset <ai> element missing <prompt>');
+          return null;
+        }
+
+        return {
+          integrationName,
+          prompt,
+          ...(duration !== undefined && { duration }),
+        };
+      }
+    }
+
+    return null;
   }
 
   /**
@@ -944,6 +1079,92 @@ export class HTMLProjectParser {
         videoUrl,
       },
     };
+  }
+
+  /**
+   * Processes all AI providers from the parsed HTML
+   */
+  private processAIProviders(): Map<string, AIProvider> {
+    const aiElements = this.findAIElements();
+    const providers = new Map<string, AIProvider>();
+
+    for (const aiElement of aiElements) {
+      if ('children' in aiElement && aiElement.children) {
+        for (const child of aiElement.children) {
+          if (child.type === 'tag') {
+            const childElement = child as Element;
+            const provider = this.parseAIProviderElement(childElement);
+
+            if (provider) {
+              providers.set(provider.name, provider);
+            }
+          }
+        }
+      }
+    }
+
+    return providers;
+  }
+
+  /**
+   * Parses a single AI provider element (e.g., <music-api-ai>)
+   */
+  private parseAIProviderElement(element: Element): AIProvider | null {
+    const attrs = getAttrs(element);
+
+    const name = attrs.get('name');
+    if (!name) {
+      console.warn('AI provider missing name attribute');
+      return null;
+    }
+
+    const tag = element.name; // e.g., "music-api-ai"
+
+    // Extract optional model from child elements
+    let model: string | undefined;
+
+    if ('children' in element && element.children) {
+      for (const child of element.children) {
+        if (child.type === 'tag' && child.name === 'model') {
+          const childElement = child as Element;
+          const childAttrs = getAttrs(childElement);
+          model = childAttrs.get('name');
+          break; // Only use first model element
+        }
+      }
+    }
+
+    return {
+      name,
+      tag,
+      ...(model && { model }),
+    };
+  }
+
+  /**
+   * Finds all <ai> elements in the HTML
+   */
+  private findAIElements(): Element[] {
+    const results: Element[] = [];
+
+    const traverse = (node: ASTNode) => {
+      if (node.type === 'tag') {
+        const element = node as Element;
+
+        if (element.name === 'ai') {
+          results.push(element);
+        }
+      }
+
+      if ('children' in node && node.children) {
+        for (const child of node.children) {
+          traverse(child);
+        }
+      }
+    };
+
+    traverse(this.html.ast);
+    return results;
   }
 
   /**

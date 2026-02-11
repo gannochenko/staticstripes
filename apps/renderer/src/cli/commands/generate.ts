@@ -48,7 +48,60 @@ export function registerGenerateCommand(
         console.log(`📁 Project: ${projectPath}`);
         console.log(`📄 Loading: ${projectFilePath}\n`);
 
-        // Parse the project HTML file once to get output names
+        // Step 1: Light parse to extract AI generation requirements
+        const lightParser = new HTMLProjectParser(
+          await new HTMLParser().parseFile(projectFilePath),
+          projectFilePath,
+        );
+        const aiRequirements = lightParser.extractAIGenerationRequirements();
+
+        // Step 2: Generate AI assets if needed
+        if (aiRequirements.assetsToGenerate.length > 0) {
+          console.log('\n=== Generating AI Assets ===\n');
+
+          const { AIGenerationStrategyFactory } = await import(
+            '../../cli/ai-generation-strategy-factory.js'
+          );
+          const factory = AIGenerationStrategyFactory.createDefault();
+
+          for (const assetReq of aiRequirements.assetsToGenerate) {
+            const provider = aiRequirements.providers.get(assetReq.integrationName);
+            if (!provider) {
+              throw new Error(
+                `AI provider "${assetReq.integrationName}" not found for asset "${assetReq.name}"`,
+              );
+            }
+
+            const strategy = factory.getStrategy(provider.tag);
+
+            console.log(
+              `Generating asset "${assetReq.name}" using provider "${provider.name}" (${provider.tag})...`,
+            );
+
+            const config = {
+              assetName: assetReq.name,
+              assetPath: assetReq.path,
+              integrationName: provider.name,
+              prompt: assetReq.prompt,
+              model: provider.model,
+              duration: assetReq.duration,
+            };
+
+            try {
+              strategy.validate();
+              await strategy.generate(config, projectPath);
+              console.log(`✓ Generated asset "${assetReq.name}"`);
+            } catch (error) {
+              throw new Error(
+                `Failed to generate asset "${assetReq.name}": ${error instanceof Error ? error.message : String(error)}`,
+              );
+            }
+          }
+
+          console.log('\n');
+        }
+
+        // Step 3: Full parse to get outputs (now all AI assets exist)
         const initialParser = new HTMLProjectParser(
           await new HTMLParser().parseFile(projectFilePath),
           projectFilePath,
@@ -79,7 +132,7 @@ export function registerGenerateCommand(
         // Create a shared cache key store for all outputs
         const activeCacheKeys = new Set<string>();
 
-        // Render each output
+        // Step 4: Render each output
         for (const outputName of outputsToRender) {
           // Re-parse the project for each output to ensure clean state
           const parser = new HTMLProjectParser(

@@ -30,6 +30,11 @@ export type Asset = {
   rotation: number; // rotation in degrees (0, 90, 180, 270)
   hasVideo: boolean; // whether the asset has a video stream
   hasAudio: boolean; // whether the asset has an audio stream
+  ai?: {
+    integrationName: string; // References AI integration name from <ai> section
+    prompt: string; // Generation prompt
+    duration?: number; // Optional duration in seconds for generation
+  };
 };
 
 export type Fragment = {
@@ -111,6 +116,12 @@ export type Upload = {
 
 // Legacy alias for backward compatibility
 export type YouTubeUpload = Upload;
+
+export type AIProvider = {
+  name: string; // e.g. "music-api" - used to reference this provider in assets
+  tag: string; // e.g. "music-api-ai" - used to identify provider type
+  model?: string; // e.g. "sonic-v3-5" - optional model name
+};
 
 export type ProjectStructure = {
   sequences: SequenceDefinition[];
