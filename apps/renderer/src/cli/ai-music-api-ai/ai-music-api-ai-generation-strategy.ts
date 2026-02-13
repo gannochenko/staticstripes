@@ -50,13 +50,12 @@ export class AIMusicAPIGenerationStrategy implements AIGenerationStrategy {
     console.log(
       `  Using API key: ${credentials.apiKey.substring(0, 10)}... (length: ${credentials.apiKey.length})`,
     );
-    const taskId = '8a525dac-1a4c-4eca-92d3-0720308f949b';
-    // const taskId = await this.createMusicGenerationTask(
-    //   credentials.apiKey,
-    //   config.prompt,
-    //   model,
-    //   duration,
-    // );
+    const taskId = await this.createMusicGenerationTask(
+      credentials.apiKey,
+      config.prompt,
+      model,
+      duration,
+    );
 
     console.log(`  Task ID: ${taskId}`);
     console.log(`  Waiting for generation to complete...`);
@@ -77,7 +76,10 @@ export class AIMusicAPIGenerationStrategy implements AIGenerationStrategy {
 
       for (let i = 1; i < audioUrls.length; i++) {
         const altNumber = String(i).padStart(2, '0');
-        const altPath = resolve(assetDir, `${assetBase}_alt_${altNumber}${assetExt}`);
+        const altPath = resolve(
+          assetDir,
+          `${assetBase}_alt_${altNumber}${assetExt}`,
+        );
         await this.downloadAudio(audioUrls[i], altPath);
         console.log(`  Alternative ${i} saved to: ${altPath}`);
       }
@@ -226,9 +228,7 @@ export class AIMusicAPIGenerationStrategy implements AIGenerationStrategy {
           throw new Error('Task succeeded but no audio URLs returned');
         }
 
-        console.log(
-          `  Found ${audioUrls.length} generated clip(s)`,
-        );
+        console.log(`  Found ${audioUrls.length} generated clip(s)`);
         return audioUrls;
       }
 

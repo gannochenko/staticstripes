@@ -1142,23 +1142,33 @@ export class HTMLProjectParser {
   }
 
   /**
-   * Finds all <ai> elements in the HTML
+   * Finds all <ai> configuration elements in the HTML (excludes <ai> elements inside <asset>)
    */
   private findAIElements(): Element[] {
     const results: Element[] = [];
 
-    const traverse = (node: ASTNode) => {
+    const traverse = (node: ASTNode, insideAsset: boolean = false) => {
       if (node.type === 'tag') {
         const element = node as Element;
 
-        if (element.name === 'ai') {
+        // Track if we're entering an <asset> element
+        const isAsset = element.name === 'asset';
+        const nowInsideAsset = insideAsset || isAsset;
+
+        // Only collect <ai> elements that are NOT inside <asset> elements
+        if (element.name === 'ai' && !insideAsset) {
           results.push(element);
         }
-      }
 
-      if ('children' in node && node.children) {
+        // Continue traversing children with updated insideAsset flag
+        if ('children' in element && element.children) {
+          for (const child of element.children) {
+            traverse(child, nowInsideAsset);
+          }
+        }
+      } else if ('children' in node && node.children) {
         for (const child of node.children) {
-          traverse(child);
+          traverse(child, insideAsset);
         }
       }
     };
