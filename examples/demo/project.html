@@ -261,7 +261,9 @@ Thanks for watching!
     <bucket name="photoframe-photos-content-ams3-production" />
     <path name="file"> videos/${slug}/${output}.mp4 </path>
     <path name="metadata"> videos/${slug}/metadata.json </path>
+    <path name="thumbnail"> videos/${slug}/thumbnail.jpeg </path>
     <acl name="public-read" />
+    <thumbnail data-timecode="1000ms" />
   </s3>
   <s3 name="s3_instagram" data-output-name="instagram_shorts">
     <endpoint name="digitaloceanspaces.com" />

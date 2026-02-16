@@ -898,6 +898,7 @@ export class HTMLProjectParser {
     let bucket = '';
     const paths = new Map<string, string>();
     let acl: string | undefined;
+    let thumbnailTimecode: number | undefined;
 
     if ('children' in element && element.children) {
       for (const child of element.children) {
@@ -942,6 +943,19 @@ export class HTMLProjectParser {
               acl = childAttrs.get('name');
               break;
             }
+            case 'thumbnail': {
+              const timecode = childAttrs.get('data-timecode');
+              if (timecode) {
+                // Parse timecode (e.g., "1000ms" or "1s")
+                const match = timecode.match(/^(\d+(?:\.\d+)?)(ms|s)$/);
+                if (match) {
+                  const value = parseFloat(match[1]);
+                  const unit = match[2];
+                  thumbnailTimecode = unit === 's' ? value * 1000 : value;
+                }
+              }
+              break;
+            }
           }
         }
       }
@@ -963,6 +977,7 @@ export class HTMLProjectParser {
       category: '',
       language: '',
       description: '',
+      thumbnailTimecode,
       s3: {
         endpoint,
         region,

@@ -2,8 +2,13 @@ import { UploadStrategy } from '../upload-strategy';
 import { Project } from '../../project';
 import { Upload } from '../../type';
 import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
-import { readFileSync, existsSync } from 'fs';
+import { readFileSync, existsSync, mkdirSync } from 'fs';
 import { CredentialsManager, S3Credentials } from '../credentials';
+import { exec } from 'child_process';
+import { promisify } from 'util';
+import { dirname, resolve } from 'path';
+
+const execAsync = promisify(exec);
 
 /**
  * S3 upload strategy implementation
@@ -122,6 +127,11 @@ export class S3UploadStrategy implements UploadStrategy {
       const metadataPath = interpolatePath(paths.get('metadata')!);
       console.log(`   Metadata path: ${metadataPath}`);
     }
+    if (upload.thumbnailTimecode !== undefined && paths.has('thumbnail')) {
+      const thumbnailPath = interpolatePath(paths.get('thumbnail')!);
+      console.log(`   Thumbnail path: ${thumbnailPath}`);
+      console.log(`   Thumbnail timecode: ${upload.thumbnailTimecode}ms`);
+    }
     console.log('');
 
     // Configure S3 client
@@ -176,6 +186,52 @@ export class S3UploadStrategy implements UploadStrategy {
 
       console.log(`✅ Video uploaded successfully!`);
       console.log(`🔗 Video URL: ${fileUrl}`);
+
+      // Upload thumbnail if specified
+      if (upload.thumbnailTimecode !== undefined && paths.has('thumbnail')) {
+        console.log(
+          `\n🖼️  Extracting thumbnail at ${upload.thumbnailTimecode}ms...`,
+        );
+        const thumbnailPath = resolve(
+          dirname(projectPath),
+          '.cache',
+          'thumbnail.jpeg',
+        );
+        await this.extractThumbnail(
+          output.path,
+          upload.thumbnailTimecode,
+          thumbnailPath,
+        );
+
+        console.log(`📤 Uploading thumbnail...`);
+        const s3ThumbnailPath = interpolatePath(paths.get('thumbnail')!);
+        const thumbnailBuffer = readFileSync(thumbnailPath);
+
+        const thumbnailUploadParams: any = {
+          Bucket: bucket,
+          Key: s3ThumbnailPath,
+          Body: thumbnailBuffer,
+          ContentType: 'image/jpeg',
+        };
+
+        // Add ACL if specified
+        if (acl) {
+          thumbnailUploadParams.ACL = acl;
+        }
+
+        await s3Client.send(new PutObjectCommand(thumbnailUploadParams));
+
+        // Construct public URL for thumbnail
+        let thumbnailUrl: string;
+        if (endpoint) {
+          thumbnailUrl = `https://${bucket}.${region}.${endpoint}/${s3ThumbnailPath}`;
+        } else {
+          thumbnailUrl = `https://${bucket}.s3.${region}.amazonaws.com/${s3ThumbnailPath}`;
+        }
+
+        console.log(`✅ Thumbnail uploaded successfully!`);
+        console.log(`🔗 Thumbnail URL: ${thumbnailUrl}`);
+      }
 
       // Upload metadata file if specified
       if (paths.has('metadata')) {
@@ -239,5 +295,25 @@ export class S3UploadStrategy implements UploadStrategy {
       .replace(/\-\-+/g, '-') // Replace multiple - with single -
       .replace(/^-+/, '') // Trim - from start
       .replace(/-+$/, ''); // Trim - from end
+  }
+
+  /**
+   * Extracts a frame from video at specific timecode using ffmpeg
+   */
+  private async extractThumbnail(
+    videoPath: string,
+    timecode: number,
+    outputPath: string,
+  ): Promise<void> {
+    // Ensure the output directory exists
+    const outputDir = dirname(outputPath);
+    if (!existsSync(outputDir)) {
+      mkdirSync(outputDir, { recursive: true });
+    }
+
+    const timeInSeconds = timecode / 1000;
+    const command = `ffmpeg -y -ss ${timeInSeconds} -i "${videoPath}" -frames:v 1 -q:v 2 "${outputPath}"`;
+
+    await execAsync(command);
   }
 }
