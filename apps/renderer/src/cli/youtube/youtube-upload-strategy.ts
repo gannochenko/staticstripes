@@ -111,6 +111,9 @@ export async function handleYouTubeUpload(
   const title = upload.title || project.getTitle();
   console.log(`📝 Title: ${title}\n`);
 
+  // Get date from project
+  const date = project.getDate();
+
   // Build the project to populate fragment times (needed for timecodes)
   console.log('🔨 Building project to calculate timecodes...');
   await project.build(upload.outputName);
@@ -129,6 +132,7 @@ export async function handleYouTubeUpload(
 
   const processedDescription = ejs.render(ejsDescription, {
     title,
+    date,
     tags: formattedTags,
     timecodes: timecodes.join('\n'),
   });

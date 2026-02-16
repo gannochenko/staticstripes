@@ -1,4 +1,5 @@
 <title>Christmas Morning in Liberec</title>
+<date>2005-12-24T18:00:00Z</date>
 <tag name="travel" />
 <tag name="blog" />
 <tag name="christmasmorning" />
@@ -258,14 +259,15 @@ Thanks for watching!
     <endpoint name="digitaloceanspaces.com" />
     <region name="ams3" />
     <bucket name="photoframe-photos-content-ams3-production" />
-    <path name="videos/${slug}/${output}.mp4" />
+    <path name="file"> videos/${slug}/${output}.mp4 </path>
+    <path name="metadata"> videos/${slug}/metadata.json </path>
     <acl name="public-read" />
   </s3>
   <s3 name="s3_instagram" data-output-name="instagram_shorts">
     <endpoint name="digitaloceanspaces.com" />
     <region name="ams3" />
     <bucket name="photoframe-photos-content-ams3-production" />
-    <path name="videos/instagram/${slug}/${output}.mp4" />
+    <path name="file"> videos/instagram/${slug}/${output}.mp4 </path>
     <acl name="public-read" />
   </s3>
   <instagram name="ig_primary" data-output-name="instagram_shorts">

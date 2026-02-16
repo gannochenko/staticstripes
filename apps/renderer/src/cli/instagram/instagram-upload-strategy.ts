@@ -95,6 +95,9 @@ export class InstagramUploadStrategy implements UploadStrategy {
     // Determine title (use upload-specific title or fall back to project title)
     const title = upload.title || project.getTitle();
 
+    // Get date from project
+    const date = project.getDate();
+
     // Format tags with # and space-separated (Instagram style)
     const formattedTags = upload.tags.map((tag) => `#${tag}`).join(' ');
 
@@ -103,6 +106,7 @@ export class InstagramUploadStrategy implements UploadStrategy {
 
     const processedCaption = ejs.render(ejsCaption, {
       title,
+      date,
       tags: formattedTags,
     });
 
@@ -316,18 +320,26 @@ export class InstagramUploadStrategy implements UploadStrategy {
       throw new Error('S3 configuration missing');
     }
 
-    const { endpoint, region, bucket, path } = s3Upload.s3;
+    const { endpoint, region, bucket, paths } = s3Upload.s3;
     const output = project.getOutput(s3Upload.outputName);
     if (!output) {
       throw new Error(`Output "${s3Upload.outputName}" not found`);
     }
 
+    // Get the file path
+    const filePath = paths.get('file');
+    if (!filePath) {
+      throw new Error('S3 upload missing "file" path');
+    }
+
     // Interpolate path variables
     const slug = this.slugify(project.getTitle());
     const outputName = output.name;
-    const interpolatedPath = path
+    const date = project.getDate() || '';
+    const interpolatedPath = filePath
       .replace(/\$\{slug\}/g, slug)
-      .replace(/\$\{output\}/g, outputName);
+      .replace(/\$\{output\}/g, outputName)
+      .replace(/\$\{date\}/g, date);
 
     // Construct URL
     if (endpoint) {

@@ -32,7 +32,14 @@ export class S3UploadStrategy implements UploadStrategy {
       );
     }
 
-    const { endpoint, region, bucket, path, acl } = upload.s3;
+    const { endpoint, region, bucket, paths, acl } = upload.s3;
+
+    // Validate that we have a "file" path
+    if (!paths.has('file')) {
+      throw new Error(
+        `❌ Error: S3 upload "${upload.name}" missing required <path name="file"> element`,
+      );
+    }
 
     // Validate ACL value if specified
     const allowedAcls = ['private', 'public-read', 'authenticated-read'];
@@ -85,12 +92,23 @@ export class S3UploadStrategy implements UploadStrategy {
       );
     }
 
-    // Interpolate path variables
+    // Prepare interpolation variables
     const slug = this.slugify(project.getTitle());
     const outputName = output.name;
-    const interpolatedPath = path
-      .replace(/\$\{slug\}/g, slug)
-      .replace(/\$\{output\}/g, outputName);
+    const date = project.getDate() || '';
+    const title = project.getTitle();
+    const tags = upload.tags;
+
+    // Helper function to interpolate path variables
+    const interpolatePath = (pathTemplate: string): string => {
+      return pathTemplate
+        .replace(/\$\{slug\}/g, slug)
+        .replace(/\$\{output\}/g, outputName)
+        .replace(/\$\{date\}/g, date);
+    };
+
+    // Get and interpolate the file path
+    const filePath = interpolatePath(paths.get('file')!);
 
     console.log(`\n📦 Preparing S3 upload...`);
     console.log(`   Bucket: ${bucket}`);
@@ -98,8 +116,13 @@ export class S3UploadStrategy implements UploadStrategy {
     if (endpoint) {
       console.log(`   Endpoint: ${endpoint}`);
     }
-    console.log(`   Path: ${interpolatedPath}`);
-    console.log(`   File: ${output.path}\n`);
+    console.log(`   File path: ${filePath}`);
+    console.log(`   Video file: ${output.path}`);
+    if (paths.has('metadata')) {
+      const metadataPath = interpolatePath(paths.get('metadata')!);
+      console.log(`   Metadata path: ${metadataPath}`);
+    }
+    console.log('');
 
     // Configure S3 client
     const s3Config: any = {
@@ -121,41 +144,80 @@ export class S3UploadStrategy implements UploadStrategy {
 
     const s3Client = new S3Client(s3Config);
 
-    // Read file
-    console.log(`📤 Uploading to S3...`);
+    // Upload video file
+    console.log(`📤 Uploading video file...`);
     const fileBuffer = readFileSync(output.path);
 
-    // Upload file
-    const uploadParams: any = {
+    const fileUploadParams: any = {
       Bucket: bucket,
-      Key: interpolatedPath,
+      Key: filePath,
       Body: fileBuffer,
       ContentType: 'video/mp4',
     };
 
     // Add ACL if specified in configuration
     if (acl) {
-      uploadParams.ACL = acl;
+      fileUploadParams.ACL = acl;
     }
 
-    const command = new PutObjectCommand(uploadParams);
-
     try {
-      await s3Client.send(command);
+      await s3Client.send(new PutObjectCommand(fileUploadParams));
 
-      // Construct public URL
-      let publicUrl: string;
+      // Construct public URL for video
+      let fileUrl: string;
       if (endpoint) {
         // For DigitalOcean Spaces and similar services
         // Format: https://{bucket}.{region}.{endpoint}/{path}
-        publicUrl = `https://${bucket}.${region}.${endpoint}/${interpolatedPath}`;
+        fileUrl = `https://${bucket}.${region}.${endpoint}/${filePath}`;
       } else {
         // For AWS S3
-        publicUrl = `https://${bucket}.s3.${region}.amazonaws.com/${interpolatedPath}`;
+        fileUrl = `https://${bucket}.s3.${region}.amazonaws.com/${filePath}`;
       }
 
-      console.log(`\n✅ Upload successful!`);
-      console.log(`🔗 Public URL: ${publicUrl}\n`);
+      console.log(`✅ Video uploaded successfully!`);
+      console.log(`🔗 Video URL: ${fileUrl}`);
+
+      // Upload metadata file if specified
+      if (paths.has('metadata')) {
+        console.log(`\n📤 Uploading metadata file...`);
+        const metadataPath = interpolatePath(paths.get('metadata')!);
+
+        // Create metadata JSON
+        const metadata = {
+          title,
+          date: date || null,
+          tags,
+        };
+
+        const metadataBuffer = Buffer.from(JSON.stringify(metadata, null, 2), 'utf-8');
+
+        const metadataUploadParams: any = {
+          Bucket: bucket,
+          Key: metadataPath,
+          Body: metadataBuffer,
+          ContentType: 'application/json',
+        };
+
+        // Add ACL if specified
+        if (acl) {
+          metadataUploadParams.ACL = acl;
+        }
+
+        await s3Client.send(new PutObjectCommand(metadataUploadParams));
+
+        // Construct public URL for metadata
+        let metadataUrl: string;
+        if (endpoint) {
+          metadataUrl = `https://${bucket}.${region}.${endpoint}/${metadataPath}`;
+        } else {
+          metadataUrl = `https://${bucket}.s3.${region}.amazonaws.com/${metadataPath}`;
+        }
+
+        console.log(`✅ Metadata uploaded successfully!`);
+        console.log(`🔗 Metadata URL: ${metadataUrl}`);
+      }
+
+      console.log('');
     } catch (error) {
       throw new Error(
         `❌ Error: Failed to upload to S3\n` +

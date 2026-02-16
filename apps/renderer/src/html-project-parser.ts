@@ -105,6 +105,7 @@ export class HTMLProjectParser {
     const outputs = this.processOutputs();
     const ffmpegOptions = this.processFfmpegOptions();
     const title = this.processTitle();
+    const date = this.processDate();
     const globalTags = this.processGlobalTags();
     const uploads = this.processUploads(title, globalTags);
     const sequences = this.processSequences(assets);
@@ -118,6 +119,7 @@ export class HTMLProjectParser {
       uploads,
       aiProviders,
       title,
+      date,
       cssText,
       this.projectPath,
     );
@@ -894,7 +896,7 @@ export class HTMLProjectParser {
     let endpoint: string | undefined;
     let region = '';
     let bucket = '';
-    let path = '';
+    const paths = new Map<string, string>();
     let acl: string | undefined;
 
     if ('children' in element && element.children) {
@@ -917,7 +919,23 @@ export class HTMLProjectParser {
               break;
             }
             case 'path': {
-              path = childAttrs.get('name') || '';
+              // Extract path name from name attribute
+              const pathName = childAttrs.get('name') || 'file';
+
+              // Extract path value from text content
+              let pathValue = '';
+              if ('children' in childElement && childElement.children) {
+                for (const textNode of childElement.children) {
+                  if (textNode.type === 'text' && 'data' in textNode) {
+                    pathValue += textNode.data;
+                  }
+                }
+              }
+
+              pathValue = pathValue.trim();
+              if (pathValue) {
+                paths.set(pathName, pathValue);
+              }
               break;
             }
             case 'acl': {
@@ -930,7 +948,7 @@ export class HTMLProjectParser {
     }
 
     // Validate required fields
-    if (!region || !bucket || !path) {
+    if (!region || !bucket || paths.size === 0) {
       console.warn(`S3 upload "${name}" missing required fields (region, bucket, or path)`);
       return null;
     }
@@ -949,7 +967,7 @@ export class HTMLProjectParser {
         endpoint,
         region,
         bucket,
-        path,
+        paths,
         acl,
       },
     };
@@ -1243,6 +1261,31 @@ export class HTMLProjectParser {
   }
 
   /**
+   * Processes the date from the parsed HTML
+   */
+  private processDate(): string | undefined {
+    const dateElements = this.findDateElements();
+
+    if (dateElements.length === 0) {
+      return undefined;
+    }
+
+    // Get text content from first date element
+    const dateElement = dateElements[0];
+    let date = '';
+
+    if ('children' in dateElement && dateElement.children) {
+      for (const textNode of dateElement.children) {
+        if (textNode.type === 'text' && 'data' in textNode) {
+          date += textNode.data;
+        }
+      }
+    }
+
+    return date.trim() || undefined;
+  }
+
+  /**
    * Finds all title elements in the HTML (top-level only, not inside uploads)
    */
   private findTitleElements(): Element[] {
@@ -1268,6 +1311,43 @@ export class HTMLProjectParser {
       } else if ('children' in node && node.children) {
         for (const child of node.children) {
           traverse(child, insideUploads);
+        }
+      }
+    };
+
+    traverse(this.html.ast);
+    return results;
+  }
+
+  /**
+   * Finds all date elements in the HTML (top-level only)
+   */
+  private findDateElements(): Element[] {
+    const results: Element[] = [];
+
+    const traverse = (node: ASTNode, insideProject: boolean = false) => {
+      if (node.type === 'tag') {
+        const element = node as Element;
+
+        // Find top-level <date> tags (not inside <project>, <uploads>, etc.)
+        if (element.name === 'date' && !insideProject) {
+          results.push(element);
+        }
+
+        // Mark that we're inside a project/uploads/outputs section
+        const isProjectSection =
+          element.name === 'project' ||
+          element.name === 'uploads' ||
+          element.name === 'outputs';
+
+        if ('children' in node && node.children) {
+          for (const child of node.children) {
+            traverse(child, insideProject || isProjectSection);
+          }
+        }
+      } else if ('children' in node && node.children) {
+        for (const child of node.children) {
+          traverse(child, insideProject);
         }
       }
     };

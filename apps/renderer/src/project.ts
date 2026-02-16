@@ -26,6 +26,7 @@ export class Project {
     private uploads: Map<string, Upload>,
     private aiProviders: Map<string, AIProvider>,
     private title: string,
+    private date: string | undefined,
     private cssText: string,
     private projectPath: string,
   ) {
@@ -139,6 +140,10 @@ export class Project {
 
   public getTitle(): string {
     return this.title;
+  }
+
+  public getDate(): string | undefined {
+    return this.date;
   }
 
   public getCssText(): string {
