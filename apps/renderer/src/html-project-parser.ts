@@ -722,7 +722,11 @@ export class HTMLProjectParser {
                 globalTags,
               );
             } else if (childElement.name === 's3') {
-              upload = this.parseS3Element(childElement);
+              upload = this.parseS3Element(
+                childElement,
+                projectTitle,
+                globalTags,
+              );
             } else if (childElement.name === 'instagram') {
               upload = this.parseInstagramElement(
                 childElement,
@@ -881,7 +885,11 @@ export class HTMLProjectParser {
   /**
    * Parses a single <s3> element
    */
-  private parseS3Element(element: Element): Upload | null {
+  private parseS3Element(
+    element: Element,
+    _projectTitle: string,
+    globalTags: string[],
+  ): Upload | null {
     const attrs = getAttrs(element);
 
     const name = attrs.get('name');
@@ -899,6 +907,7 @@ export class HTMLProjectParser {
     const paths = new Map<string, string>();
     let acl: string | undefined;
     let thumbnailTimecode: number | undefined;
+    const localTags: string[] = [];
 
     if ('children' in element && element.children) {
       for (const child of element.children) {
@@ -956,6 +965,13 @@ export class HTMLProjectParser {
               }
               break;
             }
+            case 'tag': {
+              const tagName = childAttrs.get('name');
+              if (tagName) {
+                localTags.push(tagName);
+              }
+              break;
+            }
           }
         }
       }
@@ -967,13 +983,16 @@ export class HTMLProjectParser {
       return null;
     }
 
+    // Merge global tags + local tags (global first)
+    const allTags = [...globalTags, ...localTags];
+
     return {
       name,
       tag: element.name, // "s3"
       outputName,
       privacy: 'private', // Default values for S3 (not used but required by Upload type)
       madeForKids: false,
-      tags: [],
+      tags: allTags,
       category: '',
       language: '',
       description: '',
