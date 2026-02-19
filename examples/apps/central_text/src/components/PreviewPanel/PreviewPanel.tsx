@@ -4,6 +4,7 @@ export interface ContentParams {
   title: string;
   date: string;
   tags: string;
+  extra: string;
 }
 
 interface PreviewPanelProps {
@@ -29,6 +30,10 @@ export function PreviewPanel({ value, onChange }: PreviewPanelProps) {
       <label className={styles.field}>
         <span className={styles.label}>Tags</span>
         <input className={styles.input} value={value.tags} onChange={set("tags")} placeholder="❄️ 🏔️ 🌨️" />
+      </label>
+      <label className={styles.field}>
+        <span className={styles.label}>Extra text</span>
+        <input className={styles.input} value={value.extra} onChange={set("extra")} placeholder="Thanks for watching!" />
       </label>
     </div>
   );

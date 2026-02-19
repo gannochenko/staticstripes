@@ -10,6 +10,7 @@ const DEFAULT_CONTENT: ContentParams = {
   title: "Central Text",
   date: "",
   tags: "",
+  extra: "",
 };
 
 interface VideoFrameProps {

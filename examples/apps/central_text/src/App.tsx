@@ -6,10 +6,12 @@ function Content({
   title = "Central Text",
   date,
   tags,
+  extra,
 }: {
   title?: string;
   date?: string;
   tags?: string;
+  extra?: string;
 }) {
   return (
     <div className="text_alignment">
@@ -25,9 +27,18 @@ function Content({
           ))}
         </div>
       )}
+      {extra && (
+        <div className="text_outline text_outline__small">
+          <span>
+            <span>{extra}</span>
+          </span>
+        </div>
+      )}
       {tags && (
         <div className="text_outline text_outline__small">
-          <span>{tags}</span>
+          {tags.split(" ").map((part, i) => {
+            return <span key={i}>#{part.trim().replace(/,/g, "")}</span>;
+          })}
         </div>
       )}
     </div>
@@ -35,19 +46,19 @@ function Content({
 }
 
 function App() {
-  const { title, date, tags, rendering } = useAppParams();
+  const { title, date, tags, extra, rendering } = useAppParams();
 
   if (rendering) {
     document.body.style.background = "transparent";
     return (
       <div className="rendering_container">
-        <Content title={title} date={date} tags={tags} />
+        <Content title={title} date={date} tags={tags} extra={extra} />
       </div>
     );
   }
 
   return (
-    <VideoFrame initialContent={{ title, date, tags }}>
+    <VideoFrame initialContent={{ title, date, tags, extra }}>
       {(content) => <Content {...content} />}
     </VideoFrame>
   );

@@ -4,6 +4,7 @@ export interface AppParams {
   title?: string;
   date?: string;
   tags?: string;
+  extra?: string;
   rendering: boolean;
 }
 
@@ -14,6 +15,7 @@ export function useAppParams(): AppParams {
       title: p.get("title") ?? undefined,
       date: p.get("date") ?? undefined,
       tags: p.get("tags") ?? undefined,
+      extra: p.get("extra") ?? undefined,
       rendering: p.has("rendering"),
     };
   }, []);
