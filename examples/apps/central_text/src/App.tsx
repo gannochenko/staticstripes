@@ -1,6 +1,9 @@
+import { useEffect } from "react";
 import "./App.css";
 import { VideoFrame } from "./components/VideoFrame";
 import { useAppParams } from "./hooks/useAppParams";
+
+const RENDER_COMPLETE_EVENT = "sts-render-complete";
 
 function Content({
   title = "Central Text",
@@ -45,16 +48,30 @@ function Content({
   );
 }
 
+function RenderingView({
+  title, date, tags, extra,
+}: { title?: string; date?: string; tags?: string; extra?: string }) {
+  useEffect(() => {
+    document.body.style.background = "transparent";
+    // Wait for web fonts before signalling ready so Puppeteer
+    // takes the screenshot after text is fully rendered.
+    document.fonts.ready.then(() => {
+      document.dispatchEvent(new CustomEvent(RENDER_COMPLETE_EVENT));
+    });
+  }, []);
+
+  return (
+    <div className="rendering_container">
+      <Content title={title} date={date} tags={tags} extra={extra} />
+    </div>
+  );
+}
+
 function App() {
   const { title, date, tags, extra, rendering } = useAppParams();
 
   if (rendering) {
-    document.body.style.background = "transparent";
-    return (
-      <div className="rendering_container">
-        <Content title={title} date={date} tags={tags} extra={extra} />
-      </div>
-    );
+    return <RenderingView title={title} date={date} tags={tags} extra={extra} />;
   }
 
   return (
