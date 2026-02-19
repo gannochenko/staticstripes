@@ -24,22 +24,7 @@
   </sequence>
   <sequence>
     <fragment class="intro_image_message intro_duration">
-      <container>
-        <div class="main_container">
-          <div class="text_alignment">
-            <div class="text_outline">
-              <span>Christmas</span> <span>Morning</span> <span>in</span>
-              <span>Liberec</span>
-            </div>
-            <div class="text_outline text_outline__small">
-              <span>Dec</span> <span>24</span> <span>2025</span>
-            </div>
-            <div class="text_outline text_outline__small">
-              <span>❄️ 🏔️ 🌨️</span>
-            </div>
-          </div>
-        </div>
-      </container>
+      <app src="../apps/central_text/dst" data-arguments="" data-async />
     </fragment>
   </sequence>
   <sequence>
@@ -47,59 +32,16 @@
   </sequence>
   <sequence>
     <fragment class="outro_message outro_duration" id="outro_message">
-      <container>
-        <div class="main_container">
-          <div class="text_alignment">
-            <div class="text_outline">
-              <span>Thanks</span> <span>for</span> <span>watching!</span>
-            </div>
-            <div class="text_outline text_outline__small">
-              <span>🫶</span>
-            </div>
-          </div>
-        </div>
-      </container>
+      <app
+        src="../apps/central_text/dst"
+        data-parameters="{outro: true}"
+        data-async
+      />
     </fragment>
   </sequence>
 </project>
 
 <style>
-  @import url("https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap");
-
-  .main_container {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 100vw;
-    height: 100vh;
-    font-family: "Roboto", sans-serif;
-    font-size: 6rem;
-  }
-  .text_alignment {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    padding-top: 20rem;
-  }
-
-  .text_outline {
-    display: flex;
-    flex-direction: row;
-    flex-wrap: nowrap;
-    color: black;
-  }
-  .text_outline span {
-    background-color: white;
-    padding: 0.5rem 1rem;
-    margin: 0 -0.5rem;
-    border-radius: 2.5rem;
-  }
-  .text_outline__small {
-    font-size: 3rem;
-    padding-top: 3rem;
-  }
-
   /* todo: variable support would be cool */
   /* :root {
     --primary-color: #3498db;

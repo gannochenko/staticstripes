@@ -1,0 +1,12 @@
+.root {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+}
+
+.frame {
+  position: relative;
+  border: 1px solid gray;
+  overflow: hidden;
+}
