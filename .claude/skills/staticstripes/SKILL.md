@@ -1,11 +1,7 @@
-# StaticStripes Video Generation Skill
-
 ---
-
 name: staticstripes
 description: You are an expert at using staticstripes, a declarative HTML-based video rendering tool powered by FFmpeg.
 license: MIT
-
 ---
 
 ## What is StaticStripes?

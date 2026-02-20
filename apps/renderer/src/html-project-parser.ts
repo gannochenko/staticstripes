@@ -1769,7 +1769,11 @@ export class HTMLProjectParser {
         const dataParameters = appElement.attribs?.['data-parameters'];
         if (dataParameters) {
           try {
-            parameters = JSON.parse(dataParameters);
+            const parsed = JSON.parse(dataParameters);
+            // Convert all values to strings for query parameters
+            for (const [key, value] of Object.entries(parsed)) {
+              parameters[key] = String(value);
+            }
           } catch {
             console.warn(
               `Warning: invalid JSON in data-parameters for app "${id}": ${dataParameters}`,

@@ -5,6 +5,7 @@ export interface AppParams {
   date?: string;
   tags?: string;
   extra?: string;
+  outro?: boolean;
   rendering: boolean;
 }
 
@@ -16,6 +17,7 @@ export function useAppParams(): AppParams {
       date: p.get("date") ?? undefined,
       tags: p.get("tags") ?? undefined,
       extra: p.get("extra") ?? undefined,
+      outro: p.get("outro") == "true",
       rendering: p.has("rendering"),
     };
   }, []);
