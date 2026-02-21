@@ -136,11 +136,18 @@ export class HTMLParser {
         const element = currentNode as Element;
         const computedStyles: CSSProperties = {};
 
-        // Apply matching rules
+        // Apply matching rules (CSS classes)
         for (const rule of styleRules) {
           if (this.matchesSelector(element, rule.selector)) {
             Object.assign(computedStyles, rule.properties);
           }
+        }
+
+        // Apply inline style attribute (highest priority)
+        const inlineStyle = element.attribs?.style;
+        if (inlineStyle) {
+          const inlineProperties = this.parseInlineStyle(inlineStyle);
+          Object.assign(computedStyles, inlineProperties);
         }
 
         elementsMap.set(element, computedStyles);
@@ -154,6 +161,35 @@ export class HTMLParser {
     };
 
     traverse(node);
+  }
+
+  /**
+   * Parses inline style attribute into CSS properties
+   * Example: "color: red; font-size: 16px;" => { color: "red", "font-size": "16px" }
+   */
+  private parseInlineStyle(styleText: string): CSSProperties {
+    const properties: CSSProperties = {};
+
+    try {
+      // Wrap in a dummy rule for CSS parsing
+      const css = `.dummy { ${styleText} }`;
+      const ast = csstree.parse(css);
+
+      csstree.walk(ast, {
+        visit: 'Declaration',
+        enter: (node) => {
+          const decl = node as csstree.Declaration;
+          const property = decl.property;
+          const value = csstree.generate(decl.value);
+          properties[property] = value;
+        },
+      });
+    } catch (error) {
+      // If parsing fails, log and continue without inline styles
+      console.warn(`Failed to parse inline style: "${styleText}"`, error);
+    }
+
+    return properties;
   }
 }
 
