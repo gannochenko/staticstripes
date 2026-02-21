@@ -179,7 +179,8 @@ my-video-project/
 - `-offset-start: <time>` - Start time (e.g., `0s`, `1500ms`)
 - `-offset-end: <time>` - End time (controls `-offset-start` of next fragment)
 - `-duration: <time|percentage|auto>` - Fragment duration (e.g., `5s`, `50%`, `auto`)
-- `-trim-start: <time>` - Trim from beginning of asset
+- `-trim-start: <time>` - Trim from beginning of asset (skip first N seconds)
+- `-trim-end: <time>` - Trim from end of asset (cut last N seconds)
 - Can use `calc()` expressions: `calc(url(#main.time.end) + 500ms)` - this will find the fragment with id="main", and get the absolute time.end of the fragment. Also `#<ID>.time.start` and `#<ID>.time.duration` are available. This can be used to sync two unrelated fragments in parallel sequences. Important: since there is no "pre compilation" of durations, the referred fragment must already be processed before, otherwise it won't be resolved.
 
 **Display:**
@@ -465,13 +466,36 @@ Control layering of overlaid fragments.
 - The next fragment's `-overlay-start-z-index` becomes `-100`
 - If the next fragment has its own `-overlay-start-z-index`, it takes precedence
 
-#### 7. `-trim-start` Property
+#### 7. `-trim-start` and `-trim-end` Properties
 
-Trims the beginning of the asset:
+Trim the beginning and/or end of the asset:
 
 ```css
 -trim-start: 2s; /* Skip first 2 seconds of asset */
 -trim-start: 1500ms; /* Skip first 1.5 seconds */
+```
+
+```css
+-trim-end: 3s; /* Cut last 3 seconds of asset */
+-trim-end: 2500ms; /* Cut last 2.5 seconds */
+```
+
+Both properties work together with `-duration`:
+
+```css
+/* Example: 10-second video */
+-trim-start: 2s;    /* Skip first 2 seconds */
+-trim-end: 3s;      /* Cut last 3 seconds */
+-duration: auto;    /* Auto = 10s - 2s - 3s = 5s */
+/* Result: Shows content from second 2 to second 7 (5 seconds total) */
+```
+
+```css
+/* Example: Explicit duration overrides auto calculation */
+-trim-start: 2s;    /* Skip first 2 seconds */
+-trim-end: 3s;      /* Ignored when duration is explicit */
+-duration: 4s;      /* Use 4 seconds starting from second 2 */
+/* Result: Shows content from second 2 to second 6 (4 seconds total) */
 ```
 
 Cannot be negative.

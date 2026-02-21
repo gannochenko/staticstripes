@@ -1618,12 +1618,16 @@ export class HTMLProjectParser {
     // 5. Parse trimLeft from -trim-start property
     const trimLeft = this.parseTrimStart(styles['-trim-start']);
 
+    // 5b. Parse trimRight from -trim-end property
+    const trimRight = this.parseTrimEnd(styles['-trim-end']);
+
     // 6. Parse duration from -duration property
     const duration = this.parseDurationProperty(
       styles['-duration'],
       assetName,
       assets,
       trimLeft,
+      trimRight,
     );
 
     // 7. Parse -offset-start for overlayLeft (can be number or expression)
@@ -1892,6 +1896,20 @@ export class HTMLProjectParser {
   }
 
   /**
+   * Parses -trim-end property into trimRight
+   * Cannot be negative
+   */
+  private parseTrimEnd(trimEnd: string | undefined): number {
+    if (!trimEnd) {
+      return 0;
+    }
+
+    const value = this.parseMilliseconds(trimEnd);
+    // Ensure non-negative as per spec
+    return Math.max(0, value);
+  }
+
+  /**
    * Parses the -duration CSS property
    * Can be: "auto", percentage (e.g. "100%", "50%"), or time value (e.g. "5000ms", "5s")
    */
@@ -1900,14 +1918,15 @@ export class HTMLProjectParser {
     assetName: string,
     assets: Map<string, Asset>,
     trimLeft: number,
+    trimRight: number,
   ): number {
     if (!duration || duration.trim() === 'auto') {
-      // Auto: use asset duration minus trim-start
+      // Auto: use asset duration minus trim-start and trim-end
       const asset = assets.get(assetName);
       if (!asset) {
         return 0;
       }
-      return Math.max(0, asset.duration - trimLeft);
+      return Math.max(0, asset.duration - trimLeft - trimRight);
     }
 
     // Handle percentage (e.g., "100%", "50%")
