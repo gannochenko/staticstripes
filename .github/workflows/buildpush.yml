@@ -17,19 +17,31 @@ jobs:
         with:
           node-version: 22
 
-      - name: Sync version with release tag
+      - name: Sync renderer version with release tag
         working-directory: apps/renderer
         run: npm version $(echo ${GITHUB_REF##*/} | sed 's/^v//') --no-git-tag-version --allow-same-version
 
-      - name: Install dependencies
+      - name: Sync viewer-tools version with release tag
+        working-directory: apps/viewer-tools
+        run: npm version $(echo ${GITHUB_REF##*/} | sed 's/^v//') --no-git-tag-version --allow-same-version
+
+      - name: Install renderer dependencies
         working-directory: apps/renderer
         run: npm ci
 
-      - name: Build
+      - name: Install viewer-tools dependencies
+        working-directory: apps/viewer-tools
+        run: npm ci
+
+      - name: Build renderer
         working-directory: apps/renderer
         run: npm run build
 
-      - name: Run unit tests
+      - name: Build viewer-tools
+        working-directory: apps/viewer-tools
+        run: npm run build
+
+      - name: Run renderer unit tests
         working-directory: apps/renderer
         run: npm run test:run
 
@@ -38,9 +50,13 @@ jobs:
         env:
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
 
-      - name: Publish to npm
+      - name: Publish renderer to npm
         working-directory: apps/renderer
         run: npm publish --access public
 
+      - name: Publish viewer-tools to npm
+        working-directory: apps/viewer-tools
+        run: npm publish --access public
+
       - name: Success notification
-        run: echo "✅ Package @gannochenko/staticstripes successfully published!"
+        run: echo "✅ Packages @gannochenko/staticstripes and @gannochenko/viewer-tools successfully published!"

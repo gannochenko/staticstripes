@@ -1,6 +1,6 @@
-import { useEffect } from "react";
 import "./App.css";
-import { VideoFrame } from "./components/VideoFrame";
+import "@gannochenko/viewer-tools/styles.css";
+import { VideoFrame, RenderingView } from "@gannochenko/viewer-tools";
 import { useAppParams } from "./hooks/useAppParams";
 
 function formatDate(isoString: string): string {
@@ -79,50 +79,21 @@ function Content({
   );
 }
 
-function RenderingView({
-  title,
-  date,
-  tags,
-  extra,
-  outro,
-}: {
-  title?: string;
-  date?: string;
-  tags?: string;
-  extra?: string;
-  outro?: boolean;
-}) {
-  useEffect(() => {
-    document.body.style.background = "transparent";
-    (window as unknown as Record<string, unknown>)["__stsRenderComplete"] =
-      true;
-  }, []);
-
-  return (
-    <div className="rendering_container">
-      <Content
-        title={title}
-        date={date}
-        tags={tags}
-        extra={extra}
-        outro={outro}
-      />
-    </div>
-  );
-}
 
 function App() {
   const { title, date, tags, extra, rendering, outro } = useAppParams();
 
   if (rendering) {
     return (
-      <RenderingView
-        title={title}
-        date={date}
-        tags={tags}
-        extra={extra}
-        outro={outro}
-      />
+      <RenderingView>
+        <Content
+          title={title}
+          date={date}
+          tags={tags}
+          extra={extra}
+          outro={outro}
+        />
+      </RenderingView>
     );
   }
 

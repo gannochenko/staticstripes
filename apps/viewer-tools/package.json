@@ -1,0 +1,49 @@
+{
+  "name": "@gannochenko/viewer-tools",
+  "version": "0.1.0",
+  "description": "React components for video frame preview and rendering",
+  "type": "module",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    },
+    "./styles.css": "./dist/styles.css"
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc && vite build",
+    "prepublishOnly": "npm run build"
+  },
+  "peerDependencies": {
+    "react": "^18.0.0 || ^19.0.0",
+    "react-dom": "^18.0.0 || ^19.0.0"
+  },
+  "devDependencies": {
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "@vitejs/plugin-react": "^4.3.4",
+    "typescript": "~5.7.2",
+    "vite": "^6.2.0",
+    "vite-plugin-dts": "^4.3.0"
+  },
+  "keywords": [
+    "react",
+    "video",
+    "preview",
+    "frame",
+    "rendering"
+  ],
+  "author": "gannochenko",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/gannochenko/mkvideo.git",
+    "directory": "apps/viewer-tools"
+  }
+}
