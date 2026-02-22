@@ -1733,9 +1733,378 @@ Error: Asset file(s) not found:
 - Real-time video editing (use video editors)
 - Interactive video (use video players with JS)
 
+## Viewer Tools Package
+
+StaticStripes includes a companion React component library **@gannochenko/viewer-tools** that provides ready-to-use components for building video preview and rendering applications.
+
+### Installation
+
+```bash
+npm install @gannochenko/viewer-tools react react-dom
+```
+
+### Available Components
+
+#### 1. VideoFrame
+
+A scalable video frame container with interactive format selection and content preview controls. Perfect for development environments where you need to preview content at different aspect ratios.
+
+**Features:**
+- Auto-scaling viewport with checkered transparency background
+- Format switcher (YouTube 16:9, YT Shorts 9:16, customizable)
+- Built-in preview panel for content editing
+- LocalStorage persistence of content
+
+**Props:**
+- `initialContent` - Partial content to initialize with
+- `children` - Render function that receives current content state
+
+#### 2. RenderingView
+
+A wrapper component that signals rendering completion for StaticStripes' Puppeteer screenshot system.
+
+**Features:**
+- Automatically sets `window.__stsRenderComplete = true`
+- Sets transparent body background
+- Minimal wrapper for your rendering content
+
+**Props:**
+- `children` - Content to render
+
+#### 3. FormatPanel
+
+Standalone format selector UI component.
+
+**Props:**
+- `selected` - Currently selected format object
+- `onSelect` - Callback when format is selected
+
+#### 4. PreviewPanel
+
+Editable content preview panel.
+
+**Props:**
+- `value` - Current content values
+- `onChange` - Callback when content changes
+
+#### 5. useLocalStorage
+
+Hook for persisting state to localStorage.
+
+**Returns:** `[state, setState]` tuple similar to `useState`
+
+### Complete Example Application
+
+Here's a full example of a title card application built with `@gannochenko/viewer-tools`:
+
+**File: `apps/title-card/package.json`**
+
+```json
+{
+  "name": "title-card",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@gannochenko/viewer-tools": "^0.1.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  },
+  "devDependencies": {
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "@vitejs/plugin-react": "^4.3.4",
+    "typescript": "~5.7.2",
+    "vite": "^6.2.0"
+  }
+}
+```
+
+**File: `apps/title-card/vite.config.ts`**
+
+```ts
+import { defineConfig } from 'vite';
+import react from '@vitejs/plugin-react';
+
+export default defineConfig({
+  plugins: [react()],
+  build: {
+    outDir: 'dst',  // CRITICAL: Must output to dst/
+  },
+});
+```
+
+**File: `apps/title-card/src/App.tsx`**
+
+```tsx
+import "./App.css";
+import "@gannochenko/viewer-tools/styles.css";
+import { VideoFrame, RenderingView } from "@gannochenko/viewer-tools";
+import { useAppParams } from "./hooks/useAppParams";
+
+function formatDate(isoString: string): string {
+  const date = new Date(isoString);
+  const months = [
+    "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+    "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
+  ];
+  const month = months[date.getMonth()];
+  const day = date.getDate();
+  const year = date.getFullYear();
+  return `${month} ${day} ${year}`;
+}
+
+function Content({
+  title = "Central Text",
+  date,
+  tags,
+  extra,
+  outro,
+}: {
+  title?: string;
+  date?: string;
+  tags?: string;
+  extra?: string;
+  outro?: boolean;
+}) {
+  let formattedDate = date ? formatDate(date) : undefined;
+
+  if (outro) {
+    title = "Thanks for watching!";
+    formattedDate = "";
+    extra = "🫶";
+    tags = "";
+  }
+
+  return (
+    <div className="text_alignment">
+      <div className="text_outline">
+        {title.split(" ").map((word, i) => (
+          <span key={i}>{word}</span>
+        ))}
+      </div>
+      {formattedDate && (
+        <div className="text_outline text_outline__small">
+          {formattedDate.split(" ").map((part, i) => (
+            <span key={i}>{part}</span>
+          ))}
+        </div>
+      )}
+      {extra && (
+        <div className="text_outline text_outline__small">
+          <span>{extra}</span>
+        </div>
+      )}
+      {tags && (
+        <div className="text_outline text_outline__small">
+          {tags.split(",").map((part, i) => (
+            <span key={i}>#{part.trim()}</span>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function App() {
+  const { title, date, tags, extra, rendering, outro } = useAppParams();
+
+  if (rendering) {
+    return (
+      <RenderingView>
+        <Content
+          title={title}
+          date={date}
+          tags={tags}
+          extra={extra}
+          outro={outro}
+        />
+      </RenderingView>
+    );
+  }
+
+  return (
+    <VideoFrame initialContent={{ title, date, tags, extra }}>
+      {(content) => <Content {...content} />}
+    </VideoFrame>
+  );
+}
+
+export default App;
+```
+
+**File: `apps/title-card/src/hooks/useAppParams.ts`**
+
+```ts
+interface AppParams {
+  title?: string;
+  date?: string;
+  tags?: string;
+  extra?: string;
+  rendering: boolean;
+  outro?: boolean;
+}
+
+export function useAppParams(): AppParams {
+  const params = new URLSearchParams(window.location.search);
+  return {
+    title: params.get('title') ?? undefined,
+    date: params.get('date') ?? undefined,
+    tags: params.get('tags') ?? undefined,
+    extra: params.get('extra') ?? undefined,
+    rendering: params.has('rendering'),
+    outro: params.get('outro') === 'true',
+  };
+}
+```
+
+**File: `apps/title-card/src/App.css`**
+
+```css
+body {
+  margin: 0;
+  padding: 0;
+}
+
+.text_alignment {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding-top: 15rem;
+  width: 100%;
+  height: 100%;
+}
+
+.text_outline {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  color: black;
+  font-weight: 700;
+  font-size: 6rem;
+  font-family: 'Arial', sans-serif;
+}
+
+.text_outline span {
+  background-color: white;
+  padding: 0.5rem 1.5rem;
+  margin: 0 -0.5rem;
+  border-radius: 3rem;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+}
+
+.text_outline__small {
+  font-size: 3rem;
+  padding-top: 2rem;
+  font-weight: 400;
+}
+```
+
+### Development Workflow with Viewer Tools
+
+**1. Create new app:**
+```bash
+cd apps
+npm create vite@latest my-app -- --template react-ts
+cd my-app
+npm install @gannochenko/viewer-tools react react-dom
+```
+
+**2. Update vite.config.ts:**
+```ts
+export default defineConfig({
+  plugins: [react()],
+  build: {
+    outDir: 'dst',
+  },
+});
+```
+
+**3. Implement dual-mode app:**
+```tsx
+import { VideoFrame, RenderingView } from "@gannochenko/viewer-tools";
+import "@gannochenko/viewer-tools/styles.css";
+
+function App() {
+  const { rendering, ...params } = useAppParams();
+
+  if (rendering) {
+    return <RenderingView><YourContent {...params} /></RenderingView>;
+  }
+
+  return (
+    <VideoFrame initialContent={params}>
+      {(content) => <YourContent {...content} />}
+    </VideoFrame>
+  );
+}
+```
+
+**4. Develop with live preview:**
+```bash
+npm run dev
+# Visit: http://localhost:5173
+# Edit content with interactive panels
+# Switch between YouTube and Shorts formats
+```
+
+**5. Build for production:**
+```bash
+npm run build  # Outputs to dst/
+```
+
+**6. Use in project.html:**
+```html
+<fragment class="title_overlay">
+  <app
+    src="../apps/my-app/dst"
+    data-parameters='{"extra": "🎬"}'
+  />
+</fragment>
+```
+
+### Benefits of Using Viewer Tools
+
+✅ **Rapid prototyping** - Interactive preview without rendering
+✅ **Format testing** - Instantly switch between aspect ratios
+✅ **Content editing** - Built-in UI for tweaking parameters
+✅ **State persistence** - LocalStorage keeps your edits
+✅ **Zero setup** - Works out of the box with StaticStripes
+✅ **Type safety** - Full TypeScript support
+✅ **Customizable** - Use components individually or together
+
+### Component Customization
+
+You can use individual components for custom workflows:
+
+```tsx
+import { FormatPanel, FORMATS } from "@gannochenko/viewer-tools";
+
+function MyCustomPreview() {
+  const [format, setFormat] = useState(FORMATS[0]);
+
+  return (
+    <div>
+      <div style={{ width: format.width, height: format.height }}>
+        {/* Your content */}
+      </div>
+      <FormatPanel selected={format} onSelect={setFormat} />
+    </div>
+  );
+}
+```
+
 ## Resources
 
 - GitHub: https://github.com/gannochenko/mkvideo
+- NPM Package (CLI): https://www.npmjs.com/package/@gannochenko/staticstripes
+- NPM Package (Viewer Tools): https://www.npmjs.com/package/@gannochenko/viewer-tools
 - Documentation: See README.md and docs/ folder in project root
 - Report issues: GitHub Issues
 
