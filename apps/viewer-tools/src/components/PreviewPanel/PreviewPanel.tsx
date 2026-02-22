@@ -1,40 +1,63 @@
 import styles from "./PreviewPanel.module.css";
 
-export interface ContentParams {
+// Base standard parameters that are always available
+export interface StandardParams {
   title: string;
   date: string;
   tags: string;
-  extra: string;
 }
 
-interface PreviewPanelProps {
-  value: ContentParams;
-  onChange: (value: ContentParams) => void;
+// Generic content params that can be extended
+export type ContentParams = Record<string, string>;
+
+// Parameter schema definition
+export interface ParameterField {
+  name: string;
+  label: string;
+  placeholder?: string;
+  defaultValue?: string;
 }
 
-export function PreviewPanel({ value, onChange }: PreviewPanelProps) {
-  const set = (field: keyof ContentParams) =>
-    (e: React.ChangeEvent<HTMLInputElement>) =>
-      onChange({ ...value, [field]: e.target.value });
+export interface ParameterSchema {
+  fields: ParameterField[];
+}
+
+interface PreviewPanelProps<T extends ContentParams = ContentParams> {
+  value: T;
+  onChange: (value: T) => void;
+  schema?: ParameterSchema;
+}
+
+// Default schema with standard parameters
+const DEFAULT_SCHEMA: ParameterSchema = {
+  fields: [
+    { name: "title", label: "Title", placeholder: "Title", defaultValue: "" },
+    { name: "date", label: "Date", placeholder: "2025-01-15", defaultValue: "" },
+    { name: "tags", label: "Tags", placeholder: "travel,vlog", defaultValue: "" },
+  ],
+};
+
+export function PreviewPanel<T extends ContentParams = ContentParams>({
+  value,
+  onChange,
+  schema = DEFAULT_SCHEMA,
+}: PreviewPanelProps<T>) {
+  const set = (field: string) => (e: React.ChangeEvent<HTMLInputElement>) =>
+    onChange({ ...value, [field]: e.target.value } as T);
 
   return (
     <div className={styles.panel}>
-      <label className={styles.field}>
-        <span className={styles.label}>Title</span>
-        <input className={styles.input} value={value.title} onChange={set("title")} placeholder="Title" />
-      </label>
-      <label className={styles.field}>
-        <span className={styles.label}>Date</span>
-        <input className={styles.input} value={value.date} onChange={set("date")} placeholder="Dec 24 2025" />
-      </label>
-      <label className={styles.field}>
-        <span className={styles.label}>Tags</span>
-        <input className={styles.input} value={value.tags} onChange={set("tags")} placeholder="❄️ 🏔️ 🌨️" />
-      </label>
-      <label className={styles.field}>
-        <span className={styles.label}>Extra text</span>
-        <input className={styles.input} value={value.extra} onChange={set("extra")} placeholder="Thanks for watching!" />
-      </label>
+      {schema.fields.map((field) => (
+        <label key={field.name} className={styles.field}>
+          <span className={styles.label}>{field.label}</span>
+          <input
+            className={styles.input}
+            value={value[field.name] || ""}
+            onChange={set(field.name)}
+            placeholder={field.placeholder || ""}
+          />
+        </label>
+      ))}
     </div>
   );
 }

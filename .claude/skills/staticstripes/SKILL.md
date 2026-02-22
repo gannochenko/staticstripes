@@ -1793,6 +1793,112 @@ Hook for persisting state to localStorage.
 
 **Returns:** `[state, setState]` tuple similar to `useState`
 
+### Parameter Schema System
+
+The `@gannochenko/viewer-tools` package includes a powerful parameter schema system that allows apps to define their content fields declaratively.
+
+#### Overview
+
+Applications can define parameters using a schema structure. There are **3 standard parameters** automatically injected by StaticStripes:
+- `title` - Video title from `<title>` tag
+- `date` - Video date (ISO 8601 format)
+- `tags` - Comma-separated tags from `<tag>` elements
+
+Apps can define **additional custom parameters** beyond these standard ones.
+
+#### How It Works
+
+1. **Schema Definition** - Define parameters in a schema structure
+2. **Auto-generated UI** - PreviewPanel automatically renders input fields
+3. **URL Parameters** - Values come from query strings in rendering mode
+4. **LocalStorage** - Values persist during preview development
+
+#### Defining a Schema
+
+**File: `src/schema.ts`**
+
+```typescript
+import type { ParameterSchema } from "@gannochenko/viewer-tools";
+
+export const PARAMETER_SCHEMA: ParameterSchema = {
+  fields: [
+    {
+      name: "title",
+      label: "Title",
+      placeholder: "My Video Title",
+      defaultValue: "Central Text",
+    },
+    {
+      name: "date",
+      label: "Date",
+      placeholder: "2025-01-15",
+      defaultValue: "",
+    },
+    {
+      name: "tags",
+      label: "Tags",
+      placeholder: "travel,vlog",
+      defaultValue: "",
+    },
+    {
+      name: "extra",
+      label: "Extra text",
+      placeholder: "Thanks for watching!",
+      defaultValue: "",
+    },
+  ],
+};
+
+// Define typed interface matching your schema
+export interface AppParams {
+  title: string;
+  date: string;
+  tags: string;
+  extra: string;
+  [key: string]: string; // Index signature required
+}
+```
+
+#### Using the Schema
+
+```tsx
+import { VideoFrame } from "@gannochenko/viewer-tools";
+import { PARAMETER_SCHEMA, type AppParams } from "./schema";
+
+function App() {
+  const params = useAppParams();
+
+  return (
+    <VideoFrame<AppParams>
+      storageKey="my-app:content"
+      initialContent={params}
+      schema={PARAMETER_SCHEMA}
+    >
+      {(content) => <YourContent {...content} />}
+    </VideoFrame>
+  );
+}
+```
+
+#### Custom Parameters in project.html
+
+```html
+<fragment class="title_overlay">
+  <app
+    src="../apps/my-app/dst"
+    data-parameters='{"extra": "🎬", "author": "John Doe"}'
+  />
+</fragment>
+```
+
+#### Benefits
+
+✅ **Type-safe** - Define typed interfaces matching your schema
+✅ **Auto-generated UI** - No manual input field creation
+✅ **Persistent** - Values saved during development
+✅ **Flexible** - Unlimited custom parameters
+✅ **Consistent** - Standard parameters work across all apps
+
 ### Complete Example Application
 
 Here's a full example of a title card application built with `@gannochenko/viewer-tools`:
@@ -1839,6 +1945,49 @@ export default defineConfig({
 });
 ```
 
+**File: `apps/title-card/src/schema.ts`**
+
+```typescript
+import type { ParameterSchema } from "@gannochenko/viewer-tools";
+
+export const PARAMETER_SCHEMA: ParameterSchema = {
+  fields: [
+    {
+      name: "title",
+      label: "Title",
+      placeholder: "Central Text",
+      defaultValue: "Central Text",
+    },
+    {
+      name: "date",
+      label: "Date",
+      placeholder: "2025-01-15",
+      defaultValue: "",
+    },
+    {
+      name: "tags",
+      label: "Tags",
+      placeholder: "travel,vlog",
+      defaultValue: "",
+    },
+    {
+      name: "extra",
+      label: "Extra text",
+      placeholder: "Thanks for watching!",
+      defaultValue: "",
+    },
+  ],
+};
+
+export interface AppParams {
+  title: string;
+  date: string;
+  tags: string;
+  extra: string;
+  [key: string]: string;
+}
+```
+
 **File: `apps/title-card/src/App.tsx`**
 
 ```tsx
@@ -1846,6 +1995,7 @@ import "./App.css";
 import "@gannochenko/viewer-tools/styles.css";
 import { VideoFrame, RenderingView } from "@gannochenko/viewer-tools";
 import { useAppParams } from "./hooks/useAppParams";
+import { PARAMETER_SCHEMA, type AppParams } from "./schema";
 
 function formatDate(isoString: string): string {
   const date = new Date(isoString);
@@ -1929,7 +2079,11 @@ function App() {
   }
 
   return (
-    <VideoFrame initialContent={{ title, date, tags, extra }}>
+    <VideoFrame<AppParams>
+      storageKey="central_text:content"
+      initialContent={{ title, date, tags, extra }}
+      schema={PARAMETER_SCHEMA}
+    >
       {(content) => <Content {...content} />}
     </VideoFrame>
   );

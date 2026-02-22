@@ -2,6 +2,7 @@ import "./App.css";
 import "@gannochenko/viewer-tools/styles.css";
 import { VideoFrame, RenderingView } from "@gannochenko/viewer-tools";
 import { useAppParams } from "./hooks/useAppParams";
+import { PARAMETER_SCHEMA, type AppParams } from "./schema";
 
 function formatDate(isoString: string): string {
   const date = new Date(isoString);
@@ -98,7 +99,11 @@ function App() {
   }
 
   return (
-    <VideoFrame initialContent={{ title, date, tags, extra }}>
+    <VideoFrame<AppParams>
+      storageKey="central_text:content"
+      initialContent={{ title, date, tags, extra }}
+      schema={PARAMETER_SCHEMA}
+    >
       {(content) => <Content {...content} />}
     </VideoFrame>
   );
