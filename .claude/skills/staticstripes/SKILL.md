@@ -734,89 +734,46 @@ All apps automatically receive these URL parameters:
 
 Custom parameters from `data-parameters` are merged and can override defaults.
 
+#### App Parameter Schema System
+
+All StaticStripes apps should use the `@gannochenko/viewer-tools` package's parameter schema system for declarative parameter management. This provides:
+
+- **Type-safe parameter definitions** with TypeScript
+- **Auto-generated preview UI** during development
+- **LocalStorage persistence** for development workflow
+- **Consistent parameter handling** across all apps
+
+**Parameter Schema Example:**
+```tsx
+// Define schema
+export const PARAMETER_SCHEMA: ParameterSchema = {
+  fields: [
+    { name: "title", label: "Title", defaultValue: "" },
+    { name: "date", label: "Date", defaultValue: "" },
+    { name: "tags", label: "Tags", defaultValue: "" },
+  ],
+};
+
+// Use with VideoFrame component
+<VideoFrame<AppParams>
+  schema={PARAMETER_SCHEMA}
+  initialContent={params}
+>
+  {(content) => <YourContent {...content} />}
+</VideoFrame>
+```
+
+See the "Viewer Tools Package" section below for complete documentation on the parameter schema system.
+
 #### Creating a React App
 
-**Example: Title Card App**
+React apps for StaticStripes use the `@gannochenko/viewer-tools` package which provides:
+- Parameter schema system with auto-generated UI
+- Format preview (YouTube, YT Shorts, etc.)
+- LocalStorage persistence
+- Type-safe parameters
 
-**File: `apps/title-card/src/App.tsx`**
-
-```tsx
-import { useEffect } from 'react';
-import './App.css';
-
-interface AppParams {
-  title?: string;
-  date?: string;
-  tags?: string;
-  extra?: string;
-  rendering: boolean;
-}
-
-function useAppParams(): AppParams {
-  const params = new URLSearchParams(window.location.search);
-  return {
-    title: params.get('title') ?? undefined,
-    date: params.get('date') ?? undefined,
-    tags: params.get('tags') ?? undefined,
-    extra: params.get('extra') ?? undefined,
-    rendering: params.has('rendering'),
-  };
-}
-
-function RenderingView({ title, date, extra }: {
-  title?: string;
-  date?: string;
-  extra?: string;
-}) {
-  useEffect(() => {
-    // CRITICAL: Set transparent background
-    document.body.style.background = 'transparent';
-
-    // CRITICAL: Signal render complete
-    (window as any).__stsRenderComplete = true;
-  }, []);
-
-  return (
-    <div className="container">
-      <div className="title">
-        {title?.split(' ').map((word, i) => (
-          <span key={i} className="word">{word}</span>
-        ))}
-      </div>
-      {date && (
-        <div className="date">
-          {new Date(date).toLocaleDateString('en-US', {
-            month: 'short',
-            day: 'numeric',
-            year: 'numeric'
-          })}
-        </div>
-      )}
-      {extra && (
-        <div className="extra">{extra}</div>
-      )}
-    </div>
-  );
-}
-
-function App() {
-  const { title, date, extra, rendering } = useAppParams();
-
-  if (rendering) {
-    return <RenderingView title={title} date={date} extra={extra} />;
-  }
-
-  // Development preview mode
-  return (
-    <div className="dev-container">
-      <h1>Title Card Preview</h1>
-      <RenderingView title={title} date={date} extra={extra} />
-    </div>
-  );
-}
-
-export default App;
-```
+See the "Viewer Tools Package" section below for complete examples and documentation.
 
 **File: `apps/title-card/src/App.css`**
 
@@ -953,7 +910,7 @@ build:
 cd apps
 npm create vite@latest title-card -- --template react-ts
 cd title-card
-npm install
+npm install @gannochenko/viewer-tools react react-dom
 ```
 
 **2. Update vite.config.ts to output to `dst/`:**
@@ -966,28 +923,57 @@ export default defineConfig({
 });
 ```
 
-**3. Implement rendering logic:**
-- Add `useAppParams` hook to read URL parameters
-- Create `RenderingView` component that sets `window.__stsRenderComplete = true`
-- Set transparent background: `document.body.style.background = 'transparent'`
-
-**4. Develop with live preview:**
-```bash
-npm run dev
-# Open http://localhost:5173?rendering&title=My+Video&date=2025-01-15T12:00:00Z
+**3. Define parameter schema:**
+```tsx
+// src/schema.ts
+export const PARAMETER_SCHEMA: ParameterSchema = {
+  fields: [
+    { name: "title", label: "Title", defaultValue: "" },
+    { name: "date", label: "Date", defaultValue: "" },
+    { name: "tags", label: "Tags", defaultValue: "" },
+  ],
+};
 ```
 
-**5. Build for production:**
+**4. Implement dual-mode app:**
+```tsx
+// src/App.tsx
+import { VideoFrame, RenderingView } from "@gannochenko/viewer-tools";
+import "@gannochenko/viewer-tools/styles.css";
+
+function App() {
+  const { rendering, ...params } = useAppParams();
+
+  if (rendering) {
+    return <RenderingView><YourContent {...params} /></RenderingView>;
+  }
+
+  return (
+    <VideoFrame schema={PARAMETER_SCHEMA} initialContent={params}>
+      {(content) => <YourContent {...content} />}
+    </VideoFrame>
+  );
+}
+```
+
+**5. Develop with interactive preview:**
+```bash
+npm run dev
+# Visit: http://localhost:5173
+# Use interactive panels to edit content and switch formats
+```
+
+**6. Build for production:**
 ```bash
 npm run build  # Outputs to dst/
 ```
 
-**6. Use in project.html:**
+**7. Use in project.html:**
 ```html
 <app src="../apps/title-card/dst" data-parameters='{"extra": "🎬"}' />
 ```
 
-**7. Generate video:**
+**8. Generate video:**
 ```bash
 staticstripes generate -p . -o youtube -d
 ```
@@ -995,11 +981,19 @@ staticstripes generate -p . -o youtube -d
 #### Critical App Requirements
 
 ✅ **MUST set render complete flag:**
+
+When using `@gannochenko/viewer-tools`, the `RenderingView` component handles this automatically.
+
+Without viewer-tools:
 ```ts
 (window as any).__stsRenderComplete = true;
 ```
 
 ✅ **MUST set transparent background:**
+
+The `RenderingView` component handles this automatically.
+
+Without viewer-tools:
 ```ts
 document.body.style.background = 'transparent';
 ```
@@ -1126,29 +1120,35 @@ function DateDisplay({ date }: { date?: string }) {
 
 #### Best Practices
 
-1. **Separate rendering and preview modes:**
+1. **Use @gannochenko/viewer-tools:**
+   - Provides parameter schema for type safety
+   - Auto-generated preview UI during development
+   - LocalStorage persistence for development workflow
+   - RenderingView component handles setup automatically
+
+2. **Separate rendering and preview modes:**
    ```tsx
-   if (rendering) return <RenderingView />;
-   return <DevPreview />;
+   if (rendering) return <RenderingView><YourContent /></RenderingView>;
+   return <VideoFrame schema={PARAMETER_SCHEMA}>...</VideoFrame>;
    ```
 
-2. **Always set render complete in useEffect:**
+3. **Define parameter schema early:**
    ```tsx
-   useEffect(() => {
-     document.body.style.background = 'transparent';
-     (window as any).__stsRenderComplete = true;
-   }, []);
+   export const PARAMETER_SCHEMA: ParameterSchema = {
+     fields: [
+       { name: "title", label: "Title", defaultValue: "" },
+       { name: "date", label: "Date", defaultValue: "" },
+       { name: "tags", label: "Tags", defaultValue: "" },
+       // Add custom parameters as needed
+     ],
+   };
    ```
 
-3. **Use transparent backgrounds:**
-   ```css
-   body { background: transparent; }
-   ```
-
-4. **Test in development server first:**
+4. **Test in development server with interactive preview:**
    ```bash
    npm run dev
-   # Then visit: http://localhost:5173?rendering&title=Test
+   # Visit: http://localhost:5173
+   # Use interactive panels to test different content
    ```
 
 5. **Keep rendering fast:**
