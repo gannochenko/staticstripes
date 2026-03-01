@@ -1615,26 +1615,44 @@ export class HTMLProjectParser {
     const container = this.extractFragmentContainer(element);
     const app = container ? undefined : this.extractFragmentApp(element);
 
-    // 5. Parse trimLeft from -trim-start property
-    const trimLeft = this.parseTrimStart(styles['-trim-start']);
+    // 4b. Parse data-timing attribute (short syntax) - takes precedence over CSS
+    const dataTiming = this.parseDataTiming(attrs.get('data-timing'));
 
-    // 5b. Parse trimRight from -trim-end property
-    const trimRight = this.parseTrimEnd(styles['-trim-end']);
+    // 5. Parse trimLeft from data-timing or -trim-start property
+    const trimLeft =
+      dataTiming.trimStart !== undefined
+        ? dataTiming.trimStart
+        : this.parseTrimStart(styles['-trim-start']);
 
-    // 6. Parse duration from -duration property
-    const duration = this.parseDurationProperty(
-      styles['-duration'],
-      assetName,
-      assets,
-      trimLeft,
-      trimRight,
-    );
+    // 5b. Parse trimRight from data-timing or -trim-end property
+    const trimRight =
+      dataTiming.trimEnd !== undefined
+        ? dataTiming.trimEnd
+        : this.parseTrimEnd(styles['-trim-end']);
 
-    // 7. Parse -offset-start for overlayLeft (can be number or expression)
-    const overlayLeft = this.parseOffsetStart(styles['-offset-start']);
+    // 6. Parse duration from data-timing or -duration property
+    const duration =
+      dataTiming.duration !== undefined
+        ? dataTiming.duration
+        : this.parseDurationProperty(
+            styles['-duration'],
+            assetName,
+            assets,
+            trimLeft,
+            trimRight,
+          );
 
-    // 8. Parse -offset-end for overlayRight (temporary, will be normalized)
-    const overlayRight = this.parseOffsetEnd(styles['-offset-end']);
+    // 7. Parse overlayLeft from data-timing or -offset-start property
+    const overlayLeft =
+      dataTiming.offsetStart !== undefined
+        ? dataTiming.offsetStart
+        : this.parseOffsetStart(styles['-offset-start']);
+
+    // 8. Parse overlayRight from data-timing or -offset-end property
+    const overlayRight =
+      dataTiming.offsetEnd !== undefined
+        ? dataTiming.offsetEnd
+        : this.parseOffsetEnd(styles['-offset-end']);
 
     // 9. Parse -overlay-start-z-index for overlayZIndex
     const overlayZIndex = this.parseZIndex(styles['-overlay-start-z-index']);
@@ -1661,7 +1679,10 @@ export class HTMLProjectParser {
     // 15. Parse filter (for visual filters)
     const visualFilter = this.parseVisualFilterProperty(styles['filter']);
 
-    // 16. Extract timecode label from data-timecode attribute
+    // 16. Parse sound property (on/off)
+    const sound = this.parseSoundProperty(styles['-sound']);
+
+    // 17. Extract timecode label from data-timecode attribute
     const timecodeLabel = attrs.get('data-timecode') || undefined;
 
     return {
@@ -1692,6 +1713,7 @@ export class HTMLProjectParser {
       chromakeyBlend: chromakeyData.chromakeyBlend,
       chromakeySimilarity: chromakeyData.chromakeySimilarity,
       chromakeyColor: chromakeyData.chromakeyColor,
+      sound,
       ...(visualFilter && { visualFilter }), // Add visualFilter if present
       ...(container && { container }), // Add container if present
       ...(app && { app }), // Add app if present
@@ -1716,6 +1738,25 @@ export class HTMLProjectParser {
     // Return the filter name as-is
     // Validation will happen in the Stream.filter() method
     return trimmed || undefined;
+  }
+
+  /**
+   * Parses -sound property
+   * Can be: "on" (default) or "off"
+   * When "off", replaces audio stream with silence
+   */
+  private parseSoundProperty(sound: string | undefined): 'on' | 'off' {
+    if (!sound) {
+      return 'on'; // Default: use audio
+    }
+
+    const trimmed = sound.trim().toLowerCase();
+
+    if (trimmed === 'off') {
+      return 'off';
+    }
+
+    return 'on'; // Default for any other value
   }
 
   /**
@@ -1958,7 +1999,7 @@ export class HTMLProjectParser {
 
   /**
    * Parses time value into milliseconds
-   * Supports: "5s", "5000ms", "1.5s", etc.
+   * Supports: "5s", "5000ms", "1.5s", or raw numbers (defaults to milliseconds)
    */
   private parseMilliseconds(value: string | undefined): number {
     if (!value) {
@@ -1981,6 +2022,12 @@ export class HTMLProjectParser {
       if (!isNaN(seconds)) {
         return Math.round(seconds * 1000);
       }
+    }
+
+    // Handle raw numbers (default to milliseconds)
+    const num = parseFloat(trimmed);
+    if (!isNaN(num)) {
+      return Math.round(num);
     }
 
     return 0;
@@ -2028,6 +2075,81 @@ export class HTMLProjectParser {
 
     // Otherwise parse as time value
     return this.parseMilliseconds(trimmed);
+  }
+
+  /**
+   * Parses data-timing attribute with short syntax
+   * Format: "ts=3000,te=5000,d=2000,os=1000,oe=7000"
+   * Where:
+   *   ts = -trim-start
+   *   te = -trim-end
+   *   d  = -duration
+   *   os = -offset-start
+   *   oe = -offset-end
+   * Values default to milliseconds if no unit specified
+   * Supports calc() expressions: ts=calc(url(#id.time.start))
+   */
+  private parseDataTiming(dataTiming: string | undefined): {
+    trimStart?: number;
+    trimEnd?: number;
+    duration?: number | CompiledExpression;
+    offsetStart?: number | CompiledExpression;
+    offsetEnd?: number | CompiledExpression;
+  } {
+    const result: {
+      trimStart?: number;
+      trimEnd?: number;
+      duration?: number | CompiledExpression;
+      offsetStart?: number | CompiledExpression;
+      offsetEnd?: number | CompiledExpression;
+    } = {};
+
+    if (!dataTiming) {
+      return result;
+    }
+
+    // Split by comma and parse each key-value pair
+    const pairs = dataTiming.split(',').map((pair) => pair.trim());
+
+    for (const pair of pairs) {
+      const [key, value] = pair.split('=').map((s) => s.trim());
+      if (!key || !value) {
+        continue;
+      }
+
+      // Parse value - check if it's a calc() expression or a simple value
+      let parsedValue: number | CompiledExpression;
+
+      if (value.startsWith('calc(')) {
+        // It's a calc() expression
+        parsedValue = parseValueLazy(value) as CompiledExpression;
+      } else {
+        // It's a simple time value - parse with parseMilliseconds
+        // which handles units like 's' and 'ms', defaulting to ms
+        parsedValue = this.parseMilliseconds(value);
+      }
+
+      // Map short names to result properties
+      switch (key) {
+        case 'ts':
+          result.trimStart = parsedValue as number;
+          break;
+        case 'te':
+          result.trimEnd = parsedValue as number;
+          break;
+        case 'd':
+          result.duration = parsedValue;
+          break;
+        case 'os':
+          result.offsetStart = parsedValue;
+          break;
+        case 'oe':
+          result.offsetEnd = parsedValue;
+          break;
+      }
+    }
+
+    return result;
   }
 
   /**

@@ -84,8 +84,12 @@ export class Sequence {
       }
 
       // Create audio stream: use actual audio if available, otherwise create silent stream
+      // If fragment has -sound: off, always use silence
       let currentAudioStream: Stream;
-      if (asset.hasAudio) {
+      if (fragment.sound === 'off') {
+        // Force silent audio when -sound: off
+        currentAudioStream = makeSilentStream(calculatedDuration, this.buf);
+      } else if (asset.hasAudio) {
         currentAudioStream = makeStream(
           this.assetManager.getAudioInputLabelByAssetName(fragment.assetName),
           this.buf,
@@ -109,8 +113,8 @@ export class Sequence {
           );
         }
 
-        // Only trim audio if it came from an actual source
-        if (asset.hasAudio) {
+        // Only trim audio if it came from an actual source AND sound is not off
+        if (asset.hasAudio && fragment.sound !== 'off') {
           currentAudioStream.trim(
             fragment.trimLeft,
             fragment.trimLeft + calculatedDuration,

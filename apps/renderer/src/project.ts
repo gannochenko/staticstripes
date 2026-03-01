@@ -302,8 +302,10 @@ export class Project {
     const projectDir = dirname(this.projectPath);
 
     // Build apps if needed (checks for dst/dist directories with package.json)
+    // Deduplicate app sources to avoid building the same app multiple times
     const appSources = apps.map((app) => app.src);
-    await buildAppsIfNeeded(appSources, projectDir, forceAppBuild);
+    const uniqueAppSources = [...new Set(appSources)];
+    await buildAppsIfNeeded(uniqueAppSources, projectDir, forceAppBuild);
 
     const results = await renderApps(
       apps,

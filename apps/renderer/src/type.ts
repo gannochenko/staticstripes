@@ -66,6 +66,7 @@ export type Fragment = {
   chromakeySimilarity: number;
   chromakeyColor: string;
   visualFilter?: string; // Optional visual filter (e.g., 'instagram-nashville')
+  sound: 'on' | 'off'; // Whether to use asset audio or replace with silence (default: 'on')
   container?: Container; // Optional container attached to this fragment
   app?: App; // Optional app attached to this fragment
   timecodeLabel?: string; // Optional label for timecode (from data-timecode attribute)
