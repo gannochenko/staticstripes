@@ -1033,6 +1033,7 @@ export class HTMLProjectParser {
     let thumbOffset: number | undefined;
     let coverUrl: string | undefined;
     let videoUrl: string | undefined;
+    let locationId: string | undefined;
     const localTags: string[] = [];
 
     if ('children' in element && element.children) {
@@ -1106,6 +1107,21 @@ export class HTMLProjectParser {
               }
               break;
             }
+            case 'location': {
+              const id = childAttrs.get('id');
+              const city = childAttrs.get('city');
+              const country = childAttrs.get('country');
+
+              if (id) {
+                // Explicit location ID provided
+                locationId = id;
+              } else if (city && country) {
+                // Store search query for later resolution
+                // Format: "search:City, Country"
+                locationId = `search:${city}, ${country}`;
+              }
+              break;
+            }
           }
         }
       }
@@ -1131,6 +1147,7 @@ export class HTMLProjectParser {
         thumbOffset,
         coverUrl,
         videoUrl,
+        locationId,
       },
     };
   }

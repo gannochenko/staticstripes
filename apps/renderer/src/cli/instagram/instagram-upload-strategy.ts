@@ -35,7 +35,7 @@ export class InstagramUploadStrategy implements UploadStrategy {
       );
     }
 
-    const { caption, shareToFeed, thumbOffset, coverUrl, videoUrl } =
+    const { caption, shareToFeed, thumbOffset, coverUrl, videoUrl, locationId } =
       upload.instagram;
 
     // Load credentials from local .auth/<upload-name>.json or global ~/.staticstripes/auth/<upload-name>.json
@@ -120,6 +120,15 @@ export class InstagramUploadStrategy implements UploadStrategy {
     }
     console.log('');
 
+    // Resolve location ID if search query is provided
+    let resolvedLocationId = locationId;
+    if (locationId && locationId.startsWith('search:')) {
+      const searchQuery = locationId.substring(7); // Remove "search:" prefix
+      console.log(`📍 Searching for location: ${searchQuery}...`);
+      resolvedLocationId = await this.searchLocation(credentials, searchQuery);
+      console.log(`✅ Found location ID: ${resolvedLocationId}\n`);
+    }
+
     // Step 1: Create media container
     console.log('📦 Step 1: Creating media container...');
     const containerId = await this.createMediaContainer(
@@ -129,6 +138,7 @@ export class InstagramUploadStrategy implements UploadStrategy {
       shareToFeed,
       thumbOffset,
       coverUrl,
+      resolvedLocationId,
     );
 
     console.log(`✅ Container created: ${containerId}`);
@@ -151,6 +161,51 @@ export class InstagramUploadStrategy implements UploadStrategy {
   }
 
   /**
+   * Searches for a location by city and country name
+   * Returns the location ID from Instagram's location database
+   */
+  private async searchLocation(
+    credentials: InstagramCredentials,
+    searchQuery: string,
+  ): Promise<string> {
+    const params = new URLSearchParams({
+      q: searchQuery,
+      fields: 'id,name',
+      access_token: credentials.accessToken,
+    });
+
+    const url = `${this.GRAPH_API_BASE}/${this.API_VERSION}/${credentials.igUserId}/locations?${params.toString()}`;
+
+    try {
+      const data = await makeRequest<{
+        data?: Array<{ id: string; name: string }>;
+      }>({
+        url,
+        method: 'GET',
+      });
+
+      if (!data.data || data.data.length === 0) {
+        throw new Error(
+          `No locations found for "${searchQuery}"\n\n` +
+            `Tip: Try different variations of the city/country name\n` +
+            `Example: "Paris, France" or "New York, USA"`,
+        );
+      }
+
+      // Return the first (most relevant) result
+      const location = data.data[0];
+      console.log(`   Found: ${location.name} (ID: ${location.id})`);
+      return location.id;
+    } catch (error) {
+      throw new Error(
+        `❌ Error: Failed to search for location "${searchQuery}"\n` +
+          `${error instanceof Error ? error.message : String(error)}\n\n` +
+          `Note: Location search requires a valid access token and may not be available in all regions.`,
+      );
+    }
+  }
+
+  /**
    * Creates a media container for the Reel
    */
   private async createMediaContainer(
@@ -160,6 +215,7 @@ export class InstagramUploadStrategy implements UploadStrategy {
     shareToFeed: boolean,
     thumbOffset?: number,
     coverUrl?: string,
+    locationId?: string,
   ): Promise<string> {
     const params = new URLSearchParams({
       media_type: 'REELS',
@@ -178,6 +234,10 @@ export class InstagramUploadStrategy implements UploadStrategy {
 
     if (coverUrl) {
       params.append('cover_url', coverUrl);
+    }
+
+    if (locationId) {
+      params.append('location_id', locationId);
     }
 
     const url = `${this.GRAPH_API_BASE}/${this.API_VERSION}/${credentials.igUserId}/media`;

@@ -136,6 +136,7 @@ export type Upload = {
     thumbOffset?: number; // Thumbnail frame location in milliseconds
     coverUrl?: string; // Optional cover image URL
     videoUrl?: string; // Public URL to video (if not auto-generated from S3)
+    locationId?: string; // Facebook Page location ID for geotagging
   };
 };
 

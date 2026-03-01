@@ -2868,6 +2868,9 @@ Quick highlights from Tokyo! 🇯🇵✨
     <!-- Thumbnail extraction -->
     <thumbnail data-timecode="3000ms" />
 
+    <!-- Location tagging for better discoverability -->
+    <location city="Tokyo" country="Japan" />
+
     <!-- Caption (supports EJS templating) -->
     <pre>
 Tokyo adventures! 🗼✨
@@ -3143,6 +3146,50 @@ Example:
   <fragment data-asset="background_music" />
 </sequence>
 ```
+
+#### 7. Instagram Geolocation Support
+Add location tags to Instagram Reels for better discoverability and local engagement.
+
+**Two ways to specify location:**
+
+1. **Direct Location ID** (if you know the Facebook Page location ID):
+```html
+<instagram name="ig_upload" output="instagram_reel">
+  <caption>Amazing views! ${tags}</caption>
+  <share-to-feed value="true" />
+  <location id="123456789" />
+</instagram>
+```
+
+2. **Automatic Location Search** (recommended):
+```html
+<instagram name="ig_upload" output="instagram_reel">
+  <caption>Exploring the city! ${tags}</caption>
+  <share-to-feed value="true" />
+  <location city="Paris" country="France" />
+</instagram>
+```
+
+When using city/country attributes, StaticStripes will automatically:
+- Search Instagram's location database during upload
+- Find the most relevant location ID
+- Display the matched location name and ID
+- Apply the location tag to your Reel
+
+**How it works:**
+```
+📍 Searching for location: Paris, France...
+   Found: Paris, France (ID: 110774245615518)
+✅ Found location ID: 110774245615518
+```
+
+**Benefits:**
+- Better local discoverability on Instagram
+- Increases engagement from nearby users
+- No need to manually find location IDs
+- Supports any city/country combination
+
+**Note:** Location search requires a valid Instagram access token and may not be available in all regions.
 
 ### Implementation Details
 
