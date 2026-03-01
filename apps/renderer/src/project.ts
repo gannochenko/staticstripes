@@ -13,6 +13,7 @@ import { FilterBuffer } from './stream';
 import { ExpressionContext, FragmentData } from './expression-parser';
 import { renderContainers } from './container-renderer';
 import { renderApps } from './app-renderer';
+import { buildAppsIfNeeded } from './app-builder';
 import { dirname } from 'path';
 
 export class Project {
@@ -222,10 +223,12 @@ export class Project {
    * Renders all apps and creates virtual assets for them.
    * Apps must dispatch "sts-render-complete" on document when ready,
    * or rendering will fail after a 5-second timeout.
+   * @param forceAppBuild - If true, rebuilds apps even if output exists
    */
   public async renderApps(
     outputName: string,
     activeCacheKeys?: Set<string>,
+    forceAppBuild: boolean = false,
   ): Promise<void> {
     const output = this.getOutput(outputName);
     if (!output) {
@@ -244,6 +247,10 @@ export class Project {
 
     const apps = fragmentsWithApps.map((frag) => frag.app!);
     const projectDir = dirname(this.projectPath);
+
+    // Build apps if needed (checks for dst/dist directories with package.json)
+    const appSources = apps.map((app) => app.src);
+    await buildAppsIfNeeded(appSources, projectDir, forceAppBuild);
 
     const results = await renderApps(
       apps,

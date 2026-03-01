@@ -29,6 +29,10 @@ export function registerGenerateCommand(
       '--option <name>',
       'FFmpeg option preset to use (from project.html <ffmpeg> section)',
     )
+    .option(
+      '--app-build',
+      'Force rebuild apps even if build output already exists',
+    )
     .action(async (options) => {
       try {
         // Check if FFmpeg is installed
@@ -160,7 +164,7 @@ export function registerGenerateCommand(
 
           // Render containers and apps for this output (accumulate cache keys)
           await project.renderContainers(outputName, activeCacheKeys);
-          await project.renderApps(outputName, activeCacheKeys);
+          await project.renderApps(outputName, activeCacheKeys, options.appBuild);
 
           // Print project statistics
           project.printStats();

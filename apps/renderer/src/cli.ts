@@ -8,6 +8,7 @@ import { registerBootstrapCommand } from './cli/commands/bootstrap.js';
 import { registerAddAssetsCommand } from './cli/commands/add-assets.js';
 import { registerUploadCommand } from './cli/commands/upload.js';
 import { registerAuthCommand } from './cli/commands/auth.js';
+import { registerFiltersCommand } from './cli/commands/filters.js';
 
 // Read version from package.json
 // In built code, this file is at dist/cli.js, package.json is at ../package.json
@@ -65,5 +66,6 @@ registerBootstrapCommand(program, handleError);
 registerAddAssetsCommand(program, handleError);
 registerUploadCommand(program, handleError);
 registerAuthCommand(program, handleError);
+registerFiltersCommand(program);
 
 program.parse(process.argv);
