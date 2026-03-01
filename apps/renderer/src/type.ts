@@ -75,6 +75,23 @@ export type SequenceDefinition = {
   fragments: Fragment[];
 };
 
+export type FragmentDebugInfo = {
+  id: string;
+  assetName: string;
+  startTime: number; // absolute start time in seconds
+  endTime: number; // absolute end time in seconds
+  duration: number; // fragment duration in seconds
+  trimLeft: number; // trim from asset start in seconds
+  overlayLeft: number; // overlay with previous fragment in seconds
+  enabled: boolean;
+};
+
+export type SequenceDebugInfo = {
+  sequenceIndex: number;
+  totalDuration: number; // total duration of the sequence in seconds
+  fragments: FragmentDebugInfo[];
+};
+
 export type Output = {
   name: string; // e.g. "youtube"
   path: string; // e.g. "./output/video.mp4"

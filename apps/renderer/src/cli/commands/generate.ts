@@ -173,6 +173,11 @@ export function registerGenerateCommand(
           const filterBuf = await project.build(outputName);
           const filter = filterBuf.render();
 
+          // Print debug information before ffmpeg if debug mode is enabled
+          if (isDebugMode()) {
+            project.printDebugInfo();
+          }
+
           // Determine FFmpeg arguments to use
           let ffmpegArgs: string;
           const defaultArgs =

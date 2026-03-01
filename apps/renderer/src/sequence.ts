@@ -16,13 +16,14 @@ import {
   Stream,
   VisualFilter,
 } from './stream';
-import { Output, SequenceDefinition } from './type';
+import { Output, SequenceDefinition, FragmentDebugInfo } from './type';
 
 export class Sequence {
   private time: number = 0; // time is absolute
 
   private videoStream!: Stream;
   private audioStream!: Stream;
+  private debugInfo: FragmentDebugInfo[] = []; // Collect debug info during build
 
   constructor(
     private buf: FilterBuffer,
@@ -298,6 +299,18 @@ export class Sequence {
         time: timeContext,
       });
 
+      // Collect debug info
+      this.debugInfo.push({
+        id: fragment.id,
+        assetName: fragment.assetName,
+        startTime: timeContext.start,
+        endTime: timeContext.end,
+        duration: fragment.duration,
+        trimLeft: fragment.trimLeft,
+        overlayLeft: calculatedOverlayLeft,
+        enabled: fragment.enabled,
+      });
+
       // console.log('new time=' + this.time);
 
       firstOne = false;
@@ -326,5 +339,13 @@ export class Sequence {
 
   public getAudioStream(): Stream {
     return this.audioStream;
+  }
+
+  public getDebugInfo(): FragmentDebugInfo[] {
+    return this.debugInfo;
+  }
+
+  public getTotalDuration(): number {
+    return this.time;
   }
 }
