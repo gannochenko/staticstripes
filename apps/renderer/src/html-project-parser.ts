@@ -1919,7 +1919,7 @@ export class HTMLProjectParser {
     assets: Map<string, Asset>,
     trimLeft: number,
     trimRight: number,
-  ): number {
+  ): number | CompiledExpression {
     if (!duration || duration.trim() === 'auto') {
       // Auto: use asset duration minus trim-start and trim-end
       const asset = assets.get(assetName);
@@ -1929,9 +1929,16 @@ export class HTMLProjectParser {
       return Math.max(0, asset.duration - trimLeft - trimRight);
     }
 
+    const trimmed = duration.trim();
+
+    // Check if it's a calc() expression
+    if (trimmed.startsWith('calc(')) {
+      return parseValueLazy(trimmed) as CompiledExpression;
+    }
+
     // Handle percentage (e.g., "100%", "50%")
-    if (duration.endsWith('%')) {
-      const percentage = parseFloat(duration);
+    if (trimmed.endsWith('%')) {
+      const percentage = parseFloat(trimmed);
       if (isNaN(percentage)) {
         return 0;
       }
@@ -1946,7 +1953,7 @@ export class HTMLProjectParser {
     }
 
     // Handle time value (e.g., "5000ms", "5s")
-    return this.parseMilliseconds(duration);
+    return this.parseMilliseconds(trimmed);
   }
 
   /**

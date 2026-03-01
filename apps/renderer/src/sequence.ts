@@ -45,6 +45,11 @@ export class Sequence {
         this.expressionContext,
       );
 
+      const calculatedDuration = calculateFinalValue(
+        fragment.duration,
+        this.expressionContext,
+      );
+
       if (fragment.id === 'outro_message') {
         debugger;
       }
@@ -52,7 +57,7 @@ export class Sequence {
       const timeContext: TimeData = {
         start: 0,
         end: 0,
-        duration: fragment.duration,
+        duration: calculatedDuration,
       };
 
       const asset = this.assetManager.getAssetByName(fragment.assetName);
@@ -70,7 +75,7 @@ export class Sequence {
       } else {
         // Create blank transparent video stream for audio-only assets
         currentVideoStream = makeBlankStream(
-          fragment.duration,
+          calculatedDuration,
           this.output.resolution.width,
           this.output.resolution.height,
           this.output.fps,
@@ -87,20 +92,20 @@ export class Sequence {
         );
       } else {
         // Create silent audio stream matching the video duration
-        currentAudioStream = makeSilentStream(fragment.duration, this.buf);
+        currentAudioStream = makeSilentStream(calculatedDuration, this.buf);
       }
 
       // duration and clipping adjustment
-      if (fragment.trimLeft != 0 || fragment.duration < asset.duration) {
+      if (fragment.trimLeft != 0 || calculatedDuration < asset.duration) {
         // console.log('fragment.trimLeft=' + fragment.trimLeft);
-        // console.log('fragment.duration=' + fragment.duration);
+        // console.log('fragment.duration=' + calculatedDuration);
         // console.log('asset.duration=' + asset.duration);
 
         // Only trim video if it came from an actual source
         if (asset.hasVideo) {
           currentVideoStream.trim(
             fragment.trimLeft,
-            fragment.trimLeft + fragment.duration,
+            fragment.trimLeft + calculatedDuration,
           );
         }
 
@@ -108,7 +113,7 @@ export class Sequence {
         if (asset.hasAudio) {
           currentAudioStream.trim(
             fragment.trimLeft,
-            fragment.trimLeft + fragment.duration,
+            fragment.trimLeft + calculatedDuration,
           );
         }
       }
@@ -125,12 +130,12 @@ export class Sequence {
 
       if (
         asset.duration === 0 &&
-        fragment.duration > 0 &&
+        calculatedDuration > 0 &&
         asset.type === 'image'
       ) {
         // special case for images - extend static image to desired duration
         currentVideoStream.tPad({
-          start: fragment.duration,
+          start: calculatedDuration,
           startMode: 'clone',
         });
       }
@@ -203,7 +208,7 @@ export class Sequence {
           fades: [
             {
               type: 'out',
-              startTime: fragment.duration - fragment.transitionOutDuration,
+              startTime: calculatedDuration - fragment.transitionOutDuration,
               duration: fragment.transitionOutDuration,
             },
           ],
@@ -212,7 +217,7 @@ export class Sequence {
           fades: [
             {
               type: 'out',
-              startTime: fragment.duration - fragment.transitionOutDuration,
+              startTime: calculatedDuration - fragment.transitionOutDuration,
               duration: fragment.transitionOutDuration,
             },
           ],
@@ -240,7 +245,7 @@ export class Sequence {
 
           // console.log('this.time=' + this.time);
           // console.log('streamDuration=' + this.time);
-          // console.log('otherStreamDuration=' + fragment.duration);
+          // console.log('otherStreamDuration=' + calculatedDuration);
           // console.log('otherStreamOffsetLeft=' + otherStreamOffsetLeft);
 
           // use overlay
@@ -248,14 +253,14 @@ export class Sequence {
             flipLayers: fragment.overlayZIndex < 0,
             offset: {
               streamDuration: this.time,
-              otherStreamDuration: fragment.duration,
+              otherStreamDuration: calculatedDuration,
               otherStreamOffsetLeft: otherStreamOffsetLeft,
             },
           });
           this.audioStream.overlayStream(currentAudioStream, {
             offset: {
               streamDuration: this.time,
-              otherStreamDuration: fragment.duration,
+              otherStreamDuration: calculatedDuration,
               otherStreamOffsetLeft: otherStreamOffsetLeft,
             },
           });
@@ -292,8 +297,8 @@ export class Sequence {
       }
 
       timeContext.start = this.time + calculatedOverlayLeft;
-      timeContext.end = this.time + fragment.duration + calculatedOverlayLeft;
-      this.time += fragment.duration + calculatedOverlayLeft;
+      timeContext.end = this.time + calculatedDuration + calculatedOverlayLeft;
+      this.time += calculatedDuration + calculatedOverlayLeft;
 
       this.expressionContext.fragments.set(fragment.id, {
         time: timeContext,
@@ -305,7 +310,7 @@ export class Sequence {
         assetName: fragment.assetName,
         startTime: timeContext.start,
         endTime: timeContext.end,
-        duration: fragment.duration,
+        duration: calculatedDuration,
         trimLeft: fragment.trimLeft,
         overlayLeft: calculatedOverlayLeft,
         enabled: fragment.enabled,

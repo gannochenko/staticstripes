@@ -47,7 +47,7 @@ export type Fragment = {
   id: string;
   enabled: boolean;
   assetName: string;
-  duration: number; // calculated, in seconds (can come from CSS or from the asset's duration)
+  duration: number | CompiledExpression; // calculated, in seconds (can come from CSS or from the asset's duration, or be a calc() expression)
   trimLeft: number; // in seconds (skip first N seconds of asset via -trim-start)
   overlayLeft: number | CompiledExpression; // amount of seconds to overlay with the previous fragment (normalized from margin-left + prev margin-right)
   overlayZIndex: number;
