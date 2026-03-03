@@ -122,6 +122,12 @@ export class Sequence {
         }
       }
 
+      // Convert deprecated JPEG pixel format (yuvj420p) to standard yuv420p early
+      // This prevents swscaler warnings from appearing in all subsequent filters
+      if (asset.hasVideo && asset.type === 'image') {
+        currentVideoStream.convertPixelFormat('yuv420p');
+      }
+
       // Apply visual filter early for static images (before padding/cloning)
       // This is more efficient as ffmpeg processes the filter once, then clones the filtered frame
       if (
@@ -135,9 +141,11 @@ export class Sequence {
       if (
         asset.duration === 0 &&
         calculatedDuration > 0 &&
-        asset.type === 'image'
+        asset.type === 'image' &&
+        fragment.objectFit !== 'ken-burns'
       ) {
         // special case for images - extend static image to desired duration
+        // Skip tpad for Ken Burns - zoompan will generate the frames
         currentVideoStream.tPad({
           start: calculatedDuration,
           startMode: 'clone',

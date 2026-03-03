@@ -2384,25 +2384,29 @@ export class HTMLProjectParser {
 
   /**
    * Parses -object-fit-ken-burns property
-   * Format: "<effect> [focal-x focal-y] <speed>"
+   * Format: "<effect> [focal-x focal-y] [zoom] [easing]"
    * Examples:
-   *   - "zoom-in slow"
-   *   - "zoom-in 30% 30% slow"
-   *   - "pan-left fast"
-   *   - "zoom-out 50% 50% normal"
+   *   - "zoom-in"
+   *   - "zoom-in 30% 30%"
+   *   - "zoom-in 30% 30% 1.5"
+   *   - "zoom-in 30% 30% 1.5 ease-in-out"
+   *   - "pan-left 1.3 linear"
    * Effects: zoom-in, zoom-out, pan-left, pan-right, pan-top, pan-bottom
-   * Speed: slow, normal, fast
+   * Zoom: number (e.g., 1.3 = 30% zoom, default: 1.3)
+   * Easing: linear, ease-in, ease-out, ease-in-out (default: linear)
    */
   private parseKenBurnsProperty(kenBurns: string | undefined): {
     objectFitKenBurns: 'zoom-in' | 'zoom-out' | 'pan-left' | 'pan-right' | 'pan-top' | 'pan-bottom';
-    objectFitKenBurnsSpeed: 'slow' | 'normal' | 'fast';
+    objectFitKenBurnsZoom: number;
+    objectFitKenBurnsEasing: 'linear' | 'ease-in' | 'ease-out' | 'ease-in-out';
     objectFitKenBurnsFocalX: number;
     objectFitKenBurnsFocalY: number;
   } {
     // Defaults
     const defaults = {
       objectFitKenBurns: 'zoom-in' as 'zoom-in' | 'zoom-out' | 'pan-left' | 'pan-right' | 'pan-top' | 'pan-bottom',
-      objectFitKenBurnsSpeed: 'normal' as 'slow' | 'normal' | 'fast',
+      objectFitKenBurnsZoom: 1.3, // 30% zoom
+      objectFitKenBurnsEasing: 'linear' as 'linear' | 'ease-in' | 'ease-out' | 'ease-in-out',
       objectFitKenBurnsFocalX: 50, // center
       objectFitKenBurnsFocalY: 50, // center
     };
@@ -2425,14 +2429,16 @@ export class HTMLProjectParser {
       return defaults;
     }
 
-    // Check if focal points are specified (for zoom-in/zoom-out)
-    // Format: "zoom-in 30% 30% slow" or "pan-left fast"
     let focalX = defaults.objectFitKenBurnsFocalX;
     let focalY = defaults.objectFitKenBurnsFocalY;
-    let speed = defaults.objectFitKenBurnsSpeed;
+    let zoom = defaults.objectFitKenBurnsZoom;
+    let easing = defaults.objectFitKenBurnsEasing;
 
-    if ((effect === 'zoom-in' || effect === 'zoom-out') && parts.length >= 4) {
-      // Parse focal points
+    // Parse remaining parts based on what they are
+    let nextIndex = 1;
+
+    // Check for focal points (only for zoom effects)
+    if ((effect === 'zoom-in' || effect === 'zoom-out') && parts.length > 2 && parts[1].includes('%') && parts[2].includes('%')) {
       const focalXStr = parts[1].replace('%', '');
       const focalYStr = parts[2].replace('%', '');
       const parsedX = parseFloat(focalXStr);
@@ -2441,24 +2447,32 @@ export class HTMLProjectParser {
       if (!isNaN(parsedX) && !isNaN(parsedY)) {
         focalX = Math.max(0, Math.min(100, parsedX));
         focalY = Math.max(0, Math.min(100, parsedY));
+        nextIndex = 3;
       }
+    }
 
-      // Speed is in parts[3]
-      const speedStr = parts[3];
-      if (speedStr === 'slow' || speedStr === 'normal' || speedStr === 'fast') {
-        speed = speedStr;
+    // Check for zoom (numeric value)
+    if (parts.length > nextIndex) {
+      const zoomStr = parts[nextIndex];
+      const parsedZoom = parseFloat(zoomStr);
+      if (!isNaN(parsedZoom) && parsedZoom >= 1) {
+        zoom = parsedZoom;
+        nextIndex++;
       }
-    } else {
-      // No focal points, speed is in parts[1]
-      const speedStr = parts[1];
-      if (speedStr === 'slow' || speedStr === 'normal' || speedStr === 'fast') {
-        speed = speedStr;
+    }
+
+    // Check for easing
+    if (parts.length > nextIndex) {
+      const easingStr = parts[nextIndex] as 'linear' | 'ease-in' | 'ease-out' | 'ease-in-out';
+      if (['linear', 'ease-in', 'ease-out', 'ease-in-out'].includes(easingStr)) {
+        easing = easingStr;
       }
     }
 
     return {
       objectFitKenBurns: effect,
-      objectFitKenBurnsSpeed: speed,
+      objectFitKenBurnsZoom: zoom,
+      objectFitKenBurnsEasing: easing,
       objectFitKenBurnsFocalX: focalX,
       objectFitKenBurnsFocalY: focalY,
     };

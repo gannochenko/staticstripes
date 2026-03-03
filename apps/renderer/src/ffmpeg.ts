@@ -427,6 +427,26 @@ export function makeFps(inputs: Label[], fps: number): Filter {
   return new Filter(inputs, [output], `fps=${fps}`);
 }
 
+export function makeFormat(inputs: Label[], format: string): Filter {
+  if (inputs.length !== 1) {
+    throw new Error(`makeFormat: expects one input`);
+  }
+
+  const input1 = inputs[0];
+  if (input1.isAudio) {
+    throw new Error(
+      `makeFormat: input1 must be video, got audio (tag: ${input1.tag})`,
+    );
+  }
+
+  const output = {
+    tag: getLabel(),
+    isAudio: false,
+  };
+
+  return new Filter(inputs, [output], `format=${format}`);
+}
+
 export function makeScale(
   inputs: Label[],
   options: { width: number | string; height: number | string; flags?: string },
@@ -1231,8 +1251,9 @@ export function makeKenBurns(
     options.speed === 'fast' ? 2.0 :
     1.0; // normal
 
-  // Calculate total frames
-  const totalFrames = Math.floor(options.duration * options.fps);
+  // Calculate total frames (duration is in milliseconds, convert to seconds)
+  const durationInSeconds = options.duration / 1000;
+  const totalFrames = Math.floor(durationInSeconds * options.fps);
 
   // Zoom factor: how much to zoom in
   const zoomFactor = 1.3; // 30% zoom
@@ -1241,17 +1262,24 @@ export function makeKenBurns(
   let xExpr: string;
   let yExpr: string;
 
+  // Calculate effective frame count based on speed
+  // slow (0.5) means effect takes longer, so more frames needed
+  // fast (2.0) means effect takes shorter, so fewer frames needed
+  // Note: 'on' in zoompan counts frames (0,1,2,...), not seconds
+  const effectiveFrames = totalFrames / speedMultiplier;
+
   switch (options.effect) {
     case 'zoom-in':
-      // Start at 1.0, zoom to zoomFactor, focus on focal point
-      zoomExpr = `'if(lte(on,1),1,1+(${zoomFactor}-1)*min(1,on/${options.duration})*${speedMultiplier})'`;
+      // Start at 1.0, zoom to zoomFactor over duration, focus on focal point
+      // Progress: min(1, on/effectiveFrames) gives 0..1 over the effective frame count
+      zoomExpr = `'1+(${zoomFactor}-1)*min(1,on/${effectiveFrames})'`;
       xExpr = `'iw*${focalX/100}-iw/zoom/2'`;
       yExpr = `'ih*${focalY/100}-ih/zoom/2'`;
       break;
 
     case 'zoom-out':
-      // Start zoomed in, zoom out to 1.0
-      zoomExpr = `'if(lte(on,1),${zoomFactor},${zoomFactor}-(${zoomFactor}-1)*min(1,on/${options.duration})*${speedMultiplier})'`;
+      // Start at zoomFactor, zoom out to 1.0 over duration
+      zoomExpr = `'${zoomFactor}-(${zoomFactor}-1)*min(1,on/${effectiveFrames})'`;
       xExpr = `'iw*${focalX/100}-iw/zoom/2'`;
       yExpr = `'ih*${focalY/100}-ih/zoom/2'`;
       break;
@@ -1259,14 +1287,14 @@ export function makeKenBurns(
     case 'pan-left':
       // Pan from right to left (start at right edge, end at left edge)
       zoomExpr = `'${zoomFactor}'`;
-      xExpr = `'(iw-iw/zoom)*(1-min(1,on/${options.duration})*${speedMultiplier})'`;
+      xExpr = `'(iw-iw/zoom)*(1-min(1,on/${effectiveFrames}))'`;
       yExpr = `'(ih-ih/zoom)/2'`; // center vertically
       break;
 
     case 'pan-right':
       // Pan from left to right
       zoomExpr = `'${zoomFactor}'`;
-      xExpr = `'(iw-iw/zoom)*min(1,on/${options.duration})*${speedMultiplier}'`;
+      xExpr = `'(iw-iw/zoom)*min(1,on/${effectiveFrames})'`;
       yExpr = `'(ih-ih/zoom)/2'`;
       break;
 
@@ -1274,14 +1302,14 @@ export function makeKenBurns(
       // Pan from bottom to top
       zoomExpr = `'${zoomFactor}'`;
       xExpr = `'(iw-iw/zoom)/2'`; // center horizontally
-      yExpr = `'(ih-ih/zoom)*(1-min(1,on/${options.duration})*${speedMultiplier})'`;
+      yExpr = `'(ih-ih/zoom)*(1-min(1,on/${effectiveFrames}))'`;
       break;
 
     case 'pan-bottom':
       // Pan from top to bottom
       zoomExpr = `'${zoomFactor}'`;
       xExpr = `'(iw-iw/zoom)/2'`;
-      yExpr = `'(ih-ih/zoom)*min(1,on/${options.duration})*${speedMultiplier}'`;
+      yExpr = `'(ih-ih/zoom)*min(1,on/${effectiveFrames})'`;
       break;
   }
 

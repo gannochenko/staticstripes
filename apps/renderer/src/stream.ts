@@ -4,6 +4,7 @@ import {
   Millisecond,
   makeNull,
   makeFps,
+  makeFormat,
   makeTranspose,
   makeTrim,
   makeTPad,
@@ -341,6 +342,15 @@ export class Stream {
 
   public fps(value: number): Stream {
     const res = makeFps([this.looseEnd], value);
+    this.looseEnd = res.outputs[0];
+
+    this.buf.append(res);
+
+    return this;
+  }
+
+  public convertPixelFormat(format: string): Stream {
+    const res = makeFormat([this.looseEnd], format);
     this.looseEnd = res.outputs[0];
 
     this.buf.append(res);

@@ -62,7 +62,8 @@ export type Fragment = {
   objectFitContainAmbientSaturation: number;
   objectFitContainPillarboxColor: string;
   objectFitKenBurns: 'zoom-in' | 'zoom-out' | 'pan-left' | 'pan-right' | 'pan-top' | 'pan-bottom';
-  objectFitKenBurnsSpeed: 'slow' | 'normal' | 'fast';
+  objectFitKenBurnsZoom: number; // zoom factor (e.g., 1.3 = 30% zoom)
+  objectFitKenBurnsEasing: 'linear' | 'ease-in' | 'ease-out' | 'ease-in-out';
   objectFitKenBurnsFocalX: number; // focal point X in percent (0-100)
   objectFitKenBurnsFocalY: number; // focal point Y in percent (0-100)
   chromakey: boolean;
