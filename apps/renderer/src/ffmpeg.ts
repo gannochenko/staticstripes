@@ -1184,6 +1184,115 @@ export function makeChromakey(
 }
 
 /**
+ * Creates a Ken Burns effect (zoom/pan) filter for images
+ * @param inputs - Input stream labels (must be video)
+ * @param options - Ken Burns parameters
+ *   - effect: Type of effect (zoom-in, zoom-out, pan-left, pan-right, pan-top, pan-bottom)
+ *   - speed: Speed of effect (slow, normal, fast)
+ *   - duration: Duration of the effect in seconds
+ *   - width: Output width
+ *   - height: Output height
+ *   - fps: Output frame rate
+ *   - focalX: Focal point X in percent (0-100, for zoom effects)
+ *   - focalY: Focal point Y in percent (0-100, for zoom effects)
+ */
+export function makeKenBurns(
+  inputs: Label[],
+  options: {
+    effect: 'zoom-in' | 'zoom-out' | 'pan-left' | 'pan-right' | 'pan-top' | 'pan-bottom';
+    speed: 'slow' | 'normal' | 'fast';
+    duration: number;
+    width: number;
+    height: number;
+    fps: number;
+    focalX?: number;
+    focalY?: number;
+  },
+): Filter {
+  const input = inputs[0];
+
+  if (input.isAudio) {
+    throw new Error(
+      `makeKenBurns: input must be video, got audio (tag: ${input.tag})`,
+    );
+  }
+
+  const output = {
+    tag: getLabel(),
+    isAudio: false,
+  };
+
+  const focalX = options.focalX ?? 50;
+  const focalY = options.focalY ?? 50;
+
+  // Convert speed to zoom speed multiplier
+  const speedMultiplier =
+    options.speed === 'slow' ? 0.5 :
+    options.speed === 'fast' ? 2.0 :
+    1.0; // normal
+
+  // Calculate total frames
+  const totalFrames = Math.floor(options.duration * options.fps);
+
+  // Zoom factor: how much to zoom in
+  const zoomFactor = 1.3; // 30% zoom
+
+  let zoomExpr: string;
+  let xExpr: string;
+  let yExpr: string;
+
+  switch (options.effect) {
+    case 'zoom-in':
+      // Start at 1.0, zoom to zoomFactor, focus on focal point
+      zoomExpr = `'if(lte(on,1),1,1+(${zoomFactor}-1)*min(1,on/${options.duration})*${speedMultiplier})'`;
+      xExpr = `'iw*${focalX/100}-iw/zoom/2'`;
+      yExpr = `'ih*${focalY/100}-ih/zoom/2'`;
+      break;
+
+    case 'zoom-out':
+      // Start zoomed in, zoom out to 1.0
+      zoomExpr = `'if(lte(on,1),${zoomFactor},${zoomFactor}-(${zoomFactor}-1)*min(1,on/${options.duration})*${speedMultiplier})'`;
+      xExpr = `'iw*${focalX/100}-iw/zoom/2'`;
+      yExpr = `'ih*${focalY/100}-ih/zoom/2'`;
+      break;
+
+    case 'pan-left':
+      // Pan from right to left (start at right edge, end at left edge)
+      zoomExpr = `'${zoomFactor}'`;
+      xExpr = `'(iw-iw/zoom)*(1-min(1,on/${options.duration})*${speedMultiplier})'`;
+      yExpr = `'(ih-ih/zoom)/2'`; // center vertically
+      break;
+
+    case 'pan-right':
+      // Pan from left to right
+      zoomExpr = `'${zoomFactor}'`;
+      xExpr = `'(iw-iw/zoom)*min(1,on/${options.duration})*${speedMultiplier}'`;
+      yExpr = `'(ih-ih/zoom)/2'`;
+      break;
+
+    case 'pan-top':
+      // Pan from bottom to top
+      zoomExpr = `'${zoomFactor}'`;
+      xExpr = `'(iw-iw/zoom)/2'`; // center horizontally
+      yExpr = `'(ih-ih/zoom)*(1-min(1,on/${options.duration})*${speedMultiplier})'`;
+      break;
+
+    case 'pan-bottom':
+      // Pan from top to bottom
+      zoomExpr = `'${zoomFactor}'`;
+      xExpr = `'(iw-iw/zoom)/2'`;
+      yExpr = `'(ih-ih/zoom)*min(1,on/${options.duration})*${speedMultiplier}'`;
+      break;
+  }
+
+  // zoompan filter syntax:
+  // zoompan=z='zoom':x='x':y='y':d=frames:s=WxH:fps=FPS
+  const filterStr = `zoompan=z=${zoomExpr}:x=${xExpr}:y=${yExpr}:d=${totalFrames}:s=${options.width}x${options.height}:fps=${options.fps}`;
+
+  return new Filter(inputs, [output], filterStr);
+}
+
+/**
  * Creates a despill filter to remove color spill from chromakey
  * @param inputs - Input stream labels (must be video)
  * @param options - Despill parameters

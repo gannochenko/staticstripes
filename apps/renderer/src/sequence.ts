@@ -150,7 +150,19 @@ export class Sequence {
         currentVideoStream.fps(this.output.fps);
 
         // fitting the video stream into the output frame
-        if (fragment.objectFit === 'cover') {
+        if (fragment.objectFit === 'ken-burns') {
+          // Ken Burns effect (zoom/pan)
+          currentVideoStream.kenBurns({
+            effect: fragment.objectFitKenBurns,
+            speed: fragment.objectFitKenBurnsSpeed,
+            duration: calculatedDuration,
+            width: this.output.resolution.width,
+            height: this.output.resolution.height,
+            fps: this.output.fps,
+            focalX: fragment.objectFitKenBurnsFocalX,
+            focalY: fragment.objectFitKenBurnsFocalY,
+          });
+        } else if (fragment.objectFit === 'cover') {
           currentVideoStream.fitOutputCover(this.output.resolution);
         } else {
           const options: ObjectFitContainOptions = {};

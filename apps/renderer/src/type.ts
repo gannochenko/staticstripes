@@ -55,12 +55,16 @@ export type Fragment = {
   transitionInDuration: number; // how long the transition in lasts
   transitionOut: string; // how to transition out of the fragment
   transitionOutDuration: number; // how long the transition out lasts
-  objectFit: 'cover' | 'contain';
+  objectFit: 'cover' | 'contain' | 'ken-burns';
   objectFitContain: 'ambient' | 'pillarbox';
   objectFitContainAmbientBlurStrength: number;
   objectFitContainAmbientBrightness: number;
   objectFitContainAmbientSaturation: number;
   objectFitContainPillarboxColor: string;
+  objectFitKenBurns: 'zoom-in' | 'zoom-out' | 'pan-left' | 'pan-right' | 'pan-top' | 'pan-bottom';
+  objectFitKenBurnsSpeed: 'slow' | 'normal' | 'fast';
+  objectFitKenBurnsFocalX: number; // focal point X in percent (0-100)
+  objectFitKenBurnsFocalY: number; // focal point Y in percent (0-100)
   chromakey: boolean;
   chromakeyBlend: number;
   chromakeySimilarity: number;

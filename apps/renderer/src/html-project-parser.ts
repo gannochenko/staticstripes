@@ -1693,6 +1693,9 @@ export class HTMLProjectParser {
     // 14. Parse -chromakey
     const chromakeyData = this.parseChromakeyProperty(styles['-chromakey']);
 
+    // 14b. Parse -object-fit-ken-burns
+    const kenBurnsData = this.parseKenBurnsProperty(styles['-object-fit-ken-burns']);
+
     // 15. Parse filter (for visual filters)
     const visualFilter = this.parseVisualFilterProperty(styles['filter']);
 
@@ -1730,6 +1733,10 @@ export class HTMLProjectParser {
       chromakeyBlend: chromakeyData.chromakeyBlend,
       chromakeySimilarity: chromakeyData.chromakeySimilarity,
       chromakeyColor: chromakeyData.chromakeyColor,
+      objectFitKenBurns: kenBurnsData.objectFitKenBurns,
+      objectFitKenBurnsSpeed: kenBurnsData.objectFitKenBurnsSpeed,
+      objectFitKenBurnsFocalX: kenBurnsData.objectFitKenBurnsFocalX,
+      objectFitKenBurnsFocalY: kenBurnsData.objectFitKenBurnsFocalY,
       sound,
       ...(visualFilter && { visualFilter }), // Add visualFilter if present
       ...(container && { container }), // Add container if present
@@ -2219,7 +2226,7 @@ export class HTMLProjectParser {
    *   - "cover"
    */
   private parseObjectFitProperty(objectFit: string | undefined): {
-    objectFit: 'cover' | 'contain';
+    objectFit: 'cover' | 'contain' | 'ken-burns';
     objectFitContain: 'ambient' | 'pillarbox';
     objectFitContainAmbientBlurStrength: number;
     objectFitContainAmbientBrightness: number;
@@ -2228,7 +2235,7 @@ export class HTMLProjectParser {
   } {
     // Defaults
     const defaults = {
-      objectFit: 'cover' as 'cover' | 'contain',
+      objectFit: 'cover' as 'cover' | 'contain' | 'ken-burns',
       objectFitContain: 'ambient' as 'ambient' | 'pillarbox',
       objectFitContainAmbientBlurStrength: 20,
       objectFitContainAmbientBrightness: -0.3,
@@ -2252,6 +2259,11 @@ export class HTMLProjectParser {
     // Handle "cover"
     if (type === 'cover') {
       return { ...defaults, objectFit: 'cover' };
+    }
+
+    // Handle "ken-burns"
+    if (type === 'ken-burns') {
+      return { ...defaults, objectFit: 'ken-burns' };
     }
 
     // Handle "contain" with sub-options
@@ -2367,6 +2379,88 @@ export class HTMLProjectParser {
       chromakeyBlend: blend,
       chromakeySimilarity: similarity,
       chromakeyColor: color,
+    };
+  }
+
+  /**
+   * Parses -object-fit-ken-burns property
+   * Format: "<effect> [focal-x focal-y] <speed>"
+   * Examples:
+   *   - "zoom-in slow"
+   *   - "zoom-in 30% 30% slow"
+   *   - "pan-left fast"
+   *   - "zoom-out 50% 50% normal"
+   * Effects: zoom-in, zoom-out, pan-left, pan-right, pan-top, pan-bottom
+   * Speed: slow, normal, fast
+   */
+  private parseKenBurnsProperty(kenBurns: string | undefined): {
+    objectFitKenBurns: 'zoom-in' | 'zoom-out' | 'pan-left' | 'pan-right' | 'pan-top' | 'pan-bottom';
+    objectFitKenBurnsSpeed: 'slow' | 'normal' | 'fast';
+    objectFitKenBurnsFocalX: number;
+    objectFitKenBurnsFocalY: number;
+  } {
+    // Defaults
+    const defaults = {
+      objectFitKenBurns: 'zoom-in' as 'zoom-in' | 'zoom-out' | 'pan-left' | 'pan-right' | 'pan-top' | 'pan-bottom',
+      objectFitKenBurnsSpeed: 'normal' as 'slow' | 'normal' | 'fast',
+      objectFitKenBurnsFocalX: 50, // center
+      objectFitKenBurnsFocalY: 50, // center
+    };
+
+    if (!kenBurns) {
+      return defaults;
+    }
+
+    const trimmed = kenBurns.trim();
+    const parts = this.splitCssValue(trimmed);
+
+    if (parts.length === 0) {
+      return defaults;
+    }
+
+    // Parse effect (first part)
+    const effect = parts[0] as 'zoom-in' | 'zoom-out' | 'pan-left' | 'pan-right' | 'pan-top' | 'pan-bottom';
+    const validEffects = ['zoom-in', 'zoom-out', 'pan-left', 'pan-right', 'pan-top', 'pan-bottom'];
+    if (!validEffects.includes(effect)) {
+      return defaults;
+    }
+
+    // Check if focal points are specified (for zoom-in/zoom-out)
+    // Format: "zoom-in 30% 30% slow" or "pan-left fast"
+    let focalX = defaults.objectFitKenBurnsFocalX;
+    let focalY = defaults.objectFitKenBurnsFocalY;
+    let speed = defaults.objectFitKenBurnsSpeed;
+
+    if ((effect === 'zoom-in' || effect === 'zoom-out') && parts.length >= 4) {
+      // Parse focal points
+      const focalXStr = parts[1].replace('%', '');
+      const focalYStr = parts[2].replace('%', '');
+      const parsedX = parseFloat(focalXStr);
+      const parsedY = parseFloat(focalYStr);
+
+      if (!isNaN(parsedX) && !isNaN(parsedY)) {
+        focalX = Math.max(0, Math.min(100, parsedX));
+        focalY = Math.max(0, Math.min(100, parsedY));
+      }
+
+      // Speed is in parts[3]
+      const speedStr = parts[3];
+      if (speedStr === 'slow' || speedStr === 'normal' || speedStr === 'fast') {
+        speed = speedStr;
+      }
+    } else {
+      // No focal points, speed is in parts[1]
+      const speedStr = parts[1];
+      if (speedStr === 'slow' || speedStr === 'normal' || speedStr === 'fast') {
+        speed = speedStr;
+      }
+    }
+
+    return {
+      objectFitKenBurns: effect,
+      objectFitKenBurnsSpeed: speed,
+      objectFitKenBurnsFocalX: focalX,
+      objectFitKenBurnsFocalY: focalY,
     };
   }
 }

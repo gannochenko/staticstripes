@@ -64,6 +64,11 @@ clean-cache:
 # Full build
 all: install build
 
+burns:
+	make build
+	node dist/cli.js generate -p ../../examples/burns -o youtube --option meh --debug
+
+
 # Generate demo video (youtube output) with preview preset
 demo:
 	make build

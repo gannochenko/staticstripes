@@ -17,6 +17,7 @@ import {
   makeOverlay,
   makeEq,
   makeChromakey,
+  makeKenBurns,
   makeConcat,
   makeFade,
   makeAmix,
@@ -307,6 +308,33 @@ export class Stream {
     });
     this.looseEnd = chromakeyRes.outputs[0];
     this.buf.append(chromakeyRes);
+
+    return this;
+  }
+
+  public kenBurns(parameters: {
+    effect: 'zoom-in' | 'zoom-out' | 'pan-left' | 'pan-right' | 'pan-top' | 'pan-bottom';
+    speed: 'slow' | 'normal' | 'fast';
+    duration: number;
+    width: number;
+    height: number;
+    fps: number;
+    focalX?: number;
+    focalY?: number;
+  }): Stream {
+    // Apply Ken Burns effect
+    const kenBurnsRes = makeKenBurns([this.looseEnd], {
+      effect: parameters.effect,
+      speed: parameters.speed,
+      duration: parameters.duration,
+      width: parameters.width,
+      height: parameters.height,
+      fps: parameters.fps,
+      focalX: parameters.focalX,
+      focalY: parameters.focalY,
+    });
+    this.looseEnd = kenBurnsRes.outputs[0];
+    this.buf.append(kenBurnsRes);
 
     return this;
   }
