@@ -238,6 +238,7 @@ Supports `calc()` expressions: `d=calc(url(#id.time.duration)),os=1000`
   - `blur`: integer (blur strength)
   - `brightness`: float (e.g., `-0.1` for darker)
   - `saturation`: float (e.g., `0.7` for less saturated)
+- `-object-fit: ken-burns` - Apply Ken Burns zoom/pan effects (see Ken Burns Effects section below)
 
 **Transitions:**
 
@@ -278,6 +279,139 @@ Supports `calc()` expressions: `d=calc(url(#id.time.duration)),os=1000`
 
 - `-overlay-start-z-index: <number>` - if positive, the fragment goes on top of the previous fragment, if negative, then the other way around
 - `-overlay-end-z-index: <number>` - fragment overlaying at end (sets next fragment's start z-index)
+
+**Ken Burns Effects:**
+
+Apply cinematic zoom and pan effects to static images or videos. The Ken Burns effect creates dynamic motion by zooming and/or panning across an image over time.
+
+**Basic Setup:**
+```css
+-object-fit: ken-burns;
+-object-fit-ken-burns: <effect-type> <parameters>;
+```
+
+**Zoom Effects:**
+
+Zoom effects allow you to zoom in or out on a specific focal point with customizable animation duration.
+
+*Syntax:* `<effect> <focal-x%> <focal-y%> <zoom%> <duration> [easing]`
+
+- `zoom-in` - Zoom into the image from normal size to magnified
+- `zoom-out` - Zoom out from magnified to normal size
+
+*Parameters:*
+- `<focal-x%>` - Horizontal focal point (0-100%, where 0%=left edge, 50%=center, 100%=right edge)
+- `<focal-y%>` - Vertical focal point (0-100%, where 0%=top edge, 50%=center, 100%=bottom edge)
+- `<zoom%>` - Zoom percentage (e.g., 30% = 1.3x magnification, 50% = 1.5x magnification)
+- `<duration>` - Animation duration in milliseconds (e.g., 1000ms, 2s)
+- `[easing]` - Optional easing function: `linear`, `ease-in`, `ease-out`, `ease-in-out` (default: `linear`)
+
+*Examples:*
+```css
+/* Zoom in 50% on center over 1 second */
+-object-fit-ken-burns: zoom-in 50% 50% 50% 1000ms ease-in-out;
+
+/* Zoom in 30% on top-left corner over 2 seconds */
+-object-fit-ken-burns: zoom-in 30% 30% 30% 2000ms ease-in;
+
+/* Zoom out 40% from center over 1.5 seconds */
+-object-fit-ken-burns: zoom-out 50% 50% 40% 1500ms ease-out;
+
+/* Zoom in on bottom-right, then hold */
+-object-fit-ken-burns: zoom-in 80% 90% 60% 2000ms ease-in-out;
+```
+
+**Pan Effects:**
+
+Pan effects allow you to smoothly move across an image from a start position to an end position with customizable range control.
+
+*Syntax:* `<effect> <zoom%> <start%> <end%> <duration> [easing]`
+
+- `pan-left` - Pan from right to left (horizontal movement)
+- `pan-right` - Pan from left to right (horizontal movement)
+- `pan-top` - Pan from bottom to top (vertical movement)
+- `pan-bottom` - Pan from top to bottom (vertical movement)
+
+*Parameters:*
+- `<zoom%>` - Zoom percentage applied during panning (e.g., 30% = 1.3x magnification)
+- `<start%>` - Starting position (0-100%):
+  - For horizontal pans: 0%=left edge, 100%=right edge
+  - For vertical pans: 0%=top edge, 100%=bottom edge
+- `<end%>` - Ending position (0-100%, same scale as start)
+- `<duration>` - Animation duration in milliseconds
+- `[easing]` - Optional easing function: `linear`, `ease-in`, `ease-out`, `ease-in-out`
+
+*Examples:*
+```css
+/* Pan left from 20% to 80% with 30% zoom */
+-object-fit-ken-burns: pan-left 30% 20% 80% 2000ms ease-in;
+
+/* Full pan from right to left with 50% zoom */
+-object-fit-ken-burns: pan-left 50% 0% 100% 3000ms linear;
+
+/* Partial pan right (center third) with 40% zoom */
+-object-fit-ken-burns: pan-right 40% 30% 70% 2000ms ease-out;
+
+/* Pan down from 10% to 90% with 30% zoom */
+-object-fit-ken-burns: pan-bottom 30% 10% 90% 2500ms ease-in-out;
+```
+
+**Hold Behavior:**
+
+Ken Burns effects support a "hold" behavior where the animation completes before the fragment ends, then holds the final state.
+
+*Example:*
+```css
+.intro_image {
+  -asset: photo;
+  -duration: 5000ms; /* Fragment lasts 5 seconds */
+  -object-fit: ken-burns;
+  -object-fit-ken-burns: zoom-in 50% 50% 50% 1000ms ease-in-out;
+  /* Zooms for 1 second, holds zoomed for remaining 4 seconds */
+}
+```
+
+**Easing Functions:**
+
+- `linear` - Constant speed throughout
+- `ease-in` - Starts slow, accelerates (quadratic)
+- `ease-out` - Starts fast, decelerates (quadratic)
+- `ease-in-out` - Starts slow, accelerates middle, decelerates end
+
+**Best Practices:**
+
+1. **Zoom percentage**: Use 20-60% for subtle effects, 60-100% for dramatic effects
+2. **Effect duration**: Match to music beats or natural pauses (typically 1-3 seconds)
+3. **Focal points**: Place at 1/3 or 2/3 positions for visual balance (rule of thirds)
+4. **Partial pans**: Use 20-80% ranges for subtle motion, 0-100% for full sweeps
+5. **Hold time**: Ensure effect duration is shorter than fragment duration for smooth transitions
+
+**Complete Example:**
+```html
+<style>
+  .intro_shot {
+    -asset: landscape_photo;
+    -duration: 8000ms;
+    -object-fit: ken-burns;
+    -object-fit-ken-burns: zoom-in 33% 40% 50% 2000ms ease-in-out;
+    -transition-start: fade-in 500ms;
+    -transition-end: fade-out 1000ms;
+    filter: instagram-lark;
+  }
+
+  .action_shot {
+    -asset: sports_photo;
+    -duration: 6000ms;
+    -object-fit: ken-burns;
+    -object-fit-ken-burns: pan-right 40% 10% 90% 3000ms ease-in;
+  }
+</style>
+
+<sequence>
+  <fragment class="intro_shot" data-timecode="Opening Scene" />
+  <fragment class="action_shot" data-timecode="The Action" />
+</sequence>
+```
 
 ---
 
