@@ -2439,16 +2439,33 @@ export class HTMLProjectParser {
     let nextIndex = 1;
 
     // Check for focal points (only for zoom effects)
-    if ((effect === 'zoom-in' || effect === 'zoom-out') && parts.length > 2 && parts[1].includes('%') && parts[2].includes('%')) {
-      const focalXStr = parts[1].replace('%', '');
-      const focalYStr = parts[2].replace('%', '');
+    if ((effect === 'zoom-in' || effect === 'zoom-out') && parts.length >= 2 && parts[1].includes('%')) {
+      // Handle case where CSS parser concatenates values like "90%1.5"
+      // Split on '%' to separate percentage from following number
+      const focalXStr = parts[1].split('%')[0];
       const parsedX = parseFloat(focalXStr);
-      const parsedY = parseFloat(focalYStr);
 
-      if (!isNaN(parsedX) && !isNaN(parsedY)) {
+      if (!isNaN(parsedX)) {
         focalX = Math.max(0, Math.min(100, parsedX));
-        focalY = Math.max(0, Math.min(100, parsedY));
-        nextIndex = 3;
+        nextIndex = 2;
+
+        // Check for Y focal point
+        if (parts.length > 2 && parts[2].includes('%')) {
+          const focalYStr = parts[2].split('%')[0];
+          const parsedY = parseFloat(focalYStr);
+
+          if (!isNaN(parsedY)) {
+            focalY = Math.max(0, Math.min(100, parsedY));
+            nextIndex = 3;
+
+            // Check if parts[2] had a concatenated value after '%'
+            const remainder = parts[2].split('%')[1];
+            if (remainder && remainder.trim()) {
+              // Insert the remainder back into parts for subsequent parsing
+              parts.splice(3, 0, remainder.trim());
+            }
+          }
+        }
       }
     }
 
