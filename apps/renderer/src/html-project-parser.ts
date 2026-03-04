@@ -1735,9 +1735,14 @@ export class HTMLProjectParser {
       chromakeyColor: chromakeyData.chromakeyColor,
       objectFitKenBurns: kenBurnsData.objectFitKenBurns,
       objectFitKenBurnsZoom: kenBurnsData.objectFitKenBurnsZoom,
+      objectFitKenBurnsEffectDuration: kenBurnsData.objectFitKenBurnsEffectDuration,
       objectFitKenBurnsEasing: kenBurnsData.objectFitKenBurnsEasing,
       objectFitKenBurnsFocalX: kenBurnsData.objectFitKenBurnsFocalX,
       objectFitKenBurnsFocalY: kenBurnsData.objectFitKenBurnsFocalY,
+      objectFitKenBurnsPanStartX: kenBurnsData.objectFitKenBurnsPanStartX,
+      objectFitKenBurnsPanStartY: kenBurnsData.objectFitKenBurnsPanStartY,
+      objectFitKenBurnsPanEndX: kenBurnsData.objectFitKenBurnsPanEndX,
+      objectFitKenBurnsPanEndY: kenBurnsData.objectFitKenBurnsPanEndY,
       sound,
       ...(visualFilter && { visualFilter }), // Add visualFilter if present
       ...(container && { container }), // Add container if present
@@ -2385,31 +2390,43 @@ export class HTMLProjectParser {
 
   /**
    * Parses -object-fit-ken-burns property
-   * Format: "<effect> [focal-x focal-y] [zoom] [easing]"
+   * Format:
+   *   Zoom effects: "<effect> <focal-x> <focal-y> <zoom%> <duration> [easing]"
+   *   Pan effects: "<effect> <zoom-factor> [easing]"
    * Examples:
-   *   - "zoom-in"
-   *   - "zoom-in 30% 30%"
-   *   - "zoom-in 30% 30% 1.5"
-   *   - "zoom-in 30% 30% 1.5 ease-in-out"
-   *   - "pan-left 1.3 linear"
-   * Effects: zoom-in, zoom-out, pan-left, pan-right, pan-top, pan-bottom
-   * Zoom: number (e.g., 1.3 = 30% zoom, default: 1.3)
+   *   - "zoom-in 50% 50% 30% 1000ms ease-in-out" - zoom 30% over 1s
+   *   - "zoom-out 30% 30% 50% 2000ms ease-out" - zoom out 50% over 2s
+   *   - "pan-left 1.3 linear" - pan with 1.3x zoom
+   * Effects: zoom-in, zoom-out (require focal points + zoom% + duration)
+   *          pan-left, pan-right, pan-top, pan-bottom (require zoom factor only)
+   * Zoom: for zoom effects: percentage (30 = 30%), for pan: factor (1.3)
+   * Duration: effect duration in milliseconds (zoom effects only)
    * Easing: linear, ease-in, ease-out, ease-in-out (default: linear)
    */
   private parseKenBurnsProperty(kenBurns: string | undefined): {
     objectFitKenBurns: 'zoom-in' | 'zoom-out' | 'pan-left' | 'pan-right' | 'pan-top' | 'pan-bottom';
     objectFitKenBurnsZoom: number;
+    objectFitKenBurnsEffectDuration: number;
     objectFitKenBurnsEasing: 'linear' | 'ease-in' | 'ease-out' | 'ease-in-out';
     objectFitKenBurnsFocalX: number;
     objectFitKenBurnsFocalY: number;
+    objectFitKenBurnsPanStartX: number;
+    objectFitKenBurnsPanStartY: number;
+    objectFitKenBurnsPanEndX: number;
+    objectFitKenBurnsPanEndY: number;
   } {
     // Defaults
     const defaults = {
       objectFitKenBurns: 'zoom-in' as 'zoom-in' | 'zoom-out' | 'pan-left' | 'pan-right' | 'pan-top' | 'pan-bottom',
-      objectFitKenBurnsZoom: 1.3, // 30% zoom
+      objectFitKenBurnsZoom: 30, // 30% zoom
+      objectFitKenBurnsEffectDuration: 0, // 0 = use fragment duration
       objectFitKenBurnsEasing: 'linear' as 'linear' | 'ease-in' | 'ease-out' | 'ease-in-out',
-      objectFitKenBurnsFocalX: 50, // center
-      objectFitKenBurnsFocalY: 50, // center
+      objectFitKenBurnsFocalX: 50, // center (for zoom effects)
+      objectFitKenBurnsFocalY: 50, // center (for zoom effects)
+      objectFitKenBurnsPanStartX: 0, // left edge (for horizontal pan)
+      objectFitKenBurnsPanStartY: 0, // top edge (for vertical pan)
+      objectFitKenBurnsPanEndX: 100, // right edge (for horizontal pan)
+      objectFitKenBurnsPanEndY: 100, // bottom edge (for vertical pan)
     };
 
     if (!kenBurns) {
@@ -2433,66 +2450,159 @@ export class HTMLProjectParser {
     let focalX = defaults.objectFitKenBurnsFocalX;
     let focalY = defaults.objectFitKenBurnsFocalY;
     let zoom = defaults.objectFitKenBurnsZoom;
+    let effectDuration = defaults.objectFitKenBurnsEffectDuration;
     let easing = defaults.objectFitKenBurnsEasing;
+    let panStartX = defaults.objectFitKenBurnsPanStartX;
+    let panStartY = defaults.objectFitKenBurnsPanStartY;
+    let panEndX = defaults.objectFitKenBurnsPanEndX;
+    let panEndY = defaults.objectFitKenBurnsPanEndY;
 
-    // Parse remaining parts based on what they are
+    const isZoomEffect = effect === 'zoom-in' || effect === 'zoom-out';
+    const isPanEffect = effect === 'pan-left' || effect === 'pan-right' || effect === 'pan-top' || effect === 'pan-bottom';
+
+    // Parse remaining parts based on effect type
     let nextIndex = 1;
 
-    // Check for focal points (only for zoom effects)
-    if ((effect === 'zoom-in' || effect === 'zoom-out') && parts.length >= 2 && parts[1].includes('%')) {
-      // Handle case where CSS parser concatenates values like "90%1.5"
-      // Split on '%' to separate percentage from following number
-      const focalXStr = parts[1].split('%')[0];
-      const parsedX = parseFloat(focalXStr);
+    if (isZoomEffect) {
+      // Zoom effects: "<effect> <focal-x%> <focal-y%> <zoom%> <duration> [easing]"
 
-      if (!isNaN(parsedX)) {
-        focalX = Math.max(0, Math.min(100, parsedX));
-        nextIndex = 2;
+      // Parse focal points
+      if (parts.length >= 3 && parts[1].includes('%') && parts[2].includes('%')) {
+        const focalXStr = parts[1].split('%')[0];
+        const focalYStr = parts[2].split('%')[0];
+        const parsedX = parseFloat(focalXStr);
+        const parsedY = parseFloat(focalYStr);
 
-        // Check for Y focal point
-        if (parts.length > 2 && parts[2].includes('%')) {
-          const focalYStr = parts[2].split('%')[0];
-          const parsedY = parseFloat(focalYStr);
+        if (!isNaN(parsedX) && !isNaN(parsedY)) {
+          focalX = Math.max(0, Math.min(100, parsedX));
+          focalY = Math.max(0, Math.min(100, parsedY));
+          nextIndex = 3;
 
-          if (!isNaN(parsedY)) {
-            focalY = Math.max(0, Math.min(100, parsedY));
-            nextIndex = 3;
-
-            // Check if parts[2] had a concatenated value after '%'
-            const remainder = parts[2].split('%')[1];
-            if (remainder && remainder.trim()) {
-              // Insert the remainder back into parts for subsequent parsing
-              parts.splice(3, 0, remainder.trim());
-            }
+          // Check if parts[2] had a concatenated value after '%'
+          const remainder = parts[2].split('%')[1];
+          if (remainder && remainder.trim()) {
+            parts.splice(3, 0, remainder.trim());
           }
         }
       }
-    }
 
-    // Check for zoom (numeric value)
-    if (parts.length > nextIndex) {
-      const zoomStr = parts[nextIndex];
-      const parsedZoom = parseFloat(zoomStr);
-      if (!isNaN(parsedZoom) && parsedZoom >= 1) {
-        zoom = parsedZoom;
-        nextIndex++;
+      // Parse zoom percentage (required)
+      if (parts.length > nextIndex && parts[nextIndex].includes('%')) {
+        const zoomStr = parts[nextIndex].split('%')[0];
+        const parsedZoom = parseFloat(zoomStr);
+        if (!isNaN(parsedZoom) && parsedZoom >= 0) {
+          zoom = parsedZoom; // Store as percentage (e.g., 30 for 30%)
+          nextIndex++;
+
+          // Check for concatenated value after '%'
+          const remainder = parts[nextIndex - 1].split('%')[1];
+          if (remainder && remainder.trim()) {
+            parts.splice(nextIndex, 0, remainder.trim());
+          }
+        }
       }
-    }
 
-    // Check for easing
-    if (parts.length > nextIndex) {
-      const easingStr = parts[nextIndex] as 'linear' | 'ease-in' | 'ease-out' | 'ease-in-out';
-      if (['linear', 'ease-in', 'ease-out', 'ease-in-out'].includes(easingStr)) {
-        easing = easingStr;
+      // Parse effect duration (required)
+      if (parts.length > nextIndex) {
+        const durationStr = parts[nextIndex];
+        // Simple inline parser for "1000ms" or "1s" format
+        const match = durationStr.match(/^(\d+(?:\.\d+)?)(ms|s)$/);
+        if (match) {
+          const value = parseFloat(match[1]);
+          const parsedDuration = match[2] === 's' ? value * 1000 : value;
+          if (parsedDuration > 0) {
+            effectDuration = parsedDuration;
+            nextIndex++;
+          }
+        }
+      }
+
+      // Parse easing (optional)
+      if (parts.length > nextIndex) {
+        const easingStr = parts[nextIndex] as 'linear' | 'ease-in' | 'ease-out' | 'ease-in-out';
+        if (['linear', 'ease-in', 'ease-out', 'ease-in-out'].includes(easingStr)) {
+          easing = easingStr;
+        }
+      }
+    } else if (isPanEffect) {
+      // Pan effects: "<effect> <zoom%> <start%> <end%> <duration> [easing]"
+      // Example: pan-left 50% 20% 80% 2000ms ease-in
+
+      // Parse zoom percentage (required)
+      if (parts.length > nextIndex && parts[nextIndex].includes('%')) {
+        const zoomStr = parts[nextIndex].split('%')[0];
+        const parsedZoom = parseFloat(zoomStr);
+        if (!isNaN(parsedZoom) && parsedZoom >= 0) {
+          zoom = parsedZoom; // Store as percentage (e.g., 50 for 50%)
+          nextIndex++;
+        }
+      }
+
+      // Parse start position percentage (required)
+      if (parts.length > nextIndex && parts[nextIndex].includes('%')) {
+        const startStr = parts[nextIndex].split('%')[0];
+        const parsedStart = parseFloat(startStr);
+        if (!isNaN(parsedStart) && parsedStart >= 0 && parsedStart <= 100) {
+          // Store in appropriate variable based on pan direction
+          if (effect === 'pan-left' || effect === 'pan-right') {
+            panStartX = parsedStart;
+          } else {
+            panStartY = parsedStart;
+          }
+          nextIndex++;
+        }
+      }
+
+      // Parse end position percentage (required)
+      if (parts.length > nextIndex && parts[nextIndex].includes('%')) {
+        const endStr = parts[nextIndex].split('%')[0];
+        const parsedEnd = parseFloat(endStr);
+        if (!isNaN(parsedEnd) && parsedEnd >= 0 && parsedEnd <= 100) {
+          // Store in appropriate variable based on pan direction
+          if (effect === 'pan-left' || effect === 'pan-right') {
+            panEndX = parsedEnd;
+          } else {
+            panEndY = parsedEnd;
+          }
+          nextIndex++;
+        }
+      }
+
+      // Parse effect duration (required)
+      if (parts.length > nextIndex) {
+        const durationStr = parts[nextIndex];
+        // Simple inline parser for "1000ms" or "1s" format
+        const match = durationStr.match(/^(\d+(?:\.\d+)?)(ms|s)$/);
+        if (match) {
+          const value = parseFloat(match[1]);
+          const parsedDuration = match[2] === 's' ? value * 1000 : value;
+          if (parsedDuration > 0) {
+            effectDuration = parsedDuration;
+            nextIndex++;
+          }
+        }
+      }
+
+      // Parse easing (optional)
+      if (parts.length > nextIndex) {
+        const easingStr = parts[nextIndex] as 'linear' | 'ease-in' | 'ease-out' | 'ease-in-out';
+        if (['linear', 'ease-in', 'ease-out', 'ease-in-out'].includes(easingStr)) {
+          easing = easingStr;
+        }
       }
     }
 
     return {
       objectFitKenBurns: effect,
       objectFitKenBurnsZoom: zoom,
+      objectFitKenBurnsEffectDuration: effectDuration,
       objectFitKenBurnsEasing: easing,
       objectFitKenBurnsFocalX: focalX,
       objectFitKenBurnsFocalY: focalY,
+      objectFitKenBurnsPanStartX: panStartX,
+      objectFitKenBurnsPanStartY: panStartY,
+      objectFitKenBurnsPanEndX: panEndX,
+      objectFitKenBurnsPanEndY: panEndY,
     };
   }
 }

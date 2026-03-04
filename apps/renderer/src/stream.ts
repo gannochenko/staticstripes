@@ -316,25 +316,35 @@ export class Stream {
   public kenBurns(parameters: {
     effect: 'zoom-in' | 'zoom-out' | 'pan-left' | 'pan-right' | 'pan-top' | 'pan-bottom';
     zoom: number;
+    effectDuration: number;
+    fragmentDuration: number;
     easing: 'linear' | 'ease-in' | 'ease-out' | 'ease-in-out';
-    duration: number;
     width: number;
     height: number;
     fps: number;
     focalX?: number;
     focalY?: number;
+    panStartX?: number;
+    panStartY?: number;
+    panEndX?: number;
+    panEndY?: number;
   }): Stream {
     // Apply Ken Burns effect
     const kenBurnsRes = makeKenBurns([this.looseEnd], {
       effect: parameters.effect,
       zoom: parameters.zoom,
+      effectDuration: parameters.effectDuration,
+      fragmentDuration: parameters.fragmentDuration,
       easing: parameters.easing,
-      duration: parameters.duration,
       width: parameters.width,
       height: parameters.height,
       fps: parameters.fps,
       focalX: parameters.focalX,
       focalY: parameters.focalY,
+      panStartX: parameters.panStartX,
+      panStartY: parameters.panStartY,
+      panEndX: parameters.panEndX,
+      panEndY: parameters.panEndY,
     });
     this.looseEnd = kenBurnsRes.outputs[0];
     this.buf.append(kenBurnsRes);

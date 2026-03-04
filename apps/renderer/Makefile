@@ -68,6 +68,9 @@ burns:
 	make build
 	node dist/cli.js generate -p ../../examples/burns -o youtube --option meh --debug
 
+iburns:
+	make build
+	node dist/cli.js generate -p ../../examples/burns -o instagram_shorts --option meh --debug
 
 # Generate demo video (youtube output) with preview preset
 demo:

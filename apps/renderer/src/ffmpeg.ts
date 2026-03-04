@@ -1208,9 +1208,10 @@ export function makeChromakey(
  * @param inputs - Input stream labels (must be video)
  * @param options - Ken Burns parameters
  *   - effect: Type of effect (zoom-in, zoom-out, pan-left, pan-right, pan-top, pan-bottom)
- *   - zoom: Zoom factor (e.g., 1.3 = 30% zoom)
+ *   - zoom: Zoom percentage (30 = 30%, applies to all effects)
+ *   - effectDuration: Duration of the ken burns animation in milliseconds (0 = use fragment duration)
+ *   - fragmentDuration: Total duration of the fragment in milliseconds
  *   - easing: Easing function (linear, ease-in, ease-out, ease-in-out)
- *   - duration: Duration of the effect in milliseconds
  *   - width: Output width
  *   - height: Output height
  *   - fps: Output frame rate
@@ -1222,13 +1223,18 @@ export function makeKenBurns(
   options: {
     effect: 'zoom-in' | 'zoom-out' | 'pan-left' | 'pan-right' | 'pan-top' | 'pan-bottom';
     zoom: number;
+    effectDuration: number;
+    fragmentDuration: number;
     easing: 'linear' | 'ease-in' | 'ease-out' | 'ease-in-out';
-    duration: number;
     width: number;
     height: number;
     fps: number;
     focalX?: number;
     focalY?: number;
+    panStartX?: number;
+    panStartY?: number;
+    panEndX?: number;
+    panEndY?: number;
   },
 ): Filter {
   const input = inputs[0];
@@ -1247,15 +1253,25 @@ export function makeKenBurns(
   const focalX = options.focalX ?? 50;
   const focalY = options.focalY ?? 50;
 
-  // Calculate total frames (duration is in milliseconds, convert to seconds)
-  const durationInSeconds = options.duration / 1000;
-  const totalFrames = Math.floor(durationInSeconds * options.fps);
+  // Determine animation duration (0 = use fragment duration)
+  const animationDuration = options.effectDuration > 0 ? options.effectDuration : options.fragmentDuration;
+  const animationDurationInSeconds = animationDuration / 1000;
+
+  // Total fragment duration
+  const fragmentDurationInSeconds = options.fragmentDuration / 1000;
+  const totalFrames = Math.floor(fragmentDurationInSeconds * options.fps);
+
+  // Animation frames (how many frames the effect takes)
+  const animationFrames = Math.floor(animationDurationInSeconds * options.fps);
+
+  // Convert zoom percentage to factor (e.g., 30% = 1.3x)
+  const zoomFactor = 1 + options.zoom / 100;
 
   // Create easing function expression
-  // t = progress from 0 to 1 (on/totalFrames)
+  // t = progress from 0 to 1 (on/animationFrames)
   // Returns eased value from 0 to 1
   const getEasingExpr = (easing: string): string => {
-    const t = `min(1,on/${totalFrames})`;
+    const t = `min(1,on/${animationFrames})`;
     switch (easing) {
       case 'ease-in':
         // Quadratic ease-in: t^2
@@ -1280,50 +1296,49 @@ export function makeKenBurns(
 
   switch (options.effect) {
     case 'zoom-in':
-      // Start at 1.0, zoom to options.zoom over duration, focus on focal point
-      zoomExpr = `'1+(${options.zoom}-1)*(${progress})'`;
+      // Start at 1.0, zoom to zoomFactor over animation duration, then hold
+      zoomExpr = `'1+(${zoomFactor}-1)*(${progress})'`;
       xExpr = `'iw*${focalX/100}-iw/zoom/2'`;
       yExpr = `'ih*${focalY/100}-ih/zoom/2'`;
       break;
 
     case 'zoom-out':
-      // Start at options.zoom, zoom out to 1.0 over duration
-      zoomExpr = `'${options.zoom}-(${options.zoom}-1)*(${progress})'`;
+      // Start at zoomFactor, zoom out to 1.0 over animation duration, then hold
+      zoomExpr = `'${zoomFactor}-(${zoomFactor}-1)*(${progress})'`;
       xExpr = `'iw*${focalX/100}-iw/zoom/2'`;
       yExpr = `'ih*${focalY/100}-ih/zoom/2'`;
       break;
 
     case 'pan-left':
-      // Pan from right to left (start at right edge, end at left edge)
-      zoomExpr = `'${options.zoom}'`;
-      xExpr = `'(iw-iw/zoom)*(1-(${progress}))'`;
+    case 'pan-right': {
+      // Horizontal panning with custom start/end positions
+      const panStart = (options.panStartX ?? 0) / 100; // 0 = left edge, 1 = right edge
+      const panEnd = (options.panEndX ?? 100) / 100;
+
+      zoomExpr = `'${zoomFactor}'`;
+      // Interpolate between start and end positions: start + (end - start) * progress
+      xExpr = `'(iw-iw/zoom)*(${panStart}+(${panEnd}-${panStart})*(${progress}))'`;
       yExpr = `'(ih-ih/zoom)/2'`; // center vertically
       break;
-
-    case 'pan-right':
-      // Pan from left to right
-      zoomExpr = `'${options.zoom}'`;
-      xExpr = `'(iw-iw/zoom)*(${progress})'`;
-      yExpr = `'(ih-ih/zoom)/2'`;
-      break;
+    }
 
     case 'pan-top':
-      // Pan from bottom to top
-      zoomExpr = `'${options.zoom}'`;
-      xExpr = `'(iw-iw/zoom)/2'`; // center horizontally
-      yExpr = `'(ih-ih/zoom)*(1-(${progress}))'`;
-      break;
+    case 'pan-bottom': {
+      // Vertical panning with custom start/end positions
+      const panStart = (options.panStartY ?? 0) / 100; // 0 = top edge, 1 = bottom edge
+      const panEnd = (options.panEndY ?? 100) / 100;
 
-    case 'pan-bottom':
-      // Pan from top to bottom
-      zoomExpr = `'${options.zoom}'`;
-      xExpr = `'(iw-iw/zoom)/2'`;
-      yExpr = `'(ih-ih/zoom)*(${progress})'`;
+      zoomExpr = `'${zoomFactor}'`;
+      xExpr = `'(iw-iw/zoom)/2'`; // center horizontally
+      // Interpolate between start and end positions: start + (end - start) * progress
+      yExpr = `'(ih-ih/zoom)*(${panStart}+(${panEnd}-${panStart})*(${progress}))'`;
       break;
+    }
   }
 
   // zoompan filter syntax:
   // zoompan=z='zoom':x='x':y='y':d=frames:s=WxH:fps=FPS
+  // d=totalFrames ensures we generate frames for the entire fragment duration
   const filterStr = `zoompan=z=${zoomExpr}:x=${xExpr}:y=${yExpr}:d=${totalFrames}:s=${options.width}x${options.height}:fps=${options.fps}`;
 
   return new Filter(inputs, [output], filterStr);

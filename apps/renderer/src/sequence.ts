@@ -163,13 +163,18 @@ export class Sequence {
           currentVideoStream.kenBurns({
             effect: fragment.objectFitKenBurns,
             zoom: fragment.objectFitKenBurnsZoom,
+            effectDuration: fragment.objectFitKenBurnsEffectDuration,
+            fragmentDuration: calculatedDuration,
             easing: fragment.objectFitKenBurnsEasing,
-            duration: calculatedDuration,
             width: this.output.resolution.width,
             height: this.output.resolution.height,
             fps: this.output.fps,
             focalX: fragment.objectFitKenBurnsFocalX,
             focalY: fragment.objectFitKenBurnsFocalY,
+            panStartX: fragment.objectFitKenBurnsPanStartX,
+            panStartY: fragment.objectFitKenBurnsPanStartY,
+            panEndX: fragment.objectFitKenBurnsPanEndX,
+            panEndY: fragment.objectFitKenBurnsPanEndY,
           });
         } else if (fragment.objectFit === 'cover') {
           currentVideoStream.fitOutputCover(this.output.resolution);

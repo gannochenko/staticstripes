@@ -62,10 +62,15 @@ export type Fragment = {
   objectFitContainAmbientSaturation: number;
   objectFitContainPillarboxColor: string;
   objectFitKenBurns: 'zoom-in' | 'zoom-out' | 'pan-left' | 'pan-right' | 'pan-top' | 'pan-bottom';
-  objectFitKenBurnsZoom: number; // zoom factor (e.g., 1.3 = 30% zoom)
+  objectFitKenBurnsZoom: number; // zoom percentage (e.g., 30 = 30% zoom, applies to all effects)
+  objectFitKenBurnsEffectDuration: number; // duration of the ken burns effect in milliseconds
   objectFitKenBurnsEasing: 'linear' | 'ease-in' | 'ease-out' | 'ease-in-out';
-  objectFitKenBurnsFocalX: number; // focal point X in percent (0-100)
-  objectFitKenBurnsFocalY: number; // focal point Y in percent (0-100)
+  objectFitKenBurnsFocalX: number; // focal point X in percent (0-100, for zoom effects)
+  objectFitKenBurnsFocalY: number; // focal point Y in percent (0-100, for zoom effects)
+  objectFitKenBurnsPanStartX: number; // pan start position X in percent (0-100, for horizontal pan effects)
+  objectFitKenBurnsPanStartY: number; // pan start position Y in percent (0-100, for vertical pan effects)
+  objectFitKenBurnsPanEndX: number; // pan end position X in percent (0-100, for horizontal pan effects)
+  objectFitKenBurnsPanEndY: number; // pan end position Y in percent (0-100, for vertical pan effects)
   chromakey: boolean;
   chromakeyBlend: number;
   chromakeySimilarity: number;
