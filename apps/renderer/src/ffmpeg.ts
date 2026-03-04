@@ -1208,8 +1208,9 @@ export function makeChromakey(
  * @param inputs - Input stream labels (must be video)
  * @param options - Ken Burns parameters
  *   - effect: Type of effect (zoom-in, zoom-out, pan-left, pan-right, pan-top, pan-bottom)
- *   - speed: Speed of effect (slow, normal, fast)
- *   - duration: Duration of the effect in seconds
+ *   - zoom: Zoom factor (e.g., 1.3 = 30% zoom)
+ *   - easing: Easing function (linear, ease-in, ease-out, ease-in-out)
+ *   - duration: Duration of the effect in milliseconds
  *   - width: Output width
  *   - height: Output height
  *   - fps: Output frame rate
@@ -1220,7 +1221,8 @@ export function makeKenBurns(
   inputs: Label[],
   options: {
     effect: 'zoom-in' | 'zoom-out' | 'pan-left' | 'pan-right' | 'pan-top' | 'pan-bottom';
-    speed: 'slow' | 'normal' | 'fast';
+    zoom: number;
+    easing: 'linear' | 'ease-in' | 'ease-out' | 'ease-in-out';
     duration: number;
     width: number;
     height: number;
@@ -1245,71 +1247,78 @@ export function makeKenBurns(
   const focalX = options.focalX ?? 50;
   const focalY = options.focalY ?? 50;
 
-  // Convert speed to zoom speed multiplier
-  const speedMultiplier =
-    options.speed === 'slow' ? 0.5 :
-    options.speed === 'fast' ? 2.0 :
-    1.0; // normal
-
   // Calculate total frames (duration is in milliseconds, convert to seconds)
   const durationInSeconds = options.duration / 1000;
   const totalFrames = Math.floor(durationInSeconds * options.fps);
 
-  // Zoom factor: how much to zoom in
-  const zoomFactor = 1.3; // 30% zoom
+  // Create easing function expression
+  // t = progress from 0 to 1 (on/totalFrames)
+  // Returns eased value from 0 to 1
+  const getEasingExpr = (easing: string): string => {
+    const t = `min(1,on/${totalFrames})`;
+    switch (easing) {
+      case 'ease-in':
+        // Quadratic ease-in: t^2
+        return `pow(${t},2)`;
+      case 'ease-out':
+        // Quadratic ease-out: 1-(1-t)^2
+        return `1-pow(1-(${t}),2)`;
+      case 'ease-in-out':
+        // Quadratic ease-in-out: t<0.5 ? 2*t^2 : 1-2*(1-t)^2
+        return `if(lt(${t},0.5),2*pow(${t},2),1-pow(-2*(${t})+2,2)/2)`;
+      case 'linear':
+      default:
+        return t;
+    }
+  };
+
+  const progress = getEasingExpr(options.easing);
 
   let zoomExpr: string;
   let xExpr: string;
   let yExpr: string;
 
-  // Calculate effective frame count based on speed
-  // slow (0.5) means effect takes longer, so more frames needed
-  // fast (2.0) means effect takes shorter, so fewer frames needed
-  // Note: 'on' in zoompan counts frames (0,1,2,...), not seconds
-  const effectiveFrames = totalFrames / speedMultiplier;
-
   switch (options.effect) {
     case 'zoom-in':
-      // Start at 1.0, zoom to zoomFactor over duration, focus on focal point
-      // Progress: min(1, on/effectiveFrames) gives 0..1 over the effective frame count
-      zoomExpr = `'1+(${zoomFactor}-1)*min(1,on/${effectiveFrames})'`;
+      // Start at 1.0, zoom to options.zoom over duration, focus on focal point
+      zoomExpr = `'1+(${options.zoom}-1)*(${progress})'`;
       xExpr = `'iw*${focalX/100}-iw/zoom/2'`;
       yExpr = `'ih*${focalY/100}-ih/zoom/2'`;
       break;
 
     case 'zoom-out':
-      // Start at zoomFactor, zoom out to 1.0 over duration
-      zoomExpr = `'${zoomFactor}-(${zoomFactor}-1)*min(1,on/${effectiveFrames})'`;
+      // Start at options.zoom, zoom out to 1.0 over duration
+      zoomExpr = `'${options.zoom}-(${options.zoom}-1)*(${progress})'`;
       xExpr = `'iw*${focalX/100}-iw/zoom/2'`;
       yExpr = `'ih*${focalY/100}-ih/zoom/2'`;
       break;
 
     case 'pan-left':
       // Pan from right to left (start at right edge, end at left edge)
-      zoomExpr = `'${zoomFactor}'`;
-      xExpr = `'(iw-iw/zoom)*(1-min(1,on/${effectiveFrames}))'`;
+      zoomExpr = `'${options.zoom}'`;
+      xExpr = `'(iw-iw/zoom)*(1-(${progress}))'`;
       yExpr = `'(ih-ih/zoom)/2'`; // center vertically
       break;
 
     case 'pan-right':
       // Pan from left to right
-      zoomExpr = `'${zoomFactor}'`;
-      xExpr = `'(iw-iw/zoom)*min(1,on/${effectiveFrames})'`;
+      zoomExpr = `'${options.zoom}'`;
+      xExpr = `'(iw-iw/zoom)*(${progress})'`;
       yExpr = `'(ih-ih/zoom)/2'`;
       break;
 
     case 'pan-top':
       // Pan from bottom to top
-      zoomExpr = `'${zoomFactor}'`;
+      zoomExpr = `'${options.zoom}'`;
       xExpr = `'(iw-iw/zoom)/2'`; // center horizontally
-      yExpr = `'(ih-ih/zoom)*(1-min(1,on/${effectiveFrames}))'`;
+      yExpr = `'(ih-ih/zoom)*(1-(${progress}))'`;
       break;
 
     case 'pan-bottom':
       // Pan from top to bottom
-      zoomExpr = `'${zoomFactor}'`;
+      zoomExpr = `'${options.zoom}'`;
       xExpr = `'(iw-iw/zoom)/2'`;
-      yExpr = `'(ih-ih/zoom)*min(1,on/${effectiveFrames})'`;
+      yExpr = `'(ih-ih/zoom)*(${progress})'`;
       break;
   }
 

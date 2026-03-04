@@ -162,7 +162,8 @@ export class Sequence {
           // Ken Burns effect (zoom/pan)
           currentVideoStream.kenBurns({
             effect: fragment.objectFitKenBurns,
-            speed: fragment.objectFitKenBurnsSpeed,
+            zoom: fragment.objectFitKenBurnsZoom,
+            easing: fragment.objectFitKenBurnsEasing,
             duration: calculatedDuration,
             width: this.output.resolution.width,
             height: this.output.resolution.height,

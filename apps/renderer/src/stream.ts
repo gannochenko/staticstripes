@@ -315,7 +315,8 @@ export class Stream {
 
   public kenBurns(parameters: {
     effect: 'zoom-in' | 'zoom-out' | 'pan-left' | 'pan-right' | 'pan-top' | 'pan-bottom';
-    speed: 'slow' | 'normal' | 'fast';
+    zoom: number;
+    easing: 'linear' | 'ease-in' | 'ease-out' | 'ease-in-out';
     duration: number;
     width: number;
     height: number;
@@ -326,7 +327,8 @@ export class Stream {
     // Apply Ken Burns effect
     const kenBurnsRes = makeKenBurns([this.looseEnd], {
       effect: parameters.effect,
-      speed: parameters.speed,
+      zoom: parameters.zoom,
+      easing: parameters.easing,
       duration: parameters.duration,
       width: parameters.width,
       height: parameters.height,
