@@ -1,0 +1,1 @@
+./.claude/skills/staticstripes/SKILL.md
