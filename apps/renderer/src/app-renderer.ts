@@ -108,15 +108,14 @@ async function mergeFramesToVideo(
     }
 
     // Merge with FFmpeg
-    // Using VP9 (libvpx-vp9) codec which supports alpha transparency
+    // Using APNG (Animated PNG) codec which natively supports alpha transparency
     const ffmpegCmd = [
       'ffmpeg',
       '-framerate', fps.toString(),
       '-i', resolve(tempDir, `frame_%0${padding}d.png`),
-      '-c:v', 'libvpx-vp9',
-      '-pix_fmt', 'yuva420p',
-      '-auto-alt-ref', '0',  // Required for alpha in VP9
-      '-vf', `scale=${width}:${height}`,
+      '-c:v', 'apng',  // APNG codec with native RGBA support
+      '-plays', '0',  // Loop indefinitely
+      '-vf', `scale=${width}:${height}`,  // Scale only - APNG preserves alpha automatically
       '-y',
       outputPath,
     ].join(' ');
@@ -172,19 +171,19 @@ export async function renderApp(options: RenderAppOptions): Promise<AppRenderRes
     duration,
   );
 
-  // Check cache for both formats (WebM for animated with alpha, PNG for static)
-  const cachedWebm = resolve(cacheDir, `${cacheKey}.webm`);
+  // Check cache for both formats (APNG for animated with alpha, PNG for static)
+  const cachedApng = resolve(cacheDir, `${cacheKey}.apng`);
   const cachedPng = resolve(cacheDir, `${cacheKey}.png`);
 
-  if (existsSync(cachedWebm)) {
+  if (existsSync(cachedApng)) {
     console.log(
-      `Using cached animated app "${app.id}" (hash: ${cacheKey}) from ${cachedWebm}`,
+      `Using cached animated app "${app.id}" (hash: ${cacheKey}) from ${cachedApng}`,
     );
     // TODO: Extract metadata from video (frameCount, duration, fps)
     return {
       app,
       mode: 'animated',
-      path: cachedWebm,
+      path: cachedApng,
     };
   }
 
@@ -237,6 +236,18 @@ export async function renderApp(options: RenderAppOptions): Promise<AppRenderRes
 
   try {
     await page.setViewport({ width, height });
+
+    // Inject CSS before page load to ensure transparent background
+    await page.evaluateOnNewDocument(() => {
+      // @ts-expect-error - This runs in browser context
+      const style = document.createElement('style');
+      style.textContent = `
+        * { background: transparent !important; }
+        html, body { background: transparent !important; }
+      `;
+      // @ts-expect-error - This runs in browser context
+      document.head?.appendChild(style) || document.documentElement.appendChild(style);
+    });
 
     page.on('console', (msg) =>
       console.log(`[app:${app.id}] console.${msg.type()}: ${msg.text()}`),
@@ -348,16 +359,16 @@ export async function renderApp(options: RenderAppOptions): Promise<AppRenderRes
         `  Frame range: ${firstFrame} to ${lastFrame}`,
       );
 
-      await mergeFramesToVideo(frames, cachedWebm, fps, width, height, duration);
+      await mergeFramesToVideo(frames, cachedApng, fps, width, height, duration);
 
       console.log(
-        `Rendered animated app "${app.id}" (hash: ${cacheKey}) to ${cachedWebm}`,
+        `Rendered animated app "${app.id}" (hash: ${cacheKey}) to ${cachedApng}`,
       );
 
       return {
         app,
         mode: 'animated',
-        path: cachedWebm,
+        path: cachedApng,
         frameCount: frames.length,
         duration,
         fps,

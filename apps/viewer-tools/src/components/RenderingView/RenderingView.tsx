@@ -13,6 +13,7 @@ export function RenderingView({ children }: RenderingViewProps) {
     document.documentElement.style.width = "100%";
     document.documentElement.style.height = "100%";
     document.documentElement.style.overflow = "hidden";
+    document.documentElement.style.background = "transparent";
 
     document.body.style.margin = "0";
     document.body.style.padding = "0";

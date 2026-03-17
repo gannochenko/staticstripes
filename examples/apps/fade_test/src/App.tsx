@@ -31,6 +31,7 @@ function AnimatedFade({ text }: AnimatedFadeProps) {
         alignItems: "center",
         justifyContent: "center",
         fontFamily: "Arial, sans-serif",
+        background: "transparent",
       }}
     >
       <div
@@ -79,7 +80,7 @@ export default function App() {
   if (rendering) {
     return (
       <RenderingView>
-        <div style={{ width: "100%", height: "100%" }}>
+        <div style={{ width: "100%", height: "100%", background: "transparent" }}>
           <AnimatedFade text={resolvedText} />
         </div>
       </RenderingView>

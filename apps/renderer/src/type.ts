@@ -22,7 +22,7 @@ export type App = {
 export type AppRenderResult = {
   app: App;
   mode: 'static' | 'animated';
-  path: string; // either .png (static) or .webm (animated with alpha)
+  path: string; // either .png (static) or .apng (animated with alpha)
 
   // Animated mode only:
   frameCount?: number;
