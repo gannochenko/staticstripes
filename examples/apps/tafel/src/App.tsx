@@ -1,7 +1,6 @@
 import { useRef, useState, useLayoutEffect } from "react";
 import "@gannochenko/viewer-tools/styles.css";
-import { VideoFrame, RenderingView } from "@gannochenko/viewer-tools";
-import { useAppParams } from "./hooks/useAppParams";
+import { VideoFrame, RenderingView, useAppParams } from "@gannochenko/viewer-tools";
 import { PARAMETER_SCHEMA, type AppParams } from "./schema";
 
 // ---------------------------------------------------------------------------

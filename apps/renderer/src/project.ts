@@ -13,7 +13,8 @@ import { Sequence } from './sequence';
 import { FilterBuffer } from './stream';
 import { ExpressionContext, FragmentData } from './expression-parser';
 import { renderContainers } from './container-renderer';
-import { renderApps } from './app-renderer';
+import { renderApp } from './app-renderer';
+import puppeteer from 'puppeteer';
 import { buildAppsIfNeeded } from './app-builder';
 import { dirname } from 'path';
 
@@ -274,8 +275,8 @@ export class Project {
 
   /**
    * Renders all apps and creates virtual assets for them.
-   * Apps must dispatch "sts-render-complete" on document when ready,
-   * or rendering will fail after a 5-second timeout.
+   * Apps can emit 'sts-capture-frame' events for animated content,
+   * and must emit 'sts-done-rendering' when complete.
    * @param forceAppBuild - If true, rebuilds apps even if output exists
    */
   public async renderApps(
@@ -298,36 +299,76 @@ export class Project {
 
     console.log('\n=== Rendering Apps ===\n');
 
-    const apps = fragmentsWithApps.map((frag) => frag.app!);
     const projectDir = dirname(this.projectPath);
 
     // Build apps if needed (checks for dst/dist directories with package.json)
     // Deduplicate app sources to avoid building the same app multiple times
+    const apps = fragmentsWithApps.map((frag) => frag.app!);
     const appSources = apps.map((app) => app.src);
     const uniqueAppSources = [...new Set(appSources)];
     await buildAppsIfNeeded(uniqueAppSources, projectDir, forceAppBuild);
 
-    const results = await renderApps(
-      apps,
-      output.resolution.width,
-      output.resolution.height,
-      projectDir,
-      outputName,
-      this.title,
-      this.date,
-      this.tags,
-      activeCacheKeys,
-    );
+    // Launch once and reuse across all apps.
+    // --allow-file-access-from-files is required so Chromium allows
+    // <script type="module"> and <link> tags to load sibling files
+    // when the page itself is served via file://.
+    const browser = await puppeteer.launch({
+      headless: true,
+      args: [
+        '--no-sandbox',
+        '--disable-setuid-sandbox',
+        '--allow-file-access-from-files',
+      ],
+    });
+
+    // Render each app with its fragment-specific duration
+    // Note: The same app may be rendered multiple times with different durations
+    const results = [];
+    try {
+      for (const fragment of fragmentsWithApps) {
+        const app = fragment.app!;
+
+        // Fragment duration is already in milliseconds from parser
+        const durationMs = typeof fragment.duration === 'number'
+          ? fragment.duration
+          : 5000; // Default 5 seconds if duration is an expression
+
+        const result = await renderApp({
+          app,
+          width: output.resolution.width,
+          height: output.resolution.height,
+          projectDir,
+          outputName,
+          title: this.title,
+          date: this.date,
+          tags: this.tags,
+          fps: output.fps,
+          duration: durationMs,
+          browser,
+        });
+
+        results.push({ result, fragment });
+
+        // Add to active cache keys if tracking
+        if (activeCacheKeys) {
+          const cacheKey = `${app.id}_${durationMs}_${output.fps}`;
+          activeCacheKeys.add(cacheKey);
+        }
+      }
+    } finally {
+      await browser.close();
+    }
 
     // Create virtual assets and update fragment assetNames
-    for (const result of results) {
+    for (const { result, fragment } of results) {
       const virtualAssetName = result.app.id;
 
+      // Determine asset type based on mode
       const virtualAsset = {
         name: virtualAssetName,
-        path: result.screenshotPath,
-        type: 'image' as const,
-        duration: 0,
+        path: result.path,
+        type: result.mode === 'animated' ? ('video' as const) : ('image' as const),
+        duration: result.duration || 0,
         width: output.resolution.width,
         height: output.resolution.height,
         rotation: 0,
@@ -336,13 +377,7 @@ export class Project {
       };
 
       this.assetManager.addVirtualAsset(virtualAsset);
-
-      const fragment = fragmentsWithApps.find(
-        (frag) => frag.app?.id === result.app.id,
-      );
-      if (fragment) {
-        fragment.assetName = virtualAssetName;
-      }
+      fragment.assetName = virtualAssetName;
     }
   }
 

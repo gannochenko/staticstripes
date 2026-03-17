@@ -1,0 +1,29 @@
+<project title="Animation Demo" date="2026-03-17" tags="demo,animation,test">
+  <output name="demo" width="1920" height="1080" fps="30" />
+
+  <sequence>
+    <fragment class="intro_image" />
+  </sequence>
+  <sequence>
+    <!-- 3-second fade animation -->
+    <fragment id="fade_intro" duration="3">
+      <app
+        src="../apps/fade_test/dst"
+        data-parameters='{"text": "Welcome to Frame-Based Animation!"}'
+      />
+    </fragment>
+  </sequence>
+
+  <style>
+    .intro_image {
+      -asset: intro_image;
+      -duration: 3000ms;
+    }
+  </style>
+
+  <asset
+    data-name="intro_image"
+    data-path="./images/20251224_110757.jpg"
+    data-author="FooBar"
+  />
+</project>

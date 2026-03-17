@@ -19,6 +19,17 @@ export type App = {
   parameters: Record<string, string>; // extra params from data-parameters
 };
 
+export type AppRenderResult = {
+  app: App;
+  mode: 'static' | 'animated';
+  path: string; // either .png (static) or .mp4 (animated)
+
+  // Animated mode only:
+  frameCount?: number;
+  duration?: number; // ms - actual captured duration
+  fps?: number; // calculated from frame timing
+};
+
 export type ParsedHtml = {
   ast: Document;
   css: Map<Element, CSSProperties>;

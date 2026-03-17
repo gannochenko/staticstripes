@@ -1647,9 +1647,12 @@ export class HTMLProjectParser {
         ? dataTiming.trimEnd
         : this.parseTrimEnd(styles['-trim-end']);
 
-    // 6. Parse duration from data-timing or -duration property
+    // 6. Parse duration from duration attribute, data-timing, or -duration property
+    const durationAttr = attrs.get('duration');
     const duration =
-      dataTiming.duration !== undefined
+      durationAttr !== undefined && durationAttr !== null
+        ? this.parseMilliseconds(durationAttr + 's') // Direct duration attribute as seconds (e.g., "3" → "3s" → 3000ms)
+        : dataTiming.duration !== undefined
         ? dataTiming.duration
         : this.parseDurationProperty(
             styles['-duration'],

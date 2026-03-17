@@ -16,6 +16,11 @@ link:
 unlink:
 	npm unlink -g
 
+bl:
+	make build
+	make unlink
+	make link
+
 # Run linter
 lint:
 	npm run lint
