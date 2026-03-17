@@ -181,7 +181,7 @@ export function registerGenerateCommand(
           // Determine FFmpeg arguments to use
           let ffmpegArgs: string;
           const defaultArgs =
-            '-pix_fmt yuv420p -preset medium -c:a aac -b:a 192k';
+            '-c:v libx264 -pix_fmt yuv420p -preset medium -c:a aac -b:a 192k';
 
           if (options.option) {
             // User specified an option name, look it up in project

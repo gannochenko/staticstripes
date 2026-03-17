@@ -108,13 +108,14 @@ async function mergeFramesToVideo(
     }
 
     // Merge with FFmpeg
-    // Using libx264 with yuva420p for alpha channel support
+    // Using VP9 (libvpx-vp9) codec which supports alpha transparency
     const ffmpegCmd = [
       'ffmpeg',
       '-framerate', fps.toString(),
       '-i', resolve(tempDir, `frame_%0${padding}d.png`),
-      '-c:v', 'libx264',
+      '-c:v', 'libvpx-vp9',
       '-pix_fmt', 'yuva420p',
+      '-auto-alt-ref', '0',  // Required for alpha in VP9
       '-vf', `scale=${width}:${height}`,
       '-y',
       outputPath,
@@ -171,19 +172,19 @@ export async function renderApp(options: RenderAppOptions): Promise<AppRenderRes
     duration,
   );
 
-  // Check cache for both formats
-  const cachedMp4 = resolve(cacheDir, `${cacheKey}.mp4`);
+  // Check cache for both formats (WebM for animated with alpha, PNG for static)
+  const cachedWebm = resolve(cacheDir, `${cacheKey}.webm`);
   const cachedPng = resolve(cacheDir, `${cacheKey}.png`);
 
-  if (existsSync(cachedMp4)) {
+  if (existsSync(cachedWebm)) {
     console.log(
-      `Using cached animated app "${app.id}" (hash: ${cacheKey}) from ${cachedMp4}`,
+      `Using cached animated app "${app.id}" (hash: ${cacheKey}) from ${cachedWebm}`,
     );
     // TODO: Extract metadata from video (frameCount, duration, fps)
     return {
       app,
       mode: 'animated',
-      path: cachedMp4,
+      path: cachedWebm,
     };
   }
 
@@ -347,16 +348,16 @@ export async function renderApp(options: RenderAppOptions): Promise<AppRenderRes
         `  Frame range: ${firstFrame} to ${lastFrame}`,
       );
 
-      await mergeFramesToVideo(frames, cachedMp4, fps, width, height, duration);
+      await mergeFramesToVideo(frames, cachedWebm, fps, width, height, duration);
 
       console.log(
-        `Rendered animated app "${app.id}" (hash: ${cacheKey}) to ${cachedMp4}`,
+        `Rendered animated app "${app.id}" (hash: ${cacheKey}) to ${cachedWebm}`,
       );
 
       return {
         app,
         mode: 'animated',
-        path: cachedMp4,
+        path: cachedWebm,
         frameCount: frames.length,
         duration,
         fps,

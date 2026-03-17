@@ -2,28 +2,26 @@
   <output name="demo" width="1920" height="1080" fps="30" />
 
   <sequence>
-    <fragment class="intro_image" />
+    <fragment class="bg_image" />
   </sequence>
   <sequence>
-    <!-- 3-second fade animation -->
-    <fragment id="fade_intro" duration="3">
+    <fragment class="animated_text">
       <app
         src="../apps/fade_test/dst"
-        data-parameters='{"text": "Welcome to Frame-Based Animation!"}'
+        data-parameters='{"text": "Welcome to Frame-Based Animation! Transparent?"}'
       />
     </fragment>
   </sequence>
 
   <style>
-    .intro_image {
-      -asset: intro_image;
+    .bg_image {
+      -asset: bg_image;
+      -duration: 3000ms;
+    }
+    .animated_text {
       -duration: 3000ms;
     }
   </style>
 
-  <asset
-    data-name="intro_image"
-    data-path="./images/20251224_110757.jpg"
-    data-author="FooBar"
-  />
+  <asset data-name="bg_image" data-path="./images/20251224_110757.jpg" />
 </project>
