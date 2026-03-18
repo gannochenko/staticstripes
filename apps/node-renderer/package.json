@@ -1,0 +1,41 @@
+{
+  "name": "@gannochenko/node-renderer",
+  "version": "0.0.0",
+  "description": "Node-based video rendering system",
+  "main": "dist/index.js",
+  "bin": {
+    "node-renderer": "./dist/cli.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsx src/index.ts",
+    "start": "node dist/index.js",
+    "test": "vitest",
+    "test:ui": "vitest --ui",
+    "test:run": "vitest run"
+  },
+  "keywords": [
+    "video",
+    "renderer",
+    "nodes",
+    "ffmpeg"
+  ],
+  "author": "",
+  "license": "MIT",
+  "engines": {
+    "node": ">=22.0.0",
+    "npm": ">=10.0.0"
+  },
+  "devDependencies": {
+    "@types/css-tree": "^2.3.11",
+    "@types/node": "^22.10.5",
+    "@vitest/ui": "^4.0.16",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.3",
+    "vitest": "^4.0.16"
+  },
+  "dependencies": {
+    "css-tree": "^3.1.0",
+    "htmlparser2": "^10.1.0"
+  }
+}
