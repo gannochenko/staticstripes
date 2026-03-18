@@ -69,10 +69,106 @@ All 14 tests passing:
 - Helper functions
 - Complete NODES.md example
 
-## Next Steps (Milestone 2)
+## Milestone 2: Node Implementations ✅
+
+All 8 node types have been implemented with proper separation of concerns using the Factory pattern.
+
+### Architecture
+
+- **INode Interface** - Common interface that all nodes implement
+- **NodeFactory** - Factory that extracts parameters from ParsedNode and creates node instances
+- **Clean Node Constructors** - Nodes accept explicit parameters, not ParsedNode objects
+- **Parameter Validation** - Each node validates its own parameters
+
+### Node Implementations
+
+Each node is implemented in its own subfolder under `src/nodes/`:
+
+1. **ProjectNode** (`src/nodes/project/`)
+   - Inputs: None (source node)
+   - Outputs: Multiple video outputs (from `<outputs>` config)
+   - Parameters: title, tags, sequences, assets, outputs, ffmpeg options
+
+2. **FilesystemNode** (`src/nodes/filesystem/`)
+   - Inputs: `path` (video source reference)
+   - Outputs: `file` (written file path)
+   - Parameters: pathRef, destinationPath
+
+3. **YouTubeNode** (`src/nodes/youtube/`)
+   - Inputs: `path` (video source)
+   - Outputs: `url`, `video_id`
+   - Parameters: pathRef, unlisted, madeForKids, category, language, thumbnail, description
+
+4. **S3Node** (`src/nodes/s3/`)
+   - Inputs: `path` (video source)
+   - Outputs: `url` (S3 URL)
+   - Parameters: pathRef, endpoint, region, bucket, paths[], acl, thumbnail
+
+5. **InstagramNode** (`src/nodes/instagram/`)
+   - Inputs: `url` (video URL reference)
+   - Outputs: `post_id`, `url`
+   - Parameters: urlRef, thumbnail, caption
+
+6. **AIMusicAPINode** (`src/nodes/ai_music_api_ai/`)
+   - Inputs: None (generates from prompt)
+   - Outputs: `audio`
+   - Parameters: prompt, model
+
+7. **ElevenLabsNode** (`src/nodes/elevenlabs/`)
+   - Inputs: `text` (text source reference)
+   - Outputs: `audio`
+   - Parameters: textRef, voice, model
+
+8. **OpenAINode** (`src/nodes/openai/`)
+   - Inputs: None (generates from prompt)
+   - Outputs: `text`
+   - Parameters: prompt, model
+
+### Usage
+
+```typescript
+import { HTMLParser, NodeFactory } from '@gannochenko/node-renderer';
+
+// Parse HTML file
+const parser = new HTMLParser();
+const result = await parser.parseFile('project.html');
+
+// Create node instances
+const nodes = NodeFactory.createNodes(result.nodes);
+
+// Validate each node
+nodes.forEach((node) => {
+  console.log(`Node: ${node.getName()} (${node.getType()})`);
+  console.log('Inputs:', node.getInputs());
+  console.log('Outputs:', node.getOutputs());
+
+  const errors = node.validateParameters();
+  if (errors.length > 0) {
+    console.error('Validation errors:', errors);
+  }
+});
+
+// Check parameter schema
+const schema = nodes[0].getParameterSchema();
+console.log('Parameter schema:', schema);
+```
+
+### Test Coverage
+
+All 31 tests passing:
+- Node creation for all 8 types
+- Parameter extraction from HTML
+- Parameter validation
+- Inputs/outputs definition
+- Parameter schema introspection
+- Batch node creation
+- Unknown node type handling
+
+## Next Steps (Milestone 3)
 
 - Validate the parsed result for correctness
 - Ensure the DAG is valid (no cycles)
 - Verify all node types are resolvable
 - Check that all required parameters are present
 - Validate asset references (file paths and node inputs)
+- Build dependency graph from node input/output references
