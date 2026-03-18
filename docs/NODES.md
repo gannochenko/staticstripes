@@ -1,0 +1,274 @@
+I want to implement the node system, and for that let's start a new application called `apps/node-renderer`.
+
+We will borrow a lot from the previous `apps/renderer` app, but this time it should be node first.
+
+Each node has named inputs and named outputs.
+If a tag name starts with "node.", it is a node. The part after comma defines the node type.
+
+Available types:
+
+1. project - the main node of the project, runs ffmpeg
+2. filesystem - outputs the result file to a specified path of the local filesystem
+3. youtube - integration with youtube
+4. s3 - integration with s3
+5. instagram - integration with instagram
+6. ai_music_api_ai - integration with AI Music API AI
+7. elevenlabs - integration with Elevenlabs
+8. openai - integration with openai
+
+Every node implementation lives in a subfolder inside `src/nodes`.
+Every node implements the following interface:
+
+```typescript
+type Input {
+    name: string;
+}
+
+type Output {
+    name: string;
+}
+
+type ValidationError {
+    text: string;
+}
+
+type NodeParameter {
+    name: string;
+    required: boolean;
+}
+
+interface Node {
+    getInputs(): Input[];
+    getOutputs(): Output[];
+    validateParameters(): ValidationError[];
+    getParameterSchema(): NodeParameter[];
+}
+```
+
+There must be a DAG between the nodes.
+
+Milestone 1: implement the html parser which parses the project.html file. Use the previous implementation as the source of inspiration.
+Milestone 2: validate the parsed result for correctness: the DAG must be valid, all node types - resolvable, all parameters - complete.
+Milestone 3: TBD
+
+Example of `project.html`:
+
+```html
+<node.project>
+  <title>Christmas Morning in Liberec</title>
+  <tag>Winter</tag>
+  <tag>Christmas</tag>
+  <tag>Czech Republic</tag>
+
+  <sequences>
+    <sequence>
+      <fragment class="intro_image intro_duration" />
+      <fragment class="clip_1 ambient" timecode="Clip 1" />
+      <fragment class="analog_static_03" />
+      <fragment class="clip_2 ambient" timecode="Clip 2" />
+      <fragment
+        class="outro_image outro_duration"
+        id="ending_screen"
+        timecode="Conclusion"
+      />
+    </sequence>
+    <sequence>
+      <fragment class="intro_sound intro_duration" />
+    </sequence>
+    <sequence>
+      <fragment class="intro_image_message intro_duration">
+        <central_text extra="❄️🏔️🌨️" />
+      </fragment>
+    </sequence>
+    <sequence>
+      <fragment class="outro_sound outro_duration" id="outro_sound" />
+    </sequence>
+    <sequence>
+      <fragment class="outro_message outro_duration" id="outro_message">
+        <central_text outro />
+      </fragment>
+    </sequence>
+    <sequence>
+      <fragment>
+        <karaoke_text text="$joker_talks.output.text" />
+      </fragment>
+    </sequence>
+  </sequences>
+
+  <style>
+    .disabled {
+      display: none;
+    }
+    .ambient {
+      -object-fit: contain ambient 25 -0.1 0.7;
+    }
+    .outro_duration {
+      -duration: 5000ms;
+    }
+
+    .intro_duration {
+      -duration: 8000ms;
+    }
+
+    .intro_image {
+      -asset: intro_image;
+      -transition-end: fade-out 500ms;
+      filter: instagram-lark;
+    }
+    .intro_image_message {
+      -transition-end: fade-out 500ms;
+    }
+    .intro_sound {
+      -asset: guitar_music;
+      -transition-end: fade-out 500ms;
+    }
+
+    .clip_1 {
+      -asset: clip_01;
+      -trim-start: 3000ms;
+      -transition-start: fade-in 1000ms;
+    }
+    .clip_2 {
+      -asset: clip_02;
+      -duration: 3000ms;
+      -transition-end: fade-out 1000ms;
+    }
+
+    .outro_image {
+      -asset: intro_image;
+      -transition-start: fade-in 1000ms;
+      -transition-end: fade-out 500ms;
+    }
+    .outro_sound {
+      -asset: guitar_music;
+      -offset-start: calc(url(#ending_screen.time.start));
+      -transition-end: fade-out 500ms;
+    }
+    .outro_message {
+      -offset-start: calc(url(#ending_screen.time.start));
+      -transition-start: fade-in 1000ms;
+      -transition-end: fade-out 500ms;
+    }
+
+    .glitch {
+      -asset: glitch;
+      -duration: 500ms;
+      -offset-start: -250ms;
+      -overlay-start-z-index: 1;
+      -offset-end: -250ms;
+      -overlay-end-z-index: 1;
+      -chromakey: smooth strict #000000;
+    }
+
+    .analog_static_03 {
+      -asset: analog_static_03;
+      -duration: 500ms;
+    }
+  </style>
+
+  <assets>
+    <asset
+      name="clip_01"
+      path="./input/20251224_110901.mp4"
+      author="John Doe"
+    />
+    <asset
+      name="clip_02"
+      path="./input/20251224_111721.mp4"
+      author="Jane Doe"
+    />
+    <asset
+      name="intro_image"
+      path="./images/20251224_110757.jpg"
+      author="FooBar"
+    />
+    <asset name="glitch" path="./effects/digital_glitch_01.mp4" />
+    <asset name="analog_static_03" path="./effects/analog_static_03.mp4" />
+    <asset
+      name="guitar_music"
+      path="./audio/instrumental-acoustic-guitar-music-401434.mp3"
+      author="Baz"
+    />
+    <asset name="mysterious_music" input="ai_music_api_ai.intro_song.audio" />
+    <asset name="audio_joke" input="elevenlabs.joker_talks.audio" />
+  </assets>
+
+  <outputs>
+    <output name="youtube" resolution="1920x1080" fps="30" />
+    <output name="youtube_shorts" resolution="1080x1920" fps="30" />
+    <output name="instagram_shorts" resolution="1080x1920" fps="30" />
+  </outputs>
+
+  <ffmpeg>
+    <option name="preview">
+      -c:v h264_nvenc -preset fast -c:a aac -b:a 192k
+    </option>
+    <option name="meh">
+      -pix_fmt yuv420p -preset ultrafast -c:a aac -b:a 192k
+    </option>
+  </ffmpeg>
+</node.project>
+
+<node.filesystem name="preview_youtube" path="$project.output.youtube">
+  <path> output/preview_youtube.mp4 </path>
+</node.filesystem>
+
+<node.youtube name="yt_primary" path="$project.output.youtube">
+  <unlisted />
+  <made-for-kids />
+  <category name="entertainment" />
+  <language name="en" />
+  <thumbnail timecode="1000ms" />
+  <pre>
+Timecodes:
+
+${timecodes}
+
+Thanks for watching!
+  </pre>
+</node.youtube>
+
+<node.s3 name="s3_primary" path="$project.output.youtube">
+  <endpoint name="digitaloceanspaces.com" />
+  <region name="ams3" />
+  <bucket name="photoframe-photos-content-ams3-production" />
+  <path name="file"> videos/${slug}/${output}.mp4 </path>
+  <path name="metadata"> videos/${slug}/metadata.json </path>
+  <path name="thumbnail"> videos/${slug}/thumbnail.jpeg </path>
+  <acl name="public-read" />
+  <thumbnail timecode="1000ms" />
+</node.s3>
+
+<node.s3 name="s3_instagram" path="$project.output.youtube">
+  <endpoint name="digitaloceanspaces.com" />
+  <region name="ams3" />
+  <bucket name="photoframe-photos-content-ams3-production" />
+  <path name="file"> videos/instagram/${slug}/${output}.mp4 </path>
+  <acl name="public-read" />
+</node.s3>
+
+<node.instagram name="ig_primary" url="$s3_instagram.output.url">
+  <thumbnail timecode="1000ms" />
+  <pre>
+${project.title} ❄️🏔️
+
+${project.tags}
+  </pre>
+</node.instagram>
+
+<node.ai_music_api_ai name="intro_song">
+  <prompt>
+    10-second instrumental acoustic guitar piece, calm and relaxing mood, soft
+    fingerpicking, warm analog tone, subtle ambient background texture, slow
+    tempo (65-75 BPM), light room reverb, smooth fade-out, minimalistic, no
+    vocals, no percussion.
+  </prompt>
+  <model name="sonic-v4-5" />
+</node.ai_music_api_ai>
+
+<node.elevenlabs name="joker_talks" text="$joker.output.text" />
+
+<node.openai name="joker">
+  <prompt> make a dad joke! </prompt>
+</node.openai>
+```

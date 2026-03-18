@@ -1,0 +1,29 @@
+<project title="Animation Demo" date="2026-03-17" tags="demo,animation,test">
+  <output name="demo" width="1920" height="1080" fps="30" />
+
+  <sequence>
+    <fragment class="bg_image" />
+  </sequence>
+
+  <sequence>
+    <fragment class="karaoke_text">
+      <app
+        src="../apps/karaoke_text/dst"
+        data-parameters='{"words":"[{\"text\":\"A\",\"start\":0,\"end\":0.15},{\"text\":\"photon\",\"start\":0.15,\"end\":0.5},{\"text\":\"checks\",\"start\":0.5,\"end\":0.9},{\"text\":\"into\",\"start\":0.9,\"end\":1.2},{\"text\":\"a\",\"start\":1.2,\"end\":1.35},{\"text\":\"hotel.\",\"start\":1.35,\"end\":1.8},{\"text\":\"The\",\"start\":2.1,\"end\":2.25},{\"text\":\"bellhop\",\"start\":2.25,\"end\":2.7},{\"text\":\"asks,\",\"start\":2.7,\"end\":3.1},{\"text\":\"&apos;Can\",\"start\":3.1,\"end\":3.3},{\"text\":\"I\",\"start\":3.3,\"end\":3.45},{\"text\":\"help\",\"start\":3.45,\"end\":3.75},{\"text\":\"you\",\"start\":3.75,\"end\":3.95},{\"text\":\"with\",\"start\":3.95,\"end\":4.15},{\"text\":\"your\",\"start\":4.15,\"end\":4.4},{\"text\":\"luggage?&apos;\",\"start\":4.4,\"end\":4.9},{\"text\":\"The\",\"start\":5.4,\"end\":5.55},{\"text\":\"photon\",\"start\":5.55,\"end\":5.95},{\"text\":\"replies,\",\"start\":5.95,\"end\":6.4},{\"text\":\"&apos;No\",\"start\":6.4,\"end\":6.65},{\"text\":\"thanks,\",\"start\":6.65,\"end\":7.1},{\"text\":\"I&apos;m\",\"start\":7.1,\"end\":7.3},{\"text\":\"traveling\",\"start\":7.3,\"end\":7.9},{\"text\":\"light.&apos;\",\"start\":7.9,\"end\":8.5}]","windowSize":"3"}'
+      />
+    </fragment>
+  </sequence>
+
+  <style>
+    .bg_image {
+      -asset: bg_image;
+      -duration: 10000ms;
+    }
+    .karaoke_text {
+      -duration: 10000ms;
+      -offset-start: 0ms;
+    }
+  </style>
+
+  <asset data-name="bg_image" data-path="./images/20251224_110757.jpg" />
+</project>
