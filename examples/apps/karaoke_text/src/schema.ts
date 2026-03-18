@@ -1,0 +1,51 @@
+import type { ParameterSchema } from "@gannochenko/viewer-tools";
+
+export const PARAMETER_SCHEMA: ParameterSchema = {
+  fields: [
+    {
+      name: "words",
+      label: "Word Timing Data (JSON)",
+      placeholder: '[{"text":"Hello","start":0,"end":0.5}]',
+      defaultValue: '[{"text":"Welcome","start":0,"end":0.5},{"text":"to","start":0.5,"end":0.8},{"text":"karaoke","start":0.8,"end":1.5},{"text":"mode!","start":1.5,"end":2.0}]',
+    },
+    {
+      name: "windowSize",
+      label: "Words on Screen",
+      placeholder: "3",
+      defaultValue: "3",
+    },
+    {
+      name: "fontSize",
+      label: "Font Size",
+      placeholder: "72",
+      defaultValue: "72",
+    },
+    {
+      name: "textColor",
+      label: "Text Color",
+      placeholder: "#ffffff",
+      defaultValue: "#ffffff",
+    },
+    {
+      name: "highlightColor",
+      label: "Highlight Color",
+      placeholder: "#ffff00",
+      defaultValue: "#ffff00",
+    },
+  ],
+};
+
+export interface WordTiming {
+  text: string;
+  start: number; // seconds
+  end: number; // seconds
+}
+
+export interface AppParams {
+  words: string; // JSON string of WordTiming[]
+  windowSize: string;
+  fontSize: string;
+  textColor: string;
+  highlightColor: string;
+  [key: string]: string;
+}
