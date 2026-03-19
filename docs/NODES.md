@@ -56,10 +56,12 @@ Milestone 5: Implement the project node and the filesystem node. Take everything
 1. Selecting the output and settings such as fps, dimensions
 2. Selecting ffmpeg options
 3. Rendering Sequences and Fragments using ffmpeg: ffmpeg helper, stream, sequences.
-4. Use CSS/style attribute to control the behaviour. Object-fit: pillarbox/ambient/ken burns. Duration, offsets, trims, pad, etc. What did I miss?
-5. Running applications (static and animated). Applications must be resolved relative to the project folder
+4. Use CSS/style attribute to control the behaviour. Object-fit: pillarbox/ambient/ken burns. Duration, offsets, trims, pad, etc. Referencing timings of other nodes via expressions. What did I miss?
+5. Running applications (static and animated). Applications must be resolved relative to the project folder.
 6. The container support can be removed, no needed with the applications
 7. Asset management
+8. The cache must be per output, and saved locally into the `.cache/<node-name>` folder
+9. The filesystem node reads the output and stores where needed
 
 Example of `project.html`:
 
