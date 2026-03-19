@@ -50,7 +50,7 @@ There must be a DAG between the nodes.
 Milestone 1: implement the html parser which parses the project.html file. Use the previous implementation as the source of inspiration.
 Milestone 2: for every node type create a subfolder with the future implementation, implement parameters of each node, supported inputs and outputs.
 Milestone 3: validate the node structure for correctness: the DAG must be valid, all node types and names - resolvable, all parameters - complete. The DAG should clearly have the leaf nodes and the clear execution pipeline.
-Milestone 4: implement the DAG runner. It should traverse the DAG and execute nodes in the right order, passing outputs to inputs, till the end. If an error is encountered in one of the nodes, the execution stops. Also take caching into account. A node can cache its results, but the cache key would be - all parameters. Implement the propagation of cache miss: if a node has the chache miss, then all downstream nodes have their caches invalidated.
+Milestone 4: implement the DAG runner. It should traverse the DAG and execute nodes in the right order, passing outputs to inputs, till the end. If an error is encountered in one of the nodes, the execution stops. Also take caching into account. A node can cache its results, but the cache key would be - all parameters. Implement the propagation of cache miss: if a node has the chache miss, then all downstream nodes have their caches invalidated. For this step let's mock the implementation of each node.
 Milestone 5: TBD
 
 Example of `project.html`:
@@ -191,8 +191,8 @@ Example of `project.html`:
       path="./audio/instrumental-acoustic-guitar-music-401434.mp3"
       author="Baz"
     />
-    <asset name="mysterious_music" input="ai_music_api_ai.intro_song.audio" />
-    <asset name="audio_joke" input="elevenlabs.joker_talks.audio" />
+    <asset name="mysterious_music" input="$intro_song.output.audio" />
+    <asset name="audio_joke" input="$joker_talks.output.audio" />
   </assets>
 
   <outputs>
