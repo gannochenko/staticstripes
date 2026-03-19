@@ -51,7 +51,15 @@ Milestone 1: implement the html parser which parses the project.html file. Use t
 Milestone 2: for every node type create a subfolder with the future implementation, implement parameters of each node, supported inputs and outputs.
 Milestone 3: validate the node structure for correctness: the DAG must be valid, all node types and names - resolvable, all parameters - complete. The DAG should clearly have the leaf nodes and the clear execution pipeline.
 Milestone 4: implement the DAG runner. It should traverse the DAG and execute nodes in the right order, passing outputs to inputs, till the end. If an error is encountered in one of the nodes, the execution stops. Also take caching into account. A node can cache its results, but the cache key would be - all parameters. Implement the propagation of cache miss: if a node has the chache miss, then all downstream nodes have their caches invalidated. For this step let's mock the implementation of each node.
-Milestone 5: TBD
+Milestone 5: Implement the project node and the filesystem node. Take everything from the previous implementation. The project node must support:
+
+1. Selecting the output and settings such as fps, dimensions
+2. Selecting ffmpeg options
+3. Rendering Sequences and Fragments using ffmpeg: ffmpeg helper, stream, sequences.
+4. Use CSS/style attribute to control the behaviour. Object-fit: pillarbox/ambient/ken burns. Duration, offsets, trims, pad, etc. What did I miss?
+5. Running applications (static and animated). Applications must be resolved relative to the project folder
+6. The container support can be removed, no needed with the applications
+7. Asset management
 
 Example of `project.html`:
 
