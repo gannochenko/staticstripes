@@ -34,10 +34,10 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-const html_parser_1 = require("./html-parser");
-const node_factory_1 = require("./node-factory");
-const dag_validator_1 = require("./dag-validator");
-const dag_runner_1 = require("./dag-runner");
+const html_parser_1 = require("./lib/html-parser");
+const node_factory_1 = require("./lib/node-factory");
+const dag_validator_1 = require("./lib/dag-validator");
+const dag_runner_1 = require("./lib/dag-runner");
 const path = __importStar(require("path"));
 const fs = __importStar(require("fs"));
 function printUsage() {
@@ -191,8 +191,10 @@ async function executeProject(projectPath, enableCache, verbose) {
         const parser = new html_parser_1.HTMLParser();
         const result = await parser.parseFile(absolutePath);
         const nodes = node_factory_1.NodeFactory.createNodes(result.nodes);
+        // Get project directory (directory containing project.html)
+        const projectDir = path.dirname(absolutePath);
         // Create runner
-        const runner = new dag_runner_1.DAGRunner(result.nodes, nodes, {
+        const runner = new dag_runner_1.DAGRunner(result.nodes, nodes, projectDir, {
             enableCache,
             onNodeStart: (nodeName) => {
                 console.log(`🔄 Executing: ${nodeName}`);

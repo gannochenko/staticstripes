@@ -36,6 +36,7 @@
   },
   "dependencies": {
     "css-tree": "^3.1.0",
+    "expr-eval": "^2.0.2",
     "htmlparser2": "^10.1.0"
   }
 }

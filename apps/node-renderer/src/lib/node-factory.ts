@@ -2,20 +2,20 @@ import type { INode } from './node-interface';
 import type { ParsedNode } from './type';
 import { getTextContent, findChildElementsByTagName } from './html-parser';
 
-import { ProjectNode, type ProjectNodeParams } from './nodes/project';
-import { FilesystemNode, type FilesystemNodeParams } from './nodes/filesystem';
-import { YouTubeNode, type YouTubeNodeParams } from './nodes/youtube';
-import { S3Node, type S3NodeParams, type S3PathConfig } from './nodes/s3';
-import { InstagramNode, type InstagramNodeParams } from './nodes/instagram';
+import { ProjectNode, type ProjectNodeParams } from '../nodes/project';
+import { FilesystemNode, type FilesystemNodeParams } from '../nodes/filesystem';
+import { YouTubeNode, type YouTubeNodeParams } from '../nodes/youtube';
+import { S3Node, type S3NodeParams, type S3PathConfig } from '../nodes/s3';
+import { InstagramNode, type InstagramNodeParams } from '../nodes/instagram';
 import {
   AIMusicAPINode,
   type AIMusicAPINodeParams,
-} from './nodes/ai_music_api_ai';
+} from '../nodes/ai_music_api_ai';
 import {
   ElevenLabsNode,
   type ElevenLabsNodeParams,
-} from './nodes/elevenlabs';
-import { OpenAINode, type OpenAINodeParams } from './nodes/openai';
+} from '../nodes/elevenlabs';
+import { OpenAINode, type OpenAINodeParams } from '../nodes/openai';
 
 /**
  * Factory for creating node instances from parsed nodes
@@ -89,6 +89,7 @@ export class NodeFactory {
       sequences: content.sequences,
       assets: content.assets,
       ffmpegOptions: content.ffmpegOptions,
+      css: content.css,
     };
   }
 

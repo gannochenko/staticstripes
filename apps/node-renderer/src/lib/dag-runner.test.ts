@@ -146,7 +146,7 @@ describe('DAGRunner', () => {
       const result = parser.parse(html);
       const nodes = NodeFactory.createNodes(result.nodes);
 
-      const runner = new DAGRunner(result.nodes, nodes);
+      const runner = new DAGRunner(result.nodes, nodes, '/tmp/test-project');
       const execution = await runner.execute();
 
       expect(execution.success).toBe(true);
@@ -179,7 +179,7 @@ describe('DAGRunner', () => {
       const result = parser.parse(html);
       const nodes = NodeFactory.createNodes(result.nodes);
 
-      const runner = new DAGRunner(result.nodes, nodes);
+      const runner = new DAGRunner(result.nodes, nodes, '/tmp/test-project');
       const execution = await runner.execute();
 
       expect(execution.success).toBe(true);
@@ -212,7 +212,7 @@ describe('DAGRunner', () => {
       const result = parser.parse(html);
       const nodes = NodeFactory.createNodes(result.nodes);
 
-      const runner = new DAGRunner(result.nodes, nodes);
+      const runner = new DAGRunner(result.nodes, nodes, '/tmp/test-project');
       await runner.execute();
 
       const context = runner.getContext();
@@ -233,7 +233,7 @@ describe('DAGRunner', () => {
       const result = parser.parse(html);
       const nodes = NodeFactory.createNodes(result.nodes);
 
-      const runner = new DAGRunner(result.nodes, nodes);
+      const runner = new DAGRunner(result.nodes, nodes, '/tmp/test-project');
       const execution = await runner.execute();
 
       expect(execution.success).toBe(false);
@@ -256,7 +256,7 @@ describe('DAGRunner', () => {
       const result = parser.parse(html);
       const nodes = NodeFactory.createNodes(result.nodes);
 
-      const runner = new DAGRunner(result.nodes, nodes, { enableCache: true });
+      const runner = new DAGRunner(result.nodes, nodes, '/tmp/test-project', { enableCache: true });
 
       // First execution
       const execution1 = await runner.execute();
@@ -282,7 +282,7 @@ describe('DAGRunner', () => {
       const result = parser.parse(html);
       const nodes = NodeFactory.createNodes(result.nodes);
 
-      const runner = new DAGRunner(result.nodes, nodes, { enableCache: false });
+      const runner = new DAGRunner(result.nodes, nodes, '/tmp/test-project', { enableCache: false });
 
       // First execution
       const execution1 = await runner.execute();
@@ -315,7 +315,7 @@ describe('DAGRunner', () => {
       const result = parser.parse(html);
       const nodes = NodeFactory.createNodes(result.nodes);
 
-      const runner = new DAGRunner(result.nodes, nodes, { enableCache: true });
+      const runner = new DAGRunner(result.nodes, nodes, '/tmp/test-project', { enableCache: true });
 
       // First execution
       await runner.execute();
@@ -363,7 +363,7 @@ describe('DAGRunner', () => {
       const result = parser.parse(html);
       const nodes = NodeFactory.createNodes(result.nodes);
 
-      const runner = new DAGRunner(result.nodes, nodes);
+      const runner = new DAGRunner(result.nodes, nodes, '/tmp/test-project');
       const execution = await runner.execute();
 
       expect(execution.success).toBe(false);
@@ -387,7 +387,7 @@ describe('DAGRunner', () => {
       const nodes = NodeFactory.createNodes(result.nodes);
 
       const onNodeStart = vi.fn();
-      const runner = new DAGRunner(result.nodes, nodes, { onNodeStart });
+      const runner = new DAGRunner(result.nodes, nodes, '/tmp/test-project', { onNodeStart });
 
       await runner.execute();
 
@@ -408,7 +408,7 @@ describe('DAGRunner', () => {
       const nodes = NodeFactory.createNodes(result.nodes);
 
       const onNodeComplete = vi.fn();
-      const runner = new DAGRunner(result.nodes, nodes, { onNodeComplete });
+      const runner = new DAGRunner(result.nodes, nodes, '/tmp/test-project', { onNodeComplete });
 
       await runner.execute();
 
@@ -432,7 +432,7 @@ describe('DAGRunner', () => {
       const result = parser.parse(html);
       const nodes = NodeFactory.createNodes(result.nodes);
 
-      const runner = new DAGRunner(result.nodes, nodes);
+      const runner = new DAGRunner(result.nodes, nodes, '/tmp/test-project');
       await runner.execute();
 
       expect(runner.getContext().hasNodeExecuted('project')).toBe(true);
@@ -486,7 +486,7 @@ describe('DAGRunner', () => {
       const result = parser.parse(html);
       const nodes = NodeFactory.createNodes(result.nodes);
 
-      const runner = new DAGRunner(result.nodes, nodes);
+      const runner = new DAGRunner(result.nodes, nodes, '/tmp/test-project');
       const execution = await runner.execute();
 
       expect(execution.success).toBe(true);

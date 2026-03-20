@@ -1,14 +1,14 @@
 import { describe, it, expect } from 'vitest';
 import { HTMLParser } from './html-parser';
 import { NodeFactory } from './node-factory';
-import { ProjectNode } from './nodes/project';
-import { FilesystemNode } from './nodes/filesystem';
-import { YouTubeNode } from './nodes/youtube';
-import { S3Node } from './nodes/s3';
-import { InstagramNode } from './nodes/instagram';
-import { AIMusicAPINode } from './nodes/ai_music_api_ai';
-import { ElevenLabsNode } from './nodes/elevenlabs';
-import { OpenAINode } from './nodes/openai';
+import { ProjectNode } from '../nodes/project';
+import { FilesystemNode } from '../nodes/filesystem';
+import { YouTubeNode } from '../nodes/youtube';
+import { S3Node } from '../nodes/s3';
+import { InstagramNode } from '../nodes/instagram';
+import { AIMusicAPINode } from '../nodes/ai_music_api_ai';
+import { ElevenLabsNode } from '../nodes/elevenlabs';
+import { OpenAINode } from '../nodes/openai';
 
 describe('NodeFactory', () => {
   describe('Node creation', () => {

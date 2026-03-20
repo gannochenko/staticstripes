@@ -2,18 +2,18 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.OpenAINode = exports.ElevenLabsNode = exports.AIMusicAPINode = exports.InstagramNode = exports.S3Node = exports.YouTubeNode = exports.FilesystemNode = exports.ProjectNode = exports.NodeCache = exports.ExecutionContext = exports.DAGRunner = exports.DAGValidator = exports.NodeFactory = exports.findChildElementsByTagName = exports.getTextContent = exports.HTMLParser = void 0;
 // HTML Parser
-var html_parser_1 = require("./html-parser");
+var html_parser_1 = require("./lib/html-parser");
 Object.defineProperty(exports, "HTMLParser", { enumerable: true, get: function () { return html_parser_1.HTMLParser; } });
 Object.defineProperty(exports, "getTextContent", { enumerable: true, get: function () { return html_parser_1.getTextContent; } });
 Object.defineProperty(exports, "findChildElementsByTagName", { enumerable: true, get: function () { return html_parser_1.findChildElementsByTagName; } });
 // Node Factory
-var node_factory_1 = require("./node-factory");
+var node_factory_1 = require("./lib/node-factory");
 Object.defineProperty(exports, "NodeFactory", { enumerable: true, get: function () { return node_factory_1.NodeFactory; } });
 // DAG Validator
-var dag_validator_1 = require("./dag-validator");
+var dag_validator_1 = require("./lib/dag-validator");
 Object.defineProperty(exports, "DAGValidator", { enumerable: true, get: function () { return dag_validator_1.DAGValidator; } });
 // DAG Runner
-var dag_runner_1 = require("./dag-runner");
+var dag_runner_1 = require("./lib/dag-runner");
 Object.defineProperty(exports, "DAGRunner", { enumerable: true, get: function () { return dag_runner_1.DAGRunner; } });
 Object.defineProperty(exports, "ExecutionContext", { enumerable: true, get: function () { return dag_runner_1.ExecutionContext; } });
 Object.defineProperty(exports, "NodeCache", { enumerable: true, get: function () { return dag_runner_1.NodeCache; } });

@@ -1,4 +1,4 @@
-import type { INode, NodeInput, NodeOutput, NodeParameter, ValidationError } from '../../node-interface';
+import type { INode, NodeInput, NodeOutput, NodeParameter, ValidationError } from '../../lib/node-interface';
 export interface AIMusicAPINodeParams {
     name?: string;
     prompt: string;

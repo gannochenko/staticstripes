@@ -1,5 +1,5 @@
 // HTML Parser
-export { HTMLParser, getTextContent, findChildElementsByTagName } from './html-parser';
+export { HTMLParser, getTextContent, findChildElementsByTagName } from './lib/html-parser';
 export type {
   ParsedProject,
   ParsedNode,
@@ -10,7 +10,7 @@ export type {
   Fragment,
   FFmpegOption,
   CSSProperties,
-} from './type';
+} from './lib/type';
 
 // Node Interface
 export type {
@@ -19,29 +19,29 @@ export type {
   NodeOutput,
   NodeParameter,
   ValidationError,
-} from './node-interface';
+} from './lib/node-interface';
 
 // Node Factory
-export { NodeFactory } from './node-factory';
+export { NodeFactory } from './lib/node-factory';
 
 // DAG Validator
-export { DAGValidator } from './dag-validator';
+export { DAGValidator } from './lib/dag-validator';
 export type {
   NodeReference,
   NodeDependency,
   DAGValidationError,
   DAGValidationResult,
-} from './dag-validator';
+} from './lib/dag-validator';
 
 // DAG Runner
-export { DAGRunner, ExecutionContext, NodeCache } from './dag-runner';
+export { DAGRunner, ExecutionContext, NodeCache } from './lib/dag-runner';
 export type {
   NodeOutputValue,
   CacheEntry,
   NodeExecutionResult,
   DAGExecutionResult,
   DAGRunnerOptions,
-} from './dag-runner';
+} from './lib/dag-runner';
 
 // Node Implementations
 export { ProjectNode } from './nodes/project';

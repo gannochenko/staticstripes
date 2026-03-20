@@ -25,6 +25,30 @@ export interface NodeParameter {
 }
 
 /**
+ * Execution context passed to nodes during execution
+ * Contains outputs from upstream nodes
+ */
+export interface NodeExecutionContext {
+  /**
+   * Gets an output value from an upstream node
+   * @param nodeName - Name of the upstream node
+   * @param outputName - Name of the output
+   * @returns The output value (typically a file path or data)
+   */
+  getOutput(nodeName: string, outputName: string): any;
+
+  /**
+   * Project directory path (where project.html lives)
+   */
+  projectDir: string;
+
+  /**
+   * Cache directory for this node
+   */
+  cacheDir?: string;
+}
+
+/**
  * Base interface that all node types must implement
  */
 export interface INode {
@@ -58,4 +82,11 @@ export interface INode {
    * Returns the node name (optional, from 'name' attribute)
    */
   getName(): string | undefined;
+
+  /**
+   * Executes the node logic
+   * @param context - Execution context with access to upstream outputs
+   * @returns Map of output name to output value (e.g., file paths)
+   */
+  execute?(context: NodeExecutionContext): Promise<Record<string, any>>;
 }

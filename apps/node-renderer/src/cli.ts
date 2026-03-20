@@ -1,9 +1,9 @@
 #!/usr/bin/env node
 
-import { HTMLParser } from './html-parser';
-import { NodeFactory } from './node-factory';
-import { DAGValidator } from './dag-validator';
-import { DAGRunner } from './dag-runner';
+import { HTMLParser } from './lib/html-parser';
+import { NodeFactory } from './lib/node-factory';
+import { DAGValidator } from './lib/dag-validator';
+import { DAGRunner } from './lib/dag-runner';
 import * as path from 'path';
 import * as fs from 'fs';
 
@@ -195,8 +195,11 @@ async function executeProject(
     const result = await parser.parseFile(absolutePath);
     const nodes = NodeFactory.createNodes(result.nodes);
 
+    // Get project directory (directory containing project.html)
+    const projectDir = path.dirname(absolutePath);
+
     // Create runner
-    const runner = new DAGRunner(result.nodes, nodes, {
+    const runner = new DAGRunner(result.nodes, nodes, projectDir, {
       enableCache,
       onNodeStart: (nodeName) => {
         console.log(`🔄 Executing: ${nodeName}`);

@@ -1,232 +1,82 @@
 <!--
-  Complete Node-Based Video Rendering Demo
-  This project demonstrates all 8 node types working together
+  Simple Node-Based Video Rendering Demo
+  Tests: project node + filesystem node
 -->
 
-<!--
-  Node 1: OpenAI - Generate a dad joke script
-  Outputs: text
--->
-<node.openai name="joke_writer">
-  <prompt>
-    Write a funny dad joke about programming and coffee.
-    Keep it short and punchy, around 2-3 sentences.
-  </prompt>
-  <model name="gpt-4" />
-</node.openai>
-
-<!--
-  Node 2: ElevenLabs - Convert joke to speech
-  Inputs: text (from joke_writer)
-  Outputs: audio
--->
-<node.elevenlabs name="narrator" text="$joke_writer.output.text">
-  <voice name="adam" />
-  <model name="eleven_multilingual_v2" />
-</node.elevenlabs>
-
-<!--
-  Node 3: AI Music API - Generate background music
-  Outputs: audio
--->
-<node.ai_music_api_ai name="background_music">
-  <prompt>
-    15-second upbeat and playful instrumental piece, light acoustic guitar,
-    cheerful mood, medium tempo (100 BPM), subtle percussion, warm analog tone,
-    smooth fade-out, perfect for comedy content, no vocals.
-  </prompt>
-  <model name="sonic-v4-5" />
-</node.ai_music_api_ai>
-
-<!--
-  Node 4: Project - Main video rendering
-  Inputs: narrator.audio, background_music.audio (via assets)
-  Outputs: youtube, youtube_shorts, instagram
--->
+<!-- Main project node: renders video with sequences -->
 <node.project>
-  <title>Dad Joke of the Day</title>
-  <tag>Comedy</tag>
-  <tag>Dad Jokes</tag>
-  <tag>Programming Humor</tag>
+  <title>Node Renderer Test</title>
+  <tag>Test</tag>
+  <tag>Demo</tag>
 
   <sequences>
-    <!-- Main video sequence -->
+    <!-- Video sequence -->
     <sequence>
-      <fragment class="intro_card intro_duration" />
-      <fragment class="joke_delivery" />
-      <fragment class="outro_card outro_duration" />
+      <fragment class="intro_image" />
+      <fragment class="main_clip" />
+      <fragment class="outro_image" />
     </sequence>
 
-    <!-- Background music sequence -->
+    <!-- Audio sequence -->
     <sequence>
-      <fragment class="background_audio" />
-    </sequence>
-
-    <!-- Narration sequence -->
-    <sequence>
-      <fragment class="narration_audio" />
-    </sequence>
-
-    <!-- Text overlay sequence -->
-    <sequence>
-      <fragment class="joke_text_overlay" id="text_overlay">
-        <animated_text text="$joke_writer.output.text" />
-      </fragment>
+      <fragment class="background_music" />
     </sequence>
   </sequences>
 
   <style>
-    /* Intro card styling */
-    .intro_card {
-      -asset: intro_bg;
-      -duration: 2000ms;
+    /* Intro image: 3 seconds, fade out */
+    .intro_image {
+      -asset: intro;
+      -duration: 3000ms;
       -transition-end: fade-out 500ms;
-      filter: brightness-120;
     }
 
-    .intro_duration {
-      -duration: 2000ms;
-    }
-
-    /* Main joke delivery */
-    .joke_delivery {
-      -asset: comedy_bg;
-      -duration: calc(url(#narration_audio.duration));
+    /* Main video clip: use first 5 seconds, ambient background */
+    .main_clip {
+      -asset: clip_01;
+      -duration: 5000ms;
+      -object-fit: contain ambient 20 -0.3 0.8;
       -transition-start: fade-in 500ms;
       -transition-end: fade-out 500ms;
     }
 
-    /* Outro card styling */
-    .outro_card {
-      -asset: outro_bg;
-      -duration: 3000ms;
+    /* Outro image: 2 seconds, fade in */
+    .outro_image {
+      -asset: intro;
+      -duration: 2000ms;
       -transition-start: fade-in 500ms;
-      filter: instagram-valencia;
+      filter: instagram-lark;
     }
 
-    .outro_duration {
-      -duration: 3000ms;
-    }
-
-    /* Audio tracks */
-    .background_audio {
-      -asset: bg_music;
-      -volume: 0.3;
+    /* Background music: full duration */
+    .background_music {
+      -asset: music;
+      -duration: 10000ms;
       -transition-end: fade-out 1000ms;
-    }
-
-    .narration_audio {
-      -asset: narration;
-      -offset-start: 2000ms;
-      -volume: 1.0;
-    }
-
-    /* Text overlay */
-    .joke_text_overlay {
-      -offset-start: 2000ms;
-      -duration: calc(url(#narration_audio.duration));
-      -overlay-z-index: 2;
     }
   </style>
 
   <assets>
-    <!-- Static image assets -->
-    <asset name="intro_bg" path="./images/intro_background.jpg" />
-    <asset name="comedy_bg" path="./images/comedy_background.jpg" />
-    <asset name="outro_bg" path="./images/outro_background.jpg" />
-
-    <!-- Audio from AI nodes -->
-    <asset name="narration" input="$narrator.output.audio" />
-    <asset name="bg_music" input="$background_music.output.audio" />
+    <!-- Static assets -->
+    <asset name="intro" path="./assets/images/intro.jpg" />
+    <asset name="clip_01" path="./assets/video/clip_01.mp4" />
+    <asset name="music" path="./assets/audio/music.mp3" />
   </assets>
 
   <outputs>
-    <!-- Main YouTube landscape video -->
+    <!-- Single output: 1920x1080 @ 30fps -->
     <output name="youtube" resolution="1920x1080" fps="30" />
-
-    <!-- YouTube Shorts vertical video -->
-    <output name="youtube_shorts" resolution="1080x1920" fps="30" />
-
-    <!-- Instagram vertical video -->
-    <output name="instagram" resolution="1080x1920" fps="30" />
   </outputs>
 
   <ffmpeg>
-    <!-- High quality preset for final upload -->
-    <option name="high_quality">
-      -c:v h264_nvenc -preset slow -b:v 8M -c:a aac -b:a 320k
-    </option>
-
-    <!-- Fast preview preset -->
+    <!-- Fast preview preset with software encoding -->
     <option name="preview">
-      -c:v h264_nvenc -preset fast -b:v 2M -c:a aac -b:a 128k
+      -c:v libx264 -preset fast -crf 23 -c:a aac -b:a 192k
     </option>
   </ffmpeg>
 </node.project>
 
-<!--
-  Node 5: Filesystem - Save preview locally
-  Inputs: path (from project.output.youtube)
-  Outputs: file
--->
-<node.filesystem name="local_preview" path="$project.output.youtube">
-  <path>output/dad_joke_preview.mp4</path>
+<!-- Filesystem node: save output to local file -->
+<node.filesystem name="local_output" path="$project.output.youtube">
+  <path>output/test_video.mp4</path>
 </node.filesystem>
-
-<!--
-  Node 6: S3 - Upload video to S3-compatible storage
-  Inputs: path (from project.output.youtube_shorts)
-  Outputs: url
--->
-<node.s3 name="s3_storage" path="$project.output.youtube_shorts">
-  <endpoint name="digitaloceanspaces.com" />
-  <region name="ams3" />
-  <bucket name="comedy-videos-production" />
-  <path name="file">videos/dad-jokes/joke_${timestamp}.mp4</path>
-  <path name="metadata">videos/dad-jokes/joke_${timestamp}_metadata.json</path>
-  <path name="thumbnail">videos/dad-jokes/joke_${timestamp}_thumbnail.jpg</path>
-  <acl name="public-read" />
-  <thumbnail timecode="1500ms" />
-</node.s3>
-
-<!--
-  Node 7: YouTube - Upload to YouTube
-  Inputs: path (from project.output.youtube)
-  Outputs: url, video_id
--->
-<node.youtube name="youtube_upload" path="$project.output.youtube">
-  <unlisted />
-  <made-for-kids />
-  <category name="comedy" />
-  <language name="en" />
-  <thumbnail timecode="2000ms" />
-  <pre>
-Dad Joke of the Day! 😄
-
-Hope this made you smile! Subscribe for more dad jokes and programming humor.
-
-🎵 Music: AI-generated background track
-🎙️ Narration: AI-generated voice
-✍️ Joke: AI-generated comedy
-
-#DadJokes #Programming #Comedy #TechHumor
-
-Like and subscribe for more daily dad jokes!
-  </pre>
-</node.youtube>
-
-<!--
-  Node 8: Instagram - Post video to Instagram
-  Inputs: url (from s3_storage)
-  Outputs: post_id, url
--->
-<node.instagram name="instagram_post" url="$s3_storage.output.url">
-  <thumbnail timecode="1500ms" />
-  <pre>
-Dad Joke of the Day! 😄☕💻
-
-${project.title}
-
-#DadJokes #ProgrammingHumor #Comedy #TechJokes #CodingLife #DeveloperHumor #SoftwareEngineering #FunnyVideos #DailyJokes #Reels
-  </pre>
-</node.instagram>

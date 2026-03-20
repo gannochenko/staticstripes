@@ -1,6 +1,8 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.FilesystemNode = void 0;
+const fs_1 = require("fs");
+const path_1 = require("path");
 /**
  * Filesystem Node - Outputs video to local filesystem
  */
@@ -68,6 +70,38 @@ class FilesystemNode {
     }
     getPathRef() {
         return this.params.pathRef;
+    }
+    async execute(context) {
+        console.log(`💾 Executing filesystem node: ${this.params.name || 'unnamed'}`);
+        // Parse pathRef to extract node name and output name
+        // Format: $nodeName.output.outputName
+        const match = this.params.pathRef.match(/^\$([^.]+)\.output\.([^.]+)$/);
+        if (!match) {
+            throw new Error(`Invalid path reference format: "${this.params.pathRef}". Expected format: $nodeName.output.outputName`);
+        }
+        const [, nodeName, outputName] = match;
+        // Get source file path from upstream node
+        const sourcePath = context.getOutput(nodeName, outputName);
+        if (!sourcePath) {
+            throw new Error(`Could not get output "${outputName}" from node "${nodeName}"`);
+        }
+        console.log(`   Source: ${sourcePath}`);
+        // Resolve destination path relative to project directory
+        const destPath = (0, path_1.resolve)(context.projectDir, this.params.destinationPath);
+        console.log(`   Destination: ${destPath}`);
+        // Ensure destination directory exists
+        const destDir = (0, path_1.dirname)(destPath);
+        if (!(0, fs_1.existsSync)(destDir)) {
+            console.log(`   Creating directory: ${destDir}`);
+            (0, fs_1.mkdirSync)(destDir, { recursive: true });
+        }
+        // Copy file
+        console.log(`   Copying file...`);
+        (0, fs_1.copyFileSync)(sourcePath, destPath);
+        console.log(`   ✅ File copied successfully`);
+        return {
+            file: destPath,
+        };
     }
 }
 exports.FilesystemNode = FilesystemNode;

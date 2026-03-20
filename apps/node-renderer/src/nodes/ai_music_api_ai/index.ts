@@ -4,7 +4,7 @@ import type {
   NodeOutput,
   NodeParameter,
   ValidationError,
-} from '../../node-interface';
+} from '../../lib/node-interface';
 
 export interface AIMusicAPINodeParams {
   name?: string;

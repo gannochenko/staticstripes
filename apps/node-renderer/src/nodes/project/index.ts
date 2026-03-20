@@ -4,8 +4,21 @@ import type {
   NodeOutput,
   NodeParameter,
   ValidationError,
-} from '../../node-interface';
-import type { Output, Sequence, Asset, FFmpegOption } from '../../type';
+  NodeExecutionContext,
+} from '../../lib/node-interface';
+import type { Output, Sequence, Asset, FFmpegOption } from '../../lib/type';
+import {
+  AssetManager,
+  ExpressionContext,
+  FilterBuffer,
+  Sequence as RenderSequence,
+  makeFFmpegCommand,
+  runFFMpeg,
+} from './rendering';
+import { resolve, dirname } from 'path';
+import { existsSync, mkdirSync } from 'fs';
+import type { Asset as RenderAsset, Output as RenderOutput } from './rendering/types';
+import { CSSProcessor } from './css-processor';
 
 export interface ProjectNodeParams {
   name?: string;
@@ -15,6 +28,7 @@ export interface ProjectNodeParams {
   sequences: Sequence[];
   assets: Asset[];
   ffmpegOptions: FFmpegOption[];
+  css?: Map<any, Record<string, string>>; // CSS map for processing
 }
 
 /**
@@ -104,5 +118,189 @@ export class ProjectNode implements INode {
         description: 'FFmpeg encoding options',
       },
     ];
+  }
+
+  public async execute(context: NodeExecutionContext): Promise<Record<string, any>> {
+    console.log('🎬 Executing project node...');
+
+    // Convert assets to render format (resolve paths, probe durations)
+    const renderAssets = await this.prepareAssets(context);
+
+    // Create asset manager
+    const assetManager = new AssetManager(renderAssets);
+
+    // Build expression context for fragment references
+    const expressionContext: ExpressionContext = {
+      fragments: new Map(),
+    };
+
+    // Result map: output name -> rendered file path
+    const results: Record<string, string> = {};
+
+    // Render each output
+    for (const output of this.params.outputs) {
+      console.log(`\n📹 Rendering output: ${output.name} (${output.resolution}@${output.fps}fps)`);
+
+      //  Generate output path
+      const outputPath = resolve(context.projectDir, 'output', `${output.name}.mp4`);
+
+      const renderOutput: RenderOutput = {
+        name: output.name,
+        path: outputPath,
+        resolution: {
+          width: parseInt(output.resolution.split('x')[0]),
+          height: parseInt(output.resolution.split('x')[1]),
+        },
+        fps: output.fps,
+      };
+
+      // Ensure output directory exists
+      const outputDir = dirname(renderOutput.path);
+      if (!existsSync(outputDir)) {
+        mkdirSync(outputDir, { recursive: true });
+      }
+
+      // Build filter graph
+      const filterBuffer = await this.buildFilterGraph(
+        renderOutput,
+        assetManager,
+        expressionContext,
+      );
+
+      const filterComplex = filterBuffer.render();
+      console.log(`\n🔍 Filter complex length: ${filterComplex.length} characters`);
+      if (filterComplex.length < 500) {
+        console.log(`   Filter: ${filterComplex.substring(0, 200)}...`);
+      }
+
+      // Get FFmpeg args from options
+      const ffmpegArgs = this.params.ffmpegOptions[0]?.args || '';
+
+      // Generate FFmpeg command
+      const ffmpegCommand = makeFFmpegCommand(
+        assetManager.getAssetIndexMap(),
+        new Map(renderAssets.map((a) => [a.name, a])),
+        renderOutput,
+        filterComplex,
+        ffmpegArgs,
+      );
+
+      console.log(`\n🔧 FFmpeg command:\n${ffmpegCommand}\n`);
+
+      // Run FFmpeg
+      await runFFMpeg(ffmpegCommand);
+
+      console.log(`✅ Output "${output.name}" rendered to: ${renderOutput.path}`);
+      results[output.name] = renderOutput.path;
+    }
+
+    return results;
+  }
+
+  private async prepareAssets(context: NodeExecutionContext): Promise<RenderAsset[]> {
+    const renderAssets: RenderAsset[] = [];
+
+    for (const asset of this.params.assets) {
+      // Skip assets that reference node outputs (they'll be resolved later)
+      if (asset.input) {
+        // TODO: Resolve node output references
+        console.warn(`⚠️  Asset "${asset.name}" references node output, skipping for now`);
+        continue;
+      }
+
+      if (!asset.path) {
+        console.warn(`⚠️  Asset "${asset.name}" has no path, skipping`);
+        continue;
+      }
+
+      // Resolve asset path relative to project directory
+      const assetPath = resolve(context.projectDir, asset.path);
+
+      // Determine asset type from file extension
+      const ext = asset.path.split('.').pop()?.toLowerCase() || '';
+      let assetType: 'video' | 'image' | 'audio' = 'video';
+      if (['jpg', 'jpeg', 'png', 'webp'].includes(ext)) {
+        assetType = 'image';
+      } else if (['mp3', 'wav', 'aac', 'm4a'].includes(ext)) {
+        assetType = 'audio';
+      }
+
+      // For now, use mock duration and dimensions
+      // TODO: Use ffprobe to get actual values
+      const renderAsset: RenderAsset = {
+        name: asset.name,
+        path: assetPath,
+        author: asset.author,
+        type: assetType,
+        duration: 0, // Will be probed or set from CSS
+        width: 1920,
+        height: 1080,
+        rotation: 0,
+        hasVideo: assetType === 'video' || assetType === 'image',
+        hasAudio: assetType === 'video' || assetType === 'audio',
+      };
+
+      renderAssets.push(renderAsset);
+    }
+
+    return renderAssets;
+  }
+
+  private async buildFilterGraph(
+    output: RenderOutput,
+    assetManager: AssetManager,
+    expressionContext: ExpressionContext,
+  ): Promise<FilterBuffer> {
+    const buf = new FilterBuffer();
+    let mainSequence: RenderSequence | null = null;
+
+    // Process sequences with CSS
+    const cssMap = this.params.css || new Map();
+    const renderSequences = CSSProcessor.processSequences(
+      this.params.sequences,
+      cssMap,
+    );
+
+    console.log(`   Processed ${renderSequences.length} sequence(s)`);
+
+    // Build each sequence
+    for (const renderSequenceDef of renderSequences) {
+      console.log(`   Building sequence with ${renderSequenceDef.fragments.length} fragment(s)`);
+
+      const seq = new RenderSequence(
+        buf,
+        renderSequenceDef,
+        output,
+        assetManager,
+        expressionContext,
+      );
+
+      if (seq.isEmpty()) {
+        console.log(`   Sequence is empty, skipping`);
+        continue;
+      }
+
+      seq.build();
+
+      if (!mainSequence) {
+        mainSequence = seq;
+      } else {
+        mainSequence.overlayWith(seq);
+      }
+    }
+
+    // End streams with final output labels
+    if (mainSequence) {
+      mainSequence.getVideoStream().endTo({
+        tag: 'outv',
+        isAudio: false,
+      });
+      mainSequence.getAudioStream().endTo({
+        tag: 'outa',
+        isAudio: true,
+      });
+    }
+
+    return buf;
   }
 }

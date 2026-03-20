@@ -1,4 +1,4 @@
-import type { INode, NodeInput, NodeOutput, NodeParameter, ValidationError } from '../../node-interface';
+import type { INode, NodeInput, NodeOutput, NodeParameter, ValidationError, NodeExecutionContext } from '../../lib/node-interface';
 export interface FilesystemNodeParams {
     name?: string;
     pathRef: string;
@@ -18,5 +18,6 @@ export declare class FilesystemNode implements INode {
     getParameterSchema(): NodeParameter[];
     getDestinationPath(): string;
     getPathRef(): string;
+    execute(context: NodeExecutionContext): Promise<Record<string, any>>;
 }
 //# sourceMappingURL=index.d.ts.map

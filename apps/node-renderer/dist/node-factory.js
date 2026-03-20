@@ -75,6 +75,7 @@ class NodeFactory {
             sequences: content.sequences,
             assets: content.assets,
             ffmpegOptions: content.ffmpegOptions,
+            css: content.css,
         };
     }
     static extractFilesystemParams(parsedNode) {

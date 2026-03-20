@@ -1,5 +1,5 @@
-import type { INode, NodeInput, NodeOutput, NodeParameter, ValidationError } from '../../node-interface';
-import type { Output, Sequence, Asset, FFmpegOption } from '../../type';
+import type { INode, NodeInput, NodeOutput, NodeParameter, ValidationError, NodeExecutionContext } from '../../lib/node-interface';
+import type { Output, Sequence, Asset, FFmpegOption } from '../../lib/type';
 export interface ProjectNodeParams {
     name?: string;
     title?: string;
@@ -8,6 +8,7 @@ export interface ProjectNodeParams {
     sequences: Sequence[];
     assets: Asset[];
     ffmpegOptions: FFmpegOption[];
+    css?: Map<any, Record<string, string>>;
 }
 /**
  * Project Node - Main node that runs ffmpeg to render video
@@ -21,5 +22,8 @@ export declare class ProjectNode implements INode {
     getOutputs(): NodeOutput[];
     validateParameters(): ValidationError[];
     getParameterSchema(): NodeParameter[];
+    execute(context: NodeExecutionContext): Promise<Record<string, any>>;
+    private prepareAssets;
+    private buildFilterGraph;
 }
 //# sourceMappingURL=index.d.ts.map

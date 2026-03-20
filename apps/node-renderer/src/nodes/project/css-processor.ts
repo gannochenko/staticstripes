@@ -1,0 +1,190 @@
+import type { Fragment as ParsedFragment, Sequence as ParsedSequence } from '../../lib/type';
+import type { Fragment as RenderFragment, SequenceDefinition } from './rendering/types';
+
+/**
+ * Processes CSS properties and converts them to fragment properties
+ * for the rendering engine
+ */
+export class CSSProcessor {
+  /**
+   * Converts parsed sequences to render-ready sequences
+   */
+  public static processSequences(
+    parsedSequences: ParsedSequence[],
+    css: Map<any, Record<string, string>>,
+  ): SequenceDefinition[] {
+    const renderSequences: SequenceDefinition[] = [];
+
+    for (const parsedSeq of parsedSequences) {
+      const renderFragments: RenderFragment[] = [];
+
+      for (const parsedFragment of parsedSeq.fragments) {
+        const renderFragment = this.processFragment(parsedFragment, css);
+        if (renderFragment) {
+          renderFragments.push(renderFragment);
+        }
+      }
+
+      renderSequences.push({
+        fragments: renderFragments,
+      });
+    }
+
+    return renderSequences;
+  }
+
+  /**
+   * Processes a single fragment
+   */
+  private static processFragment(
+    parsedFragment: ParsedFragment,
+    css: Map<any, Record<string, string>>,
+  ): RenderFragment | null {
+    // Get CSS properties for this element
+    const styles = css.get(parsedFragment.element) || {};
+
+    // Extract asset name
+    const assetName = styles['-asset'] || '';
+    if (!assetName) {
+      console.warn(`⚠️  Fragment has no -asset property, skipping`);
+      return null;
+    }
+
+    // Extract duration (in milliseconds)
+    const durationStr = styles['-duration'] || '0ms';
+    const duration = this.parseTime(durationStr);
+
+    // Extract trim-start
+    const trimLeftStr = styles['-trim-start'] || '0ms';
+    const trimLeft = this.parseTime(trimLeftStr);
+
+    // Extract overlay/offset
+    const overlayLeft = 0; // TODO: Calculate from margins
+
+    // Extract transitions
+    const transitionIn = this.parseTransition(styles['-transition-start']);
+    const transitionOut = this.parseTransition(styles['-transition-end']);
+
+    // Extract object-fit
+    const objectFitStr = styles['-object-fit'] || 'contain';
+    const objectFit = this.parseObjectFit(objectFitStr);
+
+    // Extract visual filter
+    const visualFilter = styles['filter'];
+
+    // Extract sound property
+    const sound = (styles['-sound'] as 'on' | 'off') || 'on';
+
+    // Build render fragment
+    const renderFragment: RenderFragment = {
+      id: parsedFragment.id || `fragment_${Math.random().toString(36).substr(2, 9)}`,
+      enabled: true,
+      assetName,
+      duration,
+      trimLeft,
+      overlayLeft,
+      overlayZIndex: 0,
+      transitionIn: transitionIn.type,
+      transitionInDuration: transitionIn.duration,
+      transitionOut: transitionOut.type,
+      transitionOutDuration: transitionOut.duration,
+      objectFit: objectFit.type,
+      objectFitContain: objectFit.contain,
+      objectFitContainAmbientBlurStrength: objectFit.ambientBlur,
+      objectFitContainAmbientBrightness: objectFit.ambientBrightness,
+      objectFitContainAmbientSaturation: objectFit.ambientSaturation,
+      objectFitContainPillarboxColor: objectFit.pillarboxColor,
+      objectFitKenBurns: 'zoom-in',
+      objectFitKenBurnsZoom: 30,
+      objectFitKenBurnsEffectDuration: duration,
+      objectFitKenBurnsEasing: 'ease-in-out',
+      objectFitKenBurnsFocalX: 50,
+      objectFitKenBurnsFocalY: 50,
+      objectFitKenBurnsPanStartX: 0,
+      objectFitKenBurnsPanStartY: 0,
+      objectFitKenBurnsPanEndX: 100,
+      objectFitKenBurnsPanEndY: 100,
+      chromakey: false,
+      chromakeyBlend: 0,
+      chromakeySimilarity: 0,
+      chromakeyColor: '#000000',
+      visualFilter,
+      sound,
+      timecodeLabel: parsedFragment.timecode,
+    };
+
+    return renderFragment;
+  }
+
+  /**
+   * Parses time string (e.g., "3000ms", "3s") to milliseconds
+   */
+  private static parseTime(timeStr: string): number {
+    if (!timeStr) return 0;
+
+    const trimmed = timeStr.trim();
+    if (trimmed.endsWith('ms')) {
+      return parseFloat(trimmed);
+    } else if (trimmed.endsWith('s')) {
+      return parseFloat(trimmed) * 1000;
+    }
+    return parseFloat(trimmed);
+  }
+
+  /**
+   * Parses transition string (e.g., "fade-in 500ms")
+   */
+  private static parseTransition(transitionStr?: string): {
+    type: string;
+    duration: number;
+  } {
+    if (!transitionStr) {
+      return { type: '', duration: 0 };
+    }
+
+    const parts = transitionStr.trim().split(/\s+/);
+    const type = parts[0] || '';
+    const duration = parts[1] ? this.parseTime(parts[1]) : 0;
+
+    return { type, duration };
+  }
+
+  /**
+   * Parses object-fit string
+   */
+  private static parseObjectFit(objectFitStr: string): {
+    type: 'cover' | 'contain' | 'ken-burns';
+    contain: 'ambient' | 'pillarbox';
+    ambientBlur: number;
+    ambientBrightness: number;
+    ambientSaturation: number;
+    pillarboxColor: string;
+  } {
+    const parts = objectFitStr.trim().split(/\s+/);
+    const type = parts[0] as 'cover' | 'contain' | 'ken-burns';
+
+    let contain: 'ambient' | 'pillarbox' = 'pillarbox';
+    let ambientBlur = 20;
+    let ambientBrightness = -0.3;
+    let ambientSaturation = 0.8;
+    let pillarboxColor = '#000000';
+
+    if (type === 'contain' && parts.length > 1) {
+      contain = parts[1] as 'ambient' | 'pillarbox';
+      if (contain === 'ambient' && parts.length >= 5) {
+        ambientBlur = parseFloat(parts[2]) || 20;
+        ambientBrightness = parseFloat(parts[3]) || -0.3;
+        ambientSaturation = parseFloat(parts[4]) || 0.8;
+      }
+    }
+
+    return {
+      type,
+      contain,
+      ambientBlur,
+      ambientBrightness,
+      ambientSaturation,
+      pillarboxColor,
+    };
+  }
+}

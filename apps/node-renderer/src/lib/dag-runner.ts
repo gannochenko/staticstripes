@@ -175,6 +175,7 @@ export class DAGRunner {
   constructor(
     private parsedNodes: ParsedNode[],
     private nodes: INode[],
+    private projectDir: string,
     private options: DAGRunnerOptions = {},
   ) {
     this.cache = new NodeCache();
@@ -289,12 +290,30 @@ export class DAGRunner {
       // Resolve inputs
       const inputs = this.resolveInputs(parsedNode, node);
 
-      // Execute node (stub for now - actual execution would call node.execute())
-      // For now, we'll simulate execution by creating stub outputs
+      // Execute node
       const outputs = new Map<string, any>();
-      for (const output of node.getOutputs()) {
-        // Create stub output value
-        outputs.set(output.name, `${nodeName}.${output.name}.result`);
+
+      if (node.execute) {
+        // Node has execute() method - call it with execution context
+        const nodeContext = {
+          getOutput: (nodeName: string, outputName: string) => {
+            return this.context.getOutput(nodeName, outputName);
+          },
+          projectDir: this.projectDir,
+          cacheDir: undefined, // TODO: Implement cache directory
+        };
+
+        const result = await node.execute(nodeContext);
+
+        // Store results in outputs map
+        for (const [key, value] of Object.entries(result)) {
+          outputs.set(key, value);
+        }
+      } else {
+        // Node doesn't have execute() - create stub outputs
+        for (const output of node.getOutputs()) {
+          outputs.set(output.name, `${nodeName}.${output.name}.result`);
+        }
       }
 
       // Store outputs in context
