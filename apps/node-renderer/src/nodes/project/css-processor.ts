@@ -43,10 +43,13 @@ export class CSSProcessor {
     // Get CSS properties for this element
     const styles = css.get(parsedFragment.element) || {};
 
-    // Extract asset name
-    const assetName = styles['-asset'] || '';
+    // Extract asset name from data-asset attribute or -asset CSS property
+    const assetName =
+      parsedFragment.element.attribs?.['data-asset'] ||
+      styles['-asset'] ||
+      '';
     if (!assetName) {
-      console.warn(`⚠️  Fragment has no -asset property, skipping`);
+      console.warn(`⚠️  Fragment has no data-asset attribute or -asset property, skipping`);
       return null;
     }
 

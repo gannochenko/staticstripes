@@ -63,6 +63,8 @@ Milestone 5: Implement the project node and the filesystem node. Take everything
 8. The cache must be per output, and saved locally into the `.cache/<node-name>` folder
 9. The filesystem node reads the output and stores where needed
 
+Milestone 6: Implement support for youtube, s3 and instagram nodes. Borrow everything from the previous implementation, including the authentication pipelines (for this I think we need a separate cli command, such as `auth node=<node_name>` or something like that, and based on the node type the command chooses an appropriate auth way (the auth implementation should belong to the node implementation))
+
 Example of `project.html`:
 
 ```html

@@ -1,0 +1,102 @@
+<node.project>
+  <title>Solingen, Gräfrath</title>
+  <tag>travel</tag>
+  <tag>vlog</tag>
+  <tag>solingen</tag>
+  <tag>germany</tag>
+
+  <sequences>
+    <sequence>
+      <fragment class="clip juno" data-asset="20251030_082624" id="staircase" />
+      <fragment class="clip" data-asset="20251030_075735" id="static_building" />
+      <fragment class="clip" data-asset="20251030_080617" id="roofs" />
+      <fragment class="clip juno" data-asset="20251030_080839" id="fountain" />
+      <fragment class="clip" data-asset="20251030_081845" id="fluger" />
+      <fragment class="clip" data-asset="20251030_081359" id="mill_wheels" />
+      <fragment class="clip juno" data-asset="20251030_082017" id="funny_faces" />
+      <fragment class="clip" data-asset="20251030_081645" id="forks" />
+      <fragment class="clip clarendon" data-asset="20251030_081816" id="chimney_smoke" />
+      <fragment class="clip" data-asset="20251029_172045" id="steet_view_dusk_2" />
+      <fragment class="clip" data-asset="20251029_172756" id="street_view_darkness" />
+      <fragment class="clip" data-asset="20251029_173251" id="museum_darkness" />
+      <fragment class="clip" data-asset="20251029_173433" id="car" />
+    </sequence>
+    <sequence>
+      <fragment class="music" data-asset="guitar_01" />
+    </sequence>
+  </sequences>
+
+  <style>
+    .clip {
+      -sound: off;
+      -object-fit: contain ambient 25 -0.1 0.7;
+      -duration: 1500ms;
+    }
+    
+    .juno {
+      filter: instagram-juno;
+    }
+    
+    .clarendon {
+      filter: instagram-clarendon;
+    }
+    
+    #staircase {
+      -trim-start: 6000ms;
+      -duration: 2500ms;
+    }
+    
+    #roofs {
+      -trim-start: 2000ms;
+    }
+    
+    #fluger {
+      -trim-start: 2000ms;
+    }
+    
+    #steet_view_dusk_2 {
+      -trim-start: 1500ms;
+    }
+    
+    #car {
+      -duration: 2000ms;
+    }
+    
+    .music {
+      -duration: 21000ms;
+      -transition-start: fade-in 2000ms;
+      -transition-end: fade-out 2000ms;
+    }
+  </style>
+
+  <assets>
+    <asset name="20251030_082624" path="./video/20251030_082624.mp4" />
+    <asset name="20251029_172045" path="./video/20251029_172045.mp4" />
+    <asset name="20251029_172756" path="./video/20251029_172756.mp4" />
+    <asset name="20251029_173251" path="./video/20251029_173251.mp4" />
+    <asset name="20251029_173433" path="./video/20251029_173433.mp4" />
+    <asset name="20251030_075735" path="./video/20251030_075735.mp4" />
+    <asset name="20251030_080617" path="./video/20251030_080617.mp4" />
+    <asset name="20251030_080839" path="./video/20251030_080839.mp4" />
+    <asset name="20251030_081359" path="./video/20251030_081359.mp4" />
+    <asset name="20251030_081645" path="./video/20251030_081645.mp4" />
+    <asset name="20251030_081816" path="./video/20251030_081816.mp4" />
+    <asset name="20251030_081845" path="./video/20251030_081845.mp4" />
+    <asset name="20251030_082017" path="./video/20251030_082017.mp4" />
+    <asset name="guitar_01" path="../../z_assets/global_assets/audio/guitar_01.mp3" />
+  </assets>
+
+  <outputs>
+    <output name="instagram_shorts" resolution="1080x1920" fps="30" />
+  </outputs>
+
+  <ffmpeg>
+    <option name="preview">
+      -c:v libx264 -preset ultrafast -pix_fmt yuv420p -c:a aac -b:a 192k
+    </option>
+  </ffmpeg>
+</node.project>
+
+<node.filesystem name="local_output" path="$project.output.instagram_shorts">
+  <path>output/instagram_shorts.mp4</path>
+</node.filesystem>
