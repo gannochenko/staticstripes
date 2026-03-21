@@ -169,8 +169,8 @@ export async function renderApp(options: RenderAppOptions): Promise<AppRenderRes
     browser: sharedBrowser,
   } = options;
 
-  // Create cache directory
-  const cacheDir = resolve(projectDir, 'cache', 'apps');
+  // Create cache directory organized by app ID
+  const cacheDir = resolve(projectDir, 'cache', app.id);
   if (!existsSync(cacheDir)) {
     await mkdir(cacheDir, { recursive: true });
   }
@@ -187,30 +187,18 @@ export async function renderApp(options: RenderAppOptions): Promise<AppRenderRes
     duration,
   );
 
-  // Check cache for both formats (APNG for animated with alpha, PNG for static)
+  // Check cache for APNG (used for both static and animated to preserve alpha)
   const cachedApng = resolve(cacheDir, `${cacheKey}.apng`);
-  const cachedPng = resolve(cacheDir, `${cacheKey}.png`);
 
   if (existsSync(cachedApng)) {
     console.log(
-      `Using cached animated app "${app.id}" (hash: ${cacheKey}) from ${cachedApng}`,
+      `Using cached app "${app.id}" (hash: ${cacheKey}) from ${cachedApng}`,
     );
     // TODO: Extract metadata from video (frameCount, duration, fps)
     return {
       app,
       mode: 'animated',
       path: cachedApng,
-    };
-  }
-
-  if (existsSync(cachedPng)) {
-    console.log(
-      `Using cached static app "${app.id}" (hash: ${cacheKey}) from ${cachedPng}`,
-    );
-    return {
-      app,
-      mode: 'static',
-      path: cachedPng,
     };
   }
 
@@ -261,8 +249,18 @@ export async function renderApp(options: RenderAppOptions): Promise<AppRenderRes
         * { background: transparent !important; }
         html, body { background: transparent !important; }
       `;
+      // Wait for DOM to be ready before trying to append
       // @ts-expect-error - This runs in browser context
-      document.head?.appendChild(style) || document.documentElement.appendChild(style);
+      if (document.readyState === 'loading') {
+        // @ts-expect-error - This runs in browser context
+        document.addEventListener('DOMContentLoaded', () => {
+          // @ts-expect-error - This runs in browser context
+          (document.head || document.documentElement).appendChild(style);
+        });
+      } else {
+        // @ts-expect-error - This runs in browser context
+        (document.head || document.documentElement).appendChild(style);
+      }
     });
 
     page.on('console', (msg) =>
@@ -298,8 +296,26 @@ export async function renderApp(options: RenderAppOptions): Promise<AppRenderRes
       return true;
     });
 
-    // Set up backward compatibility property BEFORE navigation
+    // Create a promise that will be resolved when rendering completes
+    let renderingCompleteResolve: () => void;
+    const renderingPromise = new Promise<void>((resolve) => {
+      renderingCompleteResolve = resolve;
+    });
+
+    // Expose a function that the page can call when rendering is complete
+    await page.exposeFunction('__stsNotifyRenderComplete', () => {
+      renderingCompleteResolve();
+    });
+
+    // Set up event listener and backward compatibility BEFORE navigation
     await page.evaluateOnNewDocument(() => {
+      // Set up listener for 'sts-done-rendering' event
+      // @ts-expect-error - This runs in browser context
+      document.addEventListener('sts-done-rendering', () => {
+        // @ts-expect-error - This is the exposed function
+        window.__stsNotifyRenderComplete();
+      });
+
       // For backward compatibility with old apps using window.__stsRenderComplete
       // @ts-expect-error - This runs in browser context
       Object.defineProperty(window, '__stsRenderComplete', {
@@ -314,17 +330,6 @@ export async function renderApp(options: RenderAppOptions): Promise<AppRenderRes
     });
 
     await page.goto(url, { waitUntil: 'networkidle0' });
-
-    // NOW create the promise that waits for the 'sts-done-rendering' event
-    // This must be done AFTER navigation so the Promise is in the loaded page context
-    const renderingPromise = page.evaluate(() => {
-      return new Promise<void>((resolve) => {
-        // @ts-expect-error - This runs in browser context
-        document.addEventListener('sts-done-rendering', () => {
-          resolve();
-        });
-      });
-    });
 
     await Promise.race([
       renderingPromise,
@@ -343,7 +348,7 @@ export async function renderApp(options: RenderAppOptions): Promise<AppRenderRes
 
     // Determine mode and save
     if (frames.length === 0) {
-      // Static mode - take a single screenshot
+      // Static mode - take a single screenshot and convert to APNG for proper alpha handling
       console.log(`App "${app.id}" is static (no frames captured)`);
 
       const screenshot = await page.screenshot({
@@ -352,16 +357,36 @@ export async function renderApp(options: RenderAppOptions): Promise<AppRenderRes
         clip: { x: 0, y: 0, width, height },
       });
 
-      await writeFile(cachedPng, screenshot);
+      // Convert single PNG frame to APNG for FFmpeg compatibility with alpha
+      const tempPng = resolve(cacheDir, `temp_${cacheKey}.png`);
+      await writeFile(tempPng, screenshot);
+
+      try {
+        // Create 1-frame APNG using FFmpeg
+        const ffmpegCmd = [
+          'ffmpeg',
+          '-i', tempPng,
+          '-c:v', 'apng',  // APNG codec with native RGBA support
+          '-plays', '0',   // Loop indefinitely
+          '-y',
+          cachedApng,
+        ].join(' ');
+
+        console.log(`Converting static screenshot to APNG: ${ffmpegCmd}`);
+        execSync(ffmpegCmd, { stdio: 'inherit' });
+      } finally {
+        // Cleanup temp file
+        await rm(tempPng, { force: true });
+      }
 
       console.log(
-        `Rendered static app "${app.id}" (hash: ${cacheKey}) to ${cachedPng}`,
+        `Rendered static app "${app.id}" (hash: ${cacheKey}) to ${cachedApng}`,
       );
 
       return {
         app,
         mode: 'static',
-        path: cachedPng,
+        path: cachedApng,
       };
     } else {
       // Animated mode - merge frames to video

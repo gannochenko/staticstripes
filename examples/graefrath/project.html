@@ -1,18 +1,73 @@
 <!-- App nodes for text overlays -->
-<!-- <node.app
-  name="intro_text"
-  src="../../examples/apps/test_text/dst"
-  title="Gräfrath, Solingen"
-  subtitle="Hidden Gem 🇩🇪"
+<node.app
+  name="text_1"
+  src="../../examples/apps/tafel/dst"
+  title="This is NOT where you expect to be in Solingen…"
   fontSize="3"
+  verticalOffset="60"
 />
 
 <node.app
-  name="location_text"
-  src="../../examples/apps/test_text/dst"
-  title="Worth Visiting!"
-  fontSize="4"
-/> -->
+  name="text_2"
+  src="../../examples/apps/tafel/dst"
+  title="…but this is Gräfrath…"
+  fontSize="3"
+  verticalOffset="60"
+/>
+
+<node.app
+  name="text_3"
+  src="../../examples/apps/tafel/dst"
+  title="…a hidden gem of NRW!"
+  fontSize="3"
+  verticalOffset="60"
+/>
+
+<node.app
+  name="text_4"
+  src="../../examples/apps/tafel/dst"
+  title="Cobblestone streets…"
+  fontSize="3"
+  verticalOffset="60"
+/>
+
+<node.app
+  name="text_5"
+  src="../../examples/apps/tafel/dst"
+  title="…medieval vibes…"
+  fontSize="3"
+  verticalOffset="60"
+/>
+
+<node.app
+  name="text_6"
+  src="../../examples/apps/tafel/dst"
+  title="…cool art."
+  fontSize="3"
+  verticalOffset="60"
+/>
+
+<node.app
+  name="text_7"
+  src="../../examples/apps/tafel/dst"
+  title="Perfect for a Sunday walk."
+  fontSize="3"
+  verticalOffset="60"
+/>
+
+<node.app
+  name="text_8"
+  src="../../examples/apps/tafel/dst"
+  title="Just 30 minutes from Düsseldorf. Worth the short drive."
+  fontSize="3"
+  verticalOffset="60"
+/>
+
+<node.app
+  name="geo_text"
+  src="../../examples/apps/geo/dst"
+  text="Solingen.Gräfrath 🇩🇪"
+/>
 
 <node.project>
   <title>Solingen, Gräfrath</title>
@@ -30,7 +85,7 @@
         id="static_building"
       />
       <fragment class="clip" data-asset="20251030_080617" id="roofs" />
-      <fragment class="clip juno" data-asset="20251030_080839" id="fountain" />
+      <fragment class="clip" data-asset="20251030_080839" id="fountain" />
       <fragment class="clip" data-asset="20251030_081845" id="fluger" />
       <fragment class="clip" data-asset="20251030_081359" id="mill_wheels" />
       <fragment
@@ -40,7 +95,7 @@
       />
       <fragment class="clip" data-asset="20251030_081645" id="forks" />
       <fragment
-        class="clip clarendon"
+        class="clip"
         data-asset="20251030_081816"
         id="chimney_smoke"
       />
@@ -64,12 +119,33 @@
     <sequence>
       <fragment class="music" data-asset="guitar_01" />
     </sequence>
-    <!-- <sequence>
-      <fragment class="intro_overlay" data-asset="intro_text_overlay" />
+    <sequence>
+      <fragment class="text_overlay_1" data-asset="text_1_overlay" />
     </sequence>
     <sequence>
-      <fragment class="location_overlay" data-asset="location_overlay" />
-    </sequence> -->
+      <fragment class="text_overlay_2" data-asset="text_2_overlay" />
+    </sequence>
+    <sequence>
+      <fragment class="text_overlay_3" data-asset="text_3_overlay" />
+    </sequence>
+    <sequence>
+      <fragment class="text_overlay_4" data-asset="text_4_overlay" />
+    </sequence>
+    <sequence>
+      <fragment class="text_overlay_5" data-asset="text_5_overlay" />
+    </sequence>
+    <sequence>
+      <fragment class="text_overlay_6" data-asset="text_6_overlay" />
+    </sequence>
+    <sequence>
+      <fragment class="text_overlay_7" data-asset="text_7_overlay" />
+    </sequence>
+    <sequence>
+      <fragment class="text_overlay_8" data-asset="text_8_overlay" />
+    </sequence>
+    <sequence>
+      <fragment class="geo_overlay" data-asset="geo_overlay" />
+    </sequence>
   </sequences>
 
   <style>
@@ -118,16 +194,60 @@
           url(#street_view_darkness.time.duration) + url(#museum_darkness.time.duration) +
           url(#car.time.duration)
       );
-      -transition-start: fade-in 2000ms;
+      -transition-start: fade-in 500ms;
       -transition-end: fade-out 2000ms;
     }
 
-    .intro_overlay {
-      -duration: 2500ms;
+    .text_overlay_1 {
+      -duration: calc(url(#staircase.time.duration));
+      -offset-start: calc(url(#staircase.time.start));
     }
 
-    .location_overlay {
-      -duration: 21000ms;
+    .text_overlay_2 {
+      -duration: calc(url(#static_building.time.duration) + url(#roofs.time.duration));
+      -offset-start: calc(url(#static_building.time.start));
+    }
+
+    .text_overlay_3 {
+      -duration: calc(url(#fountain.time.duration) + url(#fluger.time.duration));
+      -offset-start: calc(url(#fountain.time.start));
+    }
+
+    .text_overlay_4 {
+      -duration: calc(url(#mill_wheels.time.duration));
+      -offset-start: calc(url(#mill_wheels.time.start));
+    }
+
+    .text_overlay_5 {
+      -duration: calc(url(#funny_faces.time.duration));
+      -offset-start: calc(url(#funny_faces.time.start));
+    }
+
+    .text_overlay_6 {
+      -duration: calc(url(#forks.time.duration));
+      -offset-start: calc(url(#forks.time.start));
+    }
+
+    .text_overlay_7 {
+      -duration: calc(url(#street_view_darkness.time.duration) + url(#steet_view_dusk_2.time.duration));
+      -offset-start: calc(url(#steet_view_dusk_2.time.start));
+    }
+
+    .text_overlay_8 {
+      -duration: calc(url(#car.time.duration) + url(#museum_darkness.time.duration));
+      -offset-start: calc(url(#museum_darkness.time.start));
+    }
+
+    .geo_overlay {
+      -duration: calc(
+        url(#staircase.time.duration) + url(#static_building.time.duration) +
+          url(#roofs.time.duration) + url(#fountain.time.duration) +
+          url(#fluger.time.duration) + url(#mill_wheels.time.duration) +
+          url(#funny_faces.time.duration) + url(#forks.time.duration) +
+          url(#chimney_smoke.time.duration) + url(#steet_view_dusk_2.time.duration) +
+          url(#street_view_darkness.time.duration) + url(#museum_darkness.time.duration) +
+          url(#car.time.duration)
+      );
     }
   </style>
 
@@ -146,8 +266,15 @@
     <asset name="20251030_081845" path="./video/20251030_081845.mp4" />
     <asset name="20251030_082017" path="./video/20251030_082017.mp4" />
     <asset name="guitar_01" path="./audio/guitar_01.mp3" />
-    <!-- <asset name="intro_text_overlay" input="$intro_text.output.video" />
-    <asset name="location_overlay" input="$location_text.output.video" /> -->
+    <asset name="text_1_overlay" input="$text_1.output.video" />
+    <asset name="text_2_overlay" input="$text_2.output.video" />
+    <asset name="text_3_overlay" input="$text_3.output.video" />
+    <asset name="text_4_overlay" input="$text_4.output.video" />
+    <asset name="text_5_overlay" input="$text_5.output.video" />
+    <asset name="text_6_overlay" input="$text_6.output.video" />
+    <asset name="text_7_overlay" input="$text_7.output.video" />
+    <asset name="text_8_overlay" input="$text_8.output.video" />
+    <asset name="geo_overlay" input="$geo_text.output.video" />
   </assets>
 
   <outputs>

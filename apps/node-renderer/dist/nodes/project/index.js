@@ -163,12 +163,17 @@ class ProjectNode {
                 else if (['mp3', 'wav', 'aac'].includes(ext)) {
                     assetType = 'audio';
                 }
+                // Probe duration for video/audio assets (including APNG)
+                let duration = 0;
+                if (assetType === 'video' || assetType === 'audio') {
+                    duration = await (0, rendering_1.getAssetDuration)(outputPath);
+                }
                 const renderAsset = {
                     name: asset.name,
                     path: outputPath,
                     author: asset.author,
                     type: assetType,
-                    duration: 0,
+                    duration: duration,
                     width: 1920,
                     height: 1080,
                     rotation: 0,

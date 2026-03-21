@@ -134,8 +134,10 @@ export class Sequence {
 
       // Convert deprecated JPEG pixel format (yuvj420p) to standard yuv420p early
       // This prevents swscaler warnings from appearing in all subsequent filters
+      // For PNG images with alpha, use yuva420p to preserve transparency
       if (asset.hasVideo && asset.type === "image") {
-        currentVideoStream.convertPixelFormat("yuv420p");
+        const isPng = asset.path.toLowerCase().endsWith('.png');
+        currentVideoStream.convertPixelFormat(isPng ? "yuva420p" : "yuv420p");
       }
 
       // Apply visual filter early for static images (before padding/cloning)
@@ -147,10 +149,10 @@ export class Sequence {
       if (
         asset.duration === 0 &&
         calculatedDuration > 0 &&
-        asset.type === "image" &&
+        (asset.type === "image" || asset.path.toLowerCase().match(/\.(png|apng)$/)) &&
         fragment.objectFit !== "ken-burns"
       ) {
-        // special case for images - extend static image to desired duration
+        // special case for images and static APNG files - extend to desired duration
         // Skip tpad for Ken Burns - zoompan will generate the frames
         currentVideoStream.tPad({
           start: calculatedDuration,
@@ -193,8 +195,12 @@ export class Sequence {
               saturation: fragment.objectFitContainAmbientSaturation,
             };
           } else if (fragment.objectFitContain === PILLARBOX) {
+            // For PNG/APNG files with alpha, use transparent padding instead of black
+            const isPngWithAlpha = asset.path.toLowerCase().match(/\.(png|apng)$/);
+            const pillarboxColor = isPngWithAlpha ? '#00000000' : fragment.objectFitContainPillarboxColor;
+
             options.pillarbox = {
-              color: fragment.objectFitContainPillarboxColor,
+              color: pillarboxColor,
             };
           }
           currentVideoStream.fitOutputContain(this.output.resolution, options);
@@ -353,8 +359,25 @@ export class Sequence {
   }
 
   overlayWith(sequence: Sequence) {
-    this.videoStream.overlayStream(sequence.getVideoStream(), {});
-    this.audioStream.overlayStream(sequence.getAudioStream(), {});
+    // Get offset from the first fragment of the overlaying sequence
+    const firstFragment = sequence.definition.fragments[0];
+    const overlayOffset = firstFragment?.overlayLeft || 0;
+
+    // If there's an offset, we need to provide duration information
+    if (overlayOffset && typeof overlayOffset === 'number' && overlayOffset > 0) {
+      const options = {
+        offset: {
+          streamDuration: this.getTotalDuration(),
+          otherStreamDuration: sequence.getTotalDuration(),
+          otherStreamOffsetLeft: overlayOffset / 1000, // convert ms to seconds
+        },
+      };
+      this.videoStream.overlayStream(sequence.getVideoStream(), options);
+      this.audioStream.overlayStream(sequence.getAudioStream(), options);
+    } else {
+      this.videoStream.overlayStream(sequence.getVideoStream(), {});
+      this.audioStream.overlayStream(sequence.getAudioStream(), {});
+    }
   }
 
   public getVideoStream(): Stream {

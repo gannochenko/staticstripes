@@ -351,7 +351,9 @@ class Stream {
         if (!offset || !offset.otherStreamOffsetLeft) {
             // usual overlay/mix, no offset
             if (isAudio) {
-                const res = (0, ffmpeg_1.makeAmix)([this.looseEnd, stream.getLooseEnd()]);
+                const res = (0, ffmpeg_1.makeAmix)([this.looseEnd, stream.getLooseEnd()], {
+                    normalize: false,
+                });
                 this.looseEnd = res.outputs[0];
                 this.buf.append(res);
             }
@@ -387,7 +389,9 @@ class Stream {
                 }
                 // Mix or overlay the streams
                 if (isAudio) {
-                    const res = (0, ffmpeg_1.makeAmix)([this.looseEnd, stream.getLooseEnd()]);
+                    const res = (0, ffmpeg_1.makeAmix)([this.looseEnd, stream.getLooseEnd()], {
+                        normalize: false,
+                    });
                     this.looseEnd = res.outputs[0];
                     this.buf.append(res);
                 }

@@ -234,12 +234,18 @@ export class ProjectNode implements INode {
           assetType = 'audio';
         }
 
+        // Probe duration for video/audio assets (including APNG)
+        let duration = 0;
+        if (assetType === 'video' || assetType === 'audio') {
+          duration = await getAssetDuration(outputPath);
+        }
+
         const renderAsset: RenderAsset = {
           name: asset.name,
           path: outputPath,
           author: asset.author,
           type: assetType,
-          duration: 0,
+          duration: duration,
           width: 1920,
           height: 1080,
           rotation: 0,

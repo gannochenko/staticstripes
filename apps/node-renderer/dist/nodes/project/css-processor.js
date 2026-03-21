@@ -47,7 +47,8 @@ class CSSProcessor {
         const trimLeftStr = styles['-trim-start'] || '0ms';
         const trimLeft = this.parseTime(trimLeftStr);
         // Extract overlay/offset
-        const overlayLeft = 0; // TODO: Calculate from margins
+        const offsetStartStr = styles['-offset-start'] || '0ms';
+        const overlayLeft = this.parseTimeOrExpression(offsetStartStr);
         // Extract transitions
         const transitionIn = this.parseTransition(styles['-transition-start']);
         const transitionOut = this.parseTransition(styles['-transition-end']);
@@ -143,7 +144,11 @@ class CSSProcessor {
      * Parses object-fit string
      */
     static parseObjectFit(objectFitStr) {
-        const parts = objectFitStr.trim().split(/\s+/);
+        // Split on whitespace, but also split when a digit is followed by a hyphen (negative number)
+        // This handles cases like "25-0.1" which should be ["25", "-0.1"]
+        // This is necessary because CSS/HTML parsers may remove whitespace before negative numbers
+        const normalized = objectFitStr.trim().replace(/(\d)(-\d)/g, '$1 $2');
+        const parts = normalized.split(/\s+/);
         const type = parts[0];
         let contain = 'pillarbox';
         let ambientBlur = 20;
