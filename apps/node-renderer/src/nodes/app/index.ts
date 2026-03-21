@@ -10,11 +10,38 @@ import { buildAppIfNeeded } from './app-builder';
 import { renderApp } from './app-renderer';
 import puppeteer from 'puppeteer';
 import { resolve } from 'path';
+import { existsSync } from 'fs';
+import { createHash } from 'crypto';
 
 export interface AppNodeParams {
   name?: string;
   src: string; // Path to app's dst/dist directory
   parameters: Record<string, string>; // All other attributes as parameters
+}
+
+/**
+ * Generate cache key for an app based on all inputs that affect rendering
+ */
+function generateAppCacheKey(
+  src: string,
+  parameters: Record<string, string>,
+  title: string,
+  date: string | undefined,
+  tags: string[],
+  outputName: string,
+  fps: number,
+  duration: number,
+): string {
+  const hash = createHash('sha256');
+  hash.update(src);
+  hash.update(JSON.stringify(parameters));
+  hash.update(title);
+  hash.update(date ?? '');
+  hash.update(tags.join(','));
+  hash.update(outputName);
+  hash.update(fps.toString());
+  hash.update(duration.toString());
+  return hash.digest('hex').substring(0, 16);
 }
 
 /**
@@ -98,7 +125,31 @@ export class AppNode implements INode {
       parameters: this.params.parameters,
     };
 
-    // Render app
+    // Check if cached result exists before launching browser
+    const cacheKey = generateAppCacheKey(
+      app.src,
+      app.parameters,
+      '', // title
+      undefined, // date
+      [], // tags
+      'default', // outputName
+      fps,
+      duration,
+    );
+
+    const cacheDir = resolve(context.projectDir, 'cache', app.id);
+    const cachedApng = resolve(cacheDir, `${cacheKey}.apng`);
+
+    if (existsSync(cachedApng)) {
+      console.log(
+        `Using cached app "${app.id}" (hash: ${cacheKey}) from ${cachedApng}`,
+      );
+      return {
+        video: cachedApng,
+      };
+    }
+
+    // No cache - need to render, so launch browser
     const browser = await puppeteer.launch({
       headless: true,
       args: [

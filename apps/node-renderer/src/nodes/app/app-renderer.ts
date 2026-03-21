@@ -439,36 +439,64 @@ export async function renderApps(
 ): Promise<AppRenderResult[]> {
   const results: AppRenderResult[] = [];
 
-  // Launch once and reuse across all apps.
-  // --allow-file-access-from-files is required so Chromium allows
-  // <script type="module"> and <link> tags to load sibling files
-  // when the page itself is served via file://.
-  const browser = await puppeteer.launch({
-    headless: true,
-    args: [
-      '--no-sandbox',
-      '--disable-setuid-sandbox',
-      '--allow-file-access-from-files',
-    ],
-  });
+  // First, check which apps are cached and which need rendering
+  const appsToRender: App[] = [];
+  const cachedResults: Map<string, AppRenderResult> = new Map();
+
+  for (const app of apps) {
+    const cacheKey = generateAppCacheKey(
+      app.src,
+      app.parameters,
+      title,
+      date,
+      tags,
+      outputName,
+      fps,
+      duration,
+    );
+
+    if (activeCacheKeys) {
+      activeCacheKeys.add(cacheKey);
+    }
+
+    // Check if cached APNG exists
+    const cacheDir = resolve(projectDir, 'cache', app.id);
+    const cachedApng = resolve(cacheDir, `${cacheKey}.apng`);
+
+    if (existsSync(cachedApng)) {
+      console.log(
+        `Using cached app "${app.id}" (hash: ${cacheKey}) from ${cachedApng}`,
+      );
+      cachedResults.set(app.id, {
+        app,
+        mode: 'animated',
+        path: cachedApng,
+      });
+    } else {
+      appsToRender.push(app);
+    }
+  }
+
+  // Only launch browser if there are apps that need rendering
+  let browser: Browser | null = null;
+  if (appsToRender.length > 0) {
+    // Launch once and reuse across all apps.
+    // --allow-file-access-from-files is required so Chromium allows
+    // <script type="module"> and <link> tags to load sibling files
+    // when the page itself is served via file://.
+    browser = await puppeteer.launch({
+      headless: true,
+      args: [
+        '--no-sandbox',
+        '--disable-setuid-sandbox',
+        '--allow-file-access-from-files',
+      ],
+    });
+  }
 
   try {
-    for (const app of apps) {
-      const cacheKey = generateAppCacheKey(
-        app.src,
-        app.parameters,
-        title,
-        date,
-        tags,
-        outputName,
-        fps,
-        duration,
-      );
-
-      if (activeCacheKeys) {
-        activeCacheKeys.add(cacheKey);
-      }
-
+    // Render apps that need rendering
+    for (const app of appsToRender) {
       const result = await renderApp({
         app,
         width,
@@ -480,13 +508,29 @@ export async function renderApps(
         tags,
         fps,
         duration,
-        browser,
+        browser: browser!,
       });
       results.push(result);
     }
-  } finally {
-    await browser.close();
-  }
 
-  return results;
+    // Combine results in original order
+    const finalResults: AppRenderResult[] = [];
+    for (const app of apps) {
+      const cachedResult = cachedResults.get(app.id);
+      if (cachedResult) {
+        finalResults.push(cachedResult);
+      } else {
+        const renderedResult = results.find(r => r.app.id === app.id);
+        if (renderedResult) {
+          finalResults.push(renderedResult);
+        }
+      }
+    }
+
+    return finalResults;
+  } finally {
+    if (browser) {
+      await browser.close();
+    }
+  }
 }

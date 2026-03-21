@@ -7,6 +7,24 @@ exports.AppNode = void 0;
 const app_builder_1 = require("./app-builder");
 const app_renderer_1 = require("./app-renderer");
 const puppeteer_1 = __importDefault(require("puppeteer"));
+const path_1 = require("path");
+const fs_1 = require("fs");
+const crypto_1 = require("crypto");
+/**
+ * Generate cache key for an app based on all inputs that affect rendering
+ */
+function generateAppCacheKey(src, parameters, title, date, tags, outputName, fps, duration) {
+    const hash = (0, crypto_1.createHash)('sha256');
+    hash.update(src);
+    hash.update(JSON.stringify(parameters));
+    hash.update(title);
+    hash.update(date ?? '');
+    hash.update(tags.join(','));
+    hash.update(outputName);
+    hash.update(fps.toString());
+    hash.update(duration.toString());
+    return hash.digest('hex').substring(0, 16);
+}
 /**
  * Application Node - Renders React/SPA apps using Puppeteer
  * Apps can be static (single frame) or animated (multiple frames)
@@ -78,7 +96,21 @@ class AppNode {
             src: this.params.src,
             parameters: this.params.parameters,
         };
-        // Render app
+        // Check if cached result exists before launching browser
+        const cacheKey = generateAppCacheKey(app.src, app.parameters, '', // title
+        undefined, // date
+        [], // tags
+        'default', // outputName
+        fps, duration);
+        const cacheDir = (0, path_1.resolve)(context.projectDir, 'cache', app.id);
+        const cachedApng = (0, path_1.resolve)(cacheDir, `${cacheKey}.apng`);
+        if ((0, fs_1.existsSync)(cachedApng)) {
+            console.log(`Using cached app "${app.id}" (hash: ${cacheKey}) from ${cachedApng}`);
+            return {
+                video: cachedApng,
+            };
+        }
+        // No cache - need to render, so launch browser
         const browser = await puppeteer_1.default.launch({
             headless: true,
             args: [
