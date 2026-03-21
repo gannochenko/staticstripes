@@ -25,5 +25,6 @@ export declare class NodeFactory {
     private static extractAIMusicAPIParams;
     private static extractElevenLabsParams;
     private static extractOpenAIParams;
+    private static extractAppParams;
 }
 //# sourceMappingURL=node-factory.d.ts.map

@@ -1,3 +1,19 @@
+<!-- App nodes for text overlays -->
+<!-- <node.app
+  name="intro_text"
+  src="../../examples/apps/test_text/dst"
+  title="Gräfrath, Solingen"
+  subtitle="Hidden Gem 🇩🇪"
+  fontSize="3"
+/>
+
+<node.app
+  name="location_text"
+  src="../../examples/apps/test_text/dst"
+  title="Worth Visiting!"
+  fontSize="4"
+/> -->
+
 <node.project>
   <title>Solingen, Gräfrath</title>
   <tag>travel</tag>
@@ -8,22 +24,52 @@
   <sequences>
     <sequence>
       <fragment class="clip juno" data-asset="20251030_082624" id="staircase" />
-      <fragment class="clip" data-asset="20251030_075735" id="static_building" />
+      <fragment
+        class="clip"
+        data-asset="20251030_075735"
+        id="static_building"
+      />
       <fragment class="clip" data-asset="20251030_080617" id="roofs" />
       <fragment class="clip juno" data-asset="20251030_080839" id="fountain" />
       <fragment class="clip" data-asset="20251030_081845" id="fluger" />
       <fragment class="clip" data-asset="20251030_081359" id="mill_wheels" />
-      <fragment class="clip juno" data-asset="20251030_082017" id="funny_faces" />
+      <fragment
+        class="clip juno"
+        data-asset="20251030_082017"
+        id="funny_faces"
+      />
       <fragment class="clip" data-asset="20251030_081645" id="forks" />
-      <fragment class="clip clarendon" data-asset="20251030_081816" id="chimney_smoke" />
-      <fragment class="clip" data-asset="20251029_172045" id="steet_view_dusk_2" />
-      <fragment class="clip" data-asset="20251029_172756" id="street_view_darkness" />
-      <fragment class="clip" data-asset="20251029_173251" id="museum_darkness" />
+      <fragment
+        class="clip clarendon"
+        data-asset="20251030_081816"
+        id="chimney_smoke"
+      />
+      <fragment
+        class="clip"
+        data-asset="20251029_172045"
+        id="steet_view_dusk_2"
+      />
+      <fragment
+        class="clip"
+        data-asset="20251029_172756"
+        id="street_view_darkness"
+      />
+      <fragment
+        class="clip"
+        data-asset="20251029_173251"
+        id="museum_darkness"
+      />
       <fragment class="clip" data-asset="20251029_173433" id="car" />
     </sequence>
     <sequence>
       <fragment class="music" data-asset="guitar_01" />
     </sequence>
+    <!-- <sequence>
+      <fragment class="intro_overlay" data-asset="intro_text_overlay" />
+    </sequence>
+    <sequence>
+      <fragment class="location_overlay" data-asset="location_overlay" />
+    </sequence> -->
   </sequences>
 
   <style>
@@ -32,40 +78,56 @@
       -object-fit: contain ambient 25 -0.1 0.7;
       -duration: 1500ms;
     }
-    
+
     .juno {
       filter: instagram-juno;
     }
-    
+
     .clarendon {
       filter: instagram-clarendon;
     }
-    
+
     #staircase {
       -trim-start: 6000ms;
       -duration: 2500ms;
     }
-    
+
     #roofs {
       -trim-start: 2000ms;
     }
-    
+
     #fluger {
       -trim-start: 2000ms;
     }
-    
+
     #steet_view_dusk_2 {
       -trim-start: 1500ms;
     }
-    
+
     #car {
       -duration: 2000ms;
     }
-    
+
     .music {
-      -duration: 21000ms;
+      -duration: calc(
+        url(#staircase.time.duration) + url(#static_building.time.duration) +
+          url(#roofs.time.duration) + url(#fountain.time.duration) +
+          url(#fluger.time.duration) + url(#mill_wheels.time.duration) +
+          url(#funny_faces.time.duration) + url(#forks.time.duration) +
+          url(#chimney_smoke.time.duration) + url(#steet_view_dusk_2.time.duration) +
+          url(#street_view_darkness.time.duration) + url(#museum_darkness.time.duration) +
+          url(#car.time.duration)
+      );
       -transition-start: fade-in 2000ms;
       -transition-end: fade-out 2000ms;
+    }
+
+    .intro_overlay {
+      -duration: 2500ms;
+    }
+
+    .location_overlay {
+      -duration: 21000ms;
     }
   </style>
 
@@ -83,7 +145,9 @@
     <asset name="20251030_081816" path="./video/20251030_081816.mp4" />
     <asset name="20251030_081845" path="./video/20251030_081845.mp4" />
     <asset name="20251030_082017" path="./video/20251030_082017.mp4" />
-    <asset name="guitar_01" path="../../z_assets/global_assets/audio/guitar_01.mp3" />
+    <asset name="guitar_01" path="./audio/guitar_01.mp3" />
+    <!-- <asset name="intro_text_overlay" input="$intro_text.output.video" />
+    <asset name="location_overlay" input="$location_text.output.video" /> -->
   </assets>
 
   <outputs>

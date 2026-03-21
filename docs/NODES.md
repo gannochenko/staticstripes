@@ -63,7 +63,11 @@ Milestone 5: Implement the project node and the filesystem node. Take everything
 8. The cache must be per output, and saved locally into the `.cache/<node-name>` folder
 9. The filesystem node reads the output and stores where needed
 
-Milestone 6: Implement support for youtube, s3 and instagram nodes. Borrow everything from the previous implementation, including the authentication pipelines (for this I think we need a separate cli command, such as `auth node=<node_name>` or something like that, and based on the node type the command chooses an appropriate auth way (the auth implementation should belong to the node implementation))
+Milestone 6: Implement support for applications. There is the application node now. The node has standard attributes: name q and src (points to the javascript file). The rest of the attributes should go to the application as parameters. Attributes support referencing outputs of other nodes. A fragment can reference an asset via the "asset" attribute, and that asset can
+have an input referencing the output of an application. An application can be static (one frame) and dynamic (several frames). Copy the previous implementation and put everything to the node.app node folder. An application emits events when
+it renders a frame and expects the ack signal back. An app requires the fps and resolution parameters, as usual, plus user defined properties.
+
+Milestone 7: Implement support for youtube, s3 and instagram nodes. Borrow everything from the previous implementation, including the authentication pipelines (for this I think we need a separate cli command, such as `auth node=<node_name>` or something like that, and based on the node type the command chooses an appropriate auth way (the auth implementation should belong to the node implementation))
 
 Example of `project.html`:
 
@@ -90,22 +94,20 @@ Example of `project.html`:
       <fragment class="intro_sound intro_duration" />
     </sequence>
     <sequence>
-      <fragment class="intro_image_message intro_duration">
-        <central_text extra="❄️🏔️🌨️" />
-      </fragment>
+      <fragment class="intro_image_message intro_duration" asset="intro_text" />
     </sequence>
     <sequence>
       <fragment class="outro_sound outro_duration" id="outro_sound" />
     </sequence>
     <sequence>
-      <fragment class="outro_message outro_duration" id="outro_message">
-        <central_text outro />
-      </fragment>
+      <fragment
+        class="outro_message outro_duration"
+        id="outro_message"
+        asset="outro_text"
+      />
     </sequence>
     <sequence>
-      <fragment>
-        <karaoke_text text="$joker_talks.output.text" />
-      </fragment>
+      <fragment asset="joke_karaoke_text" />
     </sequence>
   </sequences>
 
@@ -205,6 +207,7 @@ Example of `project.html`:
     />
     <asset name="mysterious_music" input="$intro_song.output.audio" />
     <asset name="audio_joke" input="$joker_talks.output.audio" />
+    <asset name="joke_karaoke_text" input="$joke_karakoke.output.text" />
   </assets>
 
   <outputs>
@@ -285,4 +288,23 @@ ${project.tags}
 <node.openai name="joker">
   <prompt> make a dad joke! </prompt>
 </node.openai>
+
+<node.app
+  name="joke_karakoke"
+  src="./karaoke_text/dst/index.js"
+  text="$joker_talks.output.text"
+/>
+
+<node.app
+  name="intro_text"
+  src="./central_text/dst/index.js"
+  text="Dad jokes 300"
+  extra="❄️🏔️🌨️"
+/>
+
+<node.app
+  name="outro_text"
+  src="./central_text/dst/index.js"
+  text="Dad jokes 300"
+/>
 ```

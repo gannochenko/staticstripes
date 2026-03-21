@@ -10,6 +10,7 @@ const instagram_1 = require("../nodes/instagram");
 const ai_music_api_ai_1 = require("../nodes/ai_music_api_ai");
 const elevenlabs_1 = require("../nodes/elevenlabs");
 const openai_1 = require("../nodes/openai");
+const app_1 = require("../nodes/app");
 /**
  * Factory for creating node instances from parsed nodes
  * Extracts parameters from HTML structure and passes them to node constructors
@@ -36,6 +37,8 @@ class NodeFactory {
                 return new elevenlabs_1.ElevenLabsNode(this.extractElevenLabsParams(parsedNode));
             case 'openai':
                 return new openai_1.OpenAINode(this.extractOpenAIParams(parsedNode));
+            case 'app':
+                return new app_1.AppNode(this.extractAppParams(parsedNode));
             default:
                 throw new Error(`Unknown node type: ${parsedNode.type}`);
         }
@@ -59,6 +62,7 @@ class NodeFactory {
             'ai_music_api_ai',
             'elevenlabs',
             'openai',
+            'app',
         ].includes(nodeType);
     }
     // Parameter extraction methods
@@ -223,6 +227,22 @@ class NodeFactory {
             name: parsedNode.name,
             prompt,
             model,
+        };
+    }
+    static extractAppParams(parsedNode) {
+        // src attribute is required
+        const src = parsedNode.attributes.get('src') || '';
+        // All other attributes become parameters (except name and src)
+        const parameters = {};
+        for (const [key, value] of parsedNode.attributes.entries()) {
+            if (key !== 'src' && key !== 'name') {
+                parameters[key] = value;
+            }
+        }
+        return {
+            name: parsedNode.name,
+            src,
+            parameters,
         };
     }
 }

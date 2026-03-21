@@ -1,6 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.CSSProcessor = void 0;
+const expression_parser_1 = require("./rendering/expression-parser");
 /**
  * Processes CSS properties and converts them to fragment properties
  * for the rendering engine
@@ -41,7 +42,7 @@ class CSSProcessor {
         }
         // Extract duration (in milliseconds)
         const durationStr = styles['-duration'] || '0ms';
-        const duration = this.parseTime(durationStr);
+        const duration = this.parseTimeOrExpression(durationStr);
         // Extract trim-start
         const trimLeftStr = styles['-trim-start'] || '0ms';
         const trimLeft = this.parseTime(trimLeftStr);
@@ -78,7 +79,7 @@ class CSSProcessor {
             objectFitContainPillarboxColor: objectFit.pillarboxColor,
             objectFitKenBurns: 'zoom-in',
             objectFitKenBurnsZoom: 30,
-            objectFitKenBurnsEffectDuration: duration,
+            objectFitKenBurnsEffectDuration: typeof duration === 'number' ? duration : 0,
             objectFitKenBurnsEasing: 'ease-in-out',
             objectFitKenBurnsFocalX: 50,
             objectFitKenBurnsFocalY: 50,
@@ -110,6 +111,21 @@ class CSSProcessor {
             return parseFloat(trimmed) * 1000;
         }
         return parseFloat(trimmed);
+    }
+    /**
+     * Parses time string or calc() expression
+     * Returns either a number (for simple time strings) or a CompiledExpression (for calc())
+     */
+    static parseTimeOrExpression(timeStr) {
+        if (!timeStr)
+            return 0;
+        const trimmed = timeStr.trim();
+        // Check if it's a calc() expression
+        if (trimmed.startsWith('calc(')) {
+            return (0, expression_parser_1.parseExpression)(trimmed);
+        }
+        // Otherwise parse as simple time value
+        return this.parseTime(trimmed);
     }
     /**
      * Parses transition string (e.g., "fade-in 500ms")

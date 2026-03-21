@@ -80,13 +80,15 @@ export function evaluateCompiledExpression(
   const evalContext: Record<string, number> = {};
 
   // Extract all fragment references from the original expression
+  // Matches both url(#id.prop) and bare #id.prop syntax
   const fragmentRefs = compiled.original.matchAll(
-    /#(\w+)\.([\w.]+?)(?=\s|[+\-*/)]|$)/g,
+    /url\(#(\w+)\.([\w.]+?)\)|#(\w+)\.([\w.]+?)(?=\s|[+\-*/)]|$)/g,
   );
 
   for (const match of fragmentRefs) {
-    const id = match[1];
-    const prop = match[2];
+    // Handle both url(#id.prop) format (groups 1,2) and bare #id.prop format (groups 3,4)
+    const id = match[1] || match[3];
+    const prop = match[2] || match[4];
     const varName = `${id}_${prop.replace(/\./g, '_')}`;
 
     // Resolve fragment value
@@ -114,7 +116,17 @@ export function evaluateCompiledExpression(
 
   try {
     // Evaluate with resolved context
-    return compiled.expression.evaluate(evalContext);
+    const result = compiled.expression.evaluate(evalContext);
+
+    // Debug: log if result is NaN
+    if (isNaN(result)) {
+      console.error(`[DEBUG] Expression evaluated to NaN:`);
+      console.error(`  Expression: ${compiled.original}`);
+      console.error(`  Eval context:`, evalContext);
+      console.error(`  Available fragments:`, Array.from(context.fragments.keys()));
+    }
+
+    return result;
   } catch (error) {
     throw new Error(
       `Failed to evaluate expression "${compiled.original}": ${error instanceof Error ? error.message : String(error)}`,

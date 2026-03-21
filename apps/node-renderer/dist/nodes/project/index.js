@@ -139,10 +139,43 @@ class ProjectNode {
     async prepareAssets(context) {
         const renderAssets = [];
         for (const asset of this.params.assets) {
-            // Skip assets that reference node outputs (they'll be resolved later)
+            // Resolve assets that reference node outputs (e.g., app outputs)
             if (asset.input) {
-                // TODO: Resolve node output references
-                console.warn(`⚠️  Asset "${asset.name}" references node output, skipping for now`);
+                // Parse input reference: $nodeName.output.outputName
+                const match = asset.input.match(/^\$([^.]+)\.output\.([^.]+)$/);
+                if (!match) {
+                    console.warn(`⚠️  Asset "${asset.name}" has invalid input format: ${asset.input}`);
+                    continue;
+                }
+                const [, nodeName, outputName] = match;
+                const outputPath = context.getOutput(nodeName, outputName);
+                if (!outputPath) {
+                    console.warn(`⚠️  Asset "${asset.name}" references missing output: ${asset.input}`);
+                    continue;
+                }
+                console.log(`✅ Resolved app asset "${asset.name}" from ${nodeName}.${outputName}`);
+                // Determine type from file extension
+                const ext = outputPath.split('.').pop()?.toLowerCase() || '';
+                let assetType = 'image';
+                if (ext === 'apng' || ext === 'mp4') {
+                    assetType = 'video';
+                }
+                else if (['mp3', 'wav', 'aac'].includes(ext)) {
+                    assetType = 'audio';
+                }
+                const renderAsset = {
+                    name: asset.name,
+                    path: outputPath,
+                    author: asset.author,
+                    type: assetType,
+                    duration: 0,
+                    width: 1920,
+                    height: 1080,
+                    rotation: 0,
+                    hasVideo: assetType === 'video' || assetType === 'image',
+                    hasAudio: false, // Apps don't have audio
+                };
+                renderAssets.push(renderAsset);
                 continue;
             }
             if (!asset.path) {
@@ -160,14 +193,17 @@ class ProjectNode {
             else if (['mp3', 'wav', 'aac', 'm4a'].includes(ext)) {
                 assetType = 'audio';
             }
-            // For now, use mock duration and dimensions
-            // TODO: Use ffprobe to get actual values
+            // Probe duration for videos and audio
+            let duration = 0;
+            if (assetType === 'video' || assetType === 'audio') {
+                duration = await (0, rendering_1.getAssetDuration)(assetPath);
+            }
             const renderAsset = {
                 name: asset.name,
                 path: assetPath,
                 author: asset.author,
                 type: assetType,
-                duration: 0, // Will be probed or set from CSS
+                duration,
                 width: 1920,
                 height: 1080,
                 rotation: 0,

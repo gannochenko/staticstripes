@@ -28,8 +28,13 @@ class Sequence {
             }
             const calculatedOverlayLeft = (0, expression_parser_1.calculateFinalValue)(fragment.overlayLeft, this.expressionContext);
             const calculatedDuration = (0, expression_parser_1.calculateFinalValue)(fragment.duration, this.expressionContext);
-            if (fragment.id === 'outro_message') {
-                debugger;
+            // Debug: log NaN durations
+            if (isNaN(calculatedDuration)) {
+                console.error(`[DEBUG] Fragment has NaN duration:`);
+                console.error(`  Fragment ID: ${fragment.id}`);
+                console.error(`  Asset: ${fragment.assetName}`);
+                console.error(`  Duration value:`, fragment.duration);
+                console.error(`  Available fragments in context:`, Array.from(this.expressionContext.fragments.keys()));
             }
             const timeContext = {
                 start: 0,
@@ -52,7 +57,7 @@ class Sequence {
             // Create audio stream: use actual audio if available, otherwise create silent stream
             // If fragment has -sound: off, always use silence
             let currentAudioStream;
-            if (fragment.sound === 'off') {
+            if (fragment.sound === "off") {
                 // Force silent audio when -sound: off
                 currentAudioStream = (0, stream_1.makeSilentStream)(calculatedDuration, this.buf);
             }
@@ -64,40 +69,43 @@ class Sequence {
                 currentAudioStream = (0, stream_1.makeSilentStream)(calculatedDuration, this.buf);
             }
             // duration and clipping adjustment
+            if (process.env.DEBUG) {
+                console.error(`[DEBUG] Trim check for ${fragment.id}:`);
+                console.error(`  trimLeft: ${fragment.trimLeft}`);
+                console.error(`  calculatedDuration: ${calculatedDuration}`);
+                console.error(`  asset.duration: ${asset.duration}`);
+                console.error(`  hasVideo: ${asset.hasVideo}`);
+                console.error(`  Will trim: ${fragment.trimLeft != 0 || calculatedDuration < asset.duration}`);
+            }
             if (fragment.trimLeft != 0 || calculatedDuration < asset.duration) {
-                // console.log('fragment.trimLeft=' + fragment.trimLeft);
-                // console.log('fragment.duration=' + calculatedDuration);
-                // console.log('asset.duration=' + asset.duration);
                 // Only trim video if it came from an actual source
                 if (asset.hasVideo) {
                     currentVideoStream.trim(fragment.trimLeft, fragment.trimLeft + calculatedDuration);
                 }
                 // Only trim audio if it came from an actual source AND sound is not off
-                if (asset.hasAudio && fragment.sound !== 'off') {
+                if (asset.hasAudio && fragment.sound !== "off") {
                     currentAudioStream.trim(fragment.trimLeft, fragment.trimLeft + calculatedDuration);
                 }
             }
             // Convert deprecated JPEG pixel format (yuvj420p) to standard yuv420p early
             // This prevents swscaler warnings from appearing in all subsequent filters
-            if (asset.hasVideo && asset.type === 'image') {
-                currentVideoStream.convertPixelFormat('yuv420p');
+            if (asset.hasVideo && asset.type === "image") {
+                currentVideoStream.convertPixelFormat("yuv420p");
             }
             // Apply visual filter early for static images (before padding/cloning)
             // This is more efficient as ffmpeg processes the filter once, then clones the filtered frame
-            if (asset.hasVideo &&
-                asset.type === 'image' &&
-                fragment.visualFilter) {
+            if (asset.hasVideo && asset.type === "image" && fragment.visualFilter) {
                 currentVideoStream.filter(fragment.visualFilter);
             }
             if (asset.duration === 0 &&
                 calculatedDuration > 0 &&
-                asset.type === 'image' &&
-                fragment.objectFit !== 'ken-burns') {
+                asset.type === "image" &&
+                fragment.objectFit !== "ken-burns") {
                 // special case for images - extend static image to desired duration
                 // Skip tpad for Ken Burns - zoompan will generate the frames
                 currentVideoStream.tPad({
                     start: calculatedDuration,
-                    startMode: 'clone',
+                    startMode: "clone",
                 });
             }
             // stream normalization (only for actual video, not synthetic blank video)
@@ -105,7 +113,7 @@ class Sequence {
                 // fps reduction
                 currentVideoStream.fps(this.output.fps);
                 // fitting the video stream into the output frame
-                if (fragment.objectFit === 'ken-burns') {
+                if (fragment.objectFit === "ken-burns") {
                     // Ken Burns effect (zoom/pan)
                     currentVideoStream.kenBurns({
                         effect: fragment.objectFitKenBurns,
@@ -124,7 +132,7 @@ class Sequence {
                         panEndY: fragment.objectFitKenBurnsPanEndY,
                     });
                 }
-                else if (fragment.objectFit === 'cover') {
+                else if (fragment.objectFit === "cover") {
                     currentVideoStream.fitOutputCover(this.output.resolution);
                 }
                 else {
@@ -155,16 +163,16 @@ class Sequence {
                     });
                 }
                 // visual filter (for video assets - images are filtered earlier before padding)
-                if (fragment.visualFilter && asset.type !== 'image') {
+                if (fragment.visualFilter && asset.type !== "image") {
                     currentVideoStream.filter(fragment.visualFilter);
                 }
             }
             // transitions
-            if (fragment.transitionIn === 'fade-in') {
+            if (fragment.transitionIn === "fade-in") {
                 currentVideoStream.fade({
                     fades: [
                         {
-                            type: 'in',
+                            type: "in",
                             startTime: 0,
                             duration: fragment.transitionInDuration,
                         },
@@ -173,18 +181,18 @@ class Sequence {
                 currentAudioStream.fade({
                     fades: [
                         {
-                            type: 'in',
+                            type: "in",
                             startTime: 0,
                             duration: fragment.transitionInDuration,
                         },
                     ],
                 });
             }
-            if (fragment.transitionOut === 'fade-out') {
+            if (fragment.transitionOut === "fade-out") {
                 currentVideoStream.fade({
                     fades: [
                         {
-                            type: 'out',
+                            type: "out",
                             startTime: calculatedDuration - fragment.transitionOutDuration,
                             duration: fragment.transitionOutDuration,
                         },
@@ -193,21 +201,13 @@ class Sequence {
                 currentAudioStream.fade({
                     fades: [
                         {
-                            type: 'out',
+                            type: "out",
                             startTime: calculatedDuration - fragment.transitionOutDuration,
                             duration: fragment.transitionOutDuration,
                         },
                     ],
                 });
             }
-            // console.log(
-            //   'id=' +
-            //     fragment.id +
-            //     ' overlay=' +
-            //     calculatedOverlayLeft +
-            //     ' duration=' +
-            //     fragment.duration,
-            // );
             // merging to the main streams
             if (!firstOne) {
                 // attach current streams to the main ones, depending on the stated overlap
@@ -218,10 +218,6 @@ class Sequence {
                 }
                 else {
                     const otherStreamOffsetLeft = this.time + calculatedOverlayLeft;
-                    // console.log('this.time=' + this.time);
-                    // console.log('streamDuration=' + this.time);
-                    // console.log('otherStreamDuration=' + calculatedDuration);
-                    // console.log('otherStreamOffsetLeft=' + otherStreamOffsetLeft);
                     // use overlay
                     this.videoStream.overlayStream(currentVideoStream, {
                         flipLayers: fragment.overlayZIndex < 0,
@@ -246,8 +242,8 @@ class Sequence {
                     // padding video with a transparent fragment
                     currentVideoStream.tPad({
                         start: calculatedOverlayLeft,
-                        startMode: 'add',
-                        color: '#00000000',
+                        startMode: "add",
+                        color: "#00000000",
                     });
                     // padding audio with a slient fragment
                     currentAudioStream.tPad({
@@ -255,21 +251,20 @@ class Sequence {
                     });
                 }
                 else if (calculatedOverlayLeft < 0) {
-                    throw new Error('overlay cannot be negative for the first fragment in a sequence (fragment id = ' +
+                    throw new Error("overlay cannot be negative for the first fragment in a sequence (fragment id = " +
                         fragment.id +
-                        ')');
+                        ")");
                 }
-                // if (fragment.id === 'end_music') {
-                //   console.log(
-                //     this.expressionContext.fragments.get('ending_screen')!.time,
-                //   );
-                // }
                 this.videoStream = currentVideoStream;
                 this.audioStream = currentAudioStream;
             }
             timeContext.start = this.time + calculatedOverlayLeft;
             timeContext.end = this.time + calculatedDuration + calculatedOverlayLeft;
             this.time += calculatedDuration + calculatedOverlayLeft;
+            // Debug: log fragment addition to context
+            if (process.env.DEBUG) {
+                console.error(`[DEBUG] Adding fragment to context: ${fragment.id} (duration: ${calculatedDuration}ms)`);
+            }
             this.expressionContext.fragments.set(fragment.id, {
                 time: timeContext,
             });
@@ -284,7 +279,6 @@ class Sequence {
                 overlayLeft: calculatedOverlayLeft,
                 enabled: fragment.enabled,
             });
-            // console.log('new time=' + this.time);
             firstOne = false;
         });
     }

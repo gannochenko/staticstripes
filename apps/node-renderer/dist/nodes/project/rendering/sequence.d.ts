@@ -1,7 +1,7 @@
-import { AssetManager } from './asset-manager';
-import { ExpressionContext } from './expression-parser';
-import { FilterBuffer, Stream } from './stream';
-import { Output, SequenceDefinition, FragmentDebugInfo } from './types';
+import { AssetManager } from "./asset-manager";
+import { ExpressionContext } from "./expression-parser";
+import { FilterBuffer, Stream } from "./stream";
+import { Output, SequenceDefinition, FragmentDebugInfo } from "./types";
 export declare class Sequence {
     private buf;
     private definition;

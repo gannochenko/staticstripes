@@ -18,6 +18,11 @@ export declare class CSSProcessor {
      */
     private static parseTime;
     /**
+     * Parses time string or calc() expression
+     * Returns either a number (for simple time strings) or a CompiledExpression (for calc())
+     */
+    private static parseTimeOrExpression;
+    /**
      * Parses transition string (e.g., "fade-in 500ms")
      */
     private static parseTransition;

@@ -67,3 +67,6 @@ export type { ElevenLabsNodeParams } from './nodes/elevenlabs';
 
 export { OpenAINode } from './nodes/openai';
 export type { OpenAINodeParams } from './nodes/openai';
+
+export { AppNode } from './nodes/app';
+export type { AppNodeParams } from './nodes/app';

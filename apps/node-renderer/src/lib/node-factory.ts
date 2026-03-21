@@ -16,6 +16,7 @@ import {
   type ElevenLabsNodeParams,
 } from '../nodes/elevenlabs';
 import { OpenAINode, type OpenAINodeParams } from '../nodes/openai';
+import { AppNode, type AppNodeParams } from '../nodes/app';
 
 /**
  * Factory for creating node instances from parsed nodes
@@ -43,6 +44,8 @@ export class NodeFactory {
         return new ElevenLabsNode(this.extractElevenLabsParams(parsedNode));
       case 'openai':
         return new OpenAINode(this.extractOpenAIParams(parsedNode));
+      case 'app':
+        return new AppNode(this.extractAppParams(parsedNode));
       default:
         throw new Error(`Unknown node type: ${parsedNode.type}`);
     }
@@ -68,6 +71,7 @@ export class NodeFactory {
       'ai_music_api_ai',
       'elevenlabs',
       'openai',
+      'app',
     ].includes(nodeType);
   }
 
@@ -349,6 +353,25 @@ export class NodeFactory {
       name: parsedNode.name,
       prompt,
       model,
+    };
+  }
+
+  private static extractAppParams(parsedNode: ParsedNode): AppNodeParams {
+    // src attribute is required
+    const src = parsedNode.attributes.get('src') || '';
+
+    // All other attributes become parameters (except name and src)
+    const parameters: Record<string, string> = {};
+    for (const [key, value] of parsedNode.attributes.entries()) {
+      if (key !== 'src' && key !== 'name') {
+        parameters[key] = value;
+      }
+    }
+
+    return {
+      name: parsedNode.name,
+      src,
+      parameters,
     };
   }
 }

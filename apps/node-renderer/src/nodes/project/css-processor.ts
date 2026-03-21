@@ -1,5 +1,6 @@
 import type { Fragment as ParsedFragment, Sequence as ParsedSequence } from '../../lib/type';
 import type { Fragment as RenderFragment, SequenceDefinition } from './rendering/types';
+import { parseExpression } from './rendering/expression-parser';
 
 /**
  * Processes CSS properties and converts them to fragment properties
@@ -55,7 +56,7 @@ export class CSSProcessor {
 
     // Extract duration (in milliseconds)
     const durationStr = styles['-duration'] || '0ms';
-    const duration = this.parseTime(durationStr);
+    const duration = this.parseTimeOrExpression(durationStr);
 
     // Extract trim-start
     const trimLeftStr = styles['-trim-start'] || '0ms';
@@ -99,7 +100,7 @@ export class CSSProcessor {
       objectFitContainPillarboxColor: objectFit.pillarboxColor,
       objectFitKenBurns: 'zoom-in',
       objectFitKenBurnsZoom: 30,
-      objectFitKenBurnsEffectDuration: duration,
+      objectFitKenBurnsEffectDuration: typeof duration === 'number' ? duration : 0,
       objectFitKenBurnsEasing: 'ease-in-out',
       objectFitKenBurnsFocalX: 50,
       objectFitKenBurnsFocalY: 50,
@@ -132,6 +133,24 @@ export class CSSProcessor {
       return parseFloat(trimmed) * 1000;
     }
     return parseFloat(trimmed);
+  }
+
+  /**
+   * Parses time string or calc() expression
+   * Returns either a number (for simple time strings) or a CompiledExpression (for calc())
+   */
+  private static parseTimeOrExpression(timeStr: string): number | ReturnType<typeof parseExpression> {
+    if (!timeStr) return 0;
+
+    const trimmed = timeStr.trim();
+
+    // Check if it's a calc() expression
+    if (trimmed.startsWith('calc(')) {
+      return parseExpression(trimmed);
+    }
+
+    // Otherwise parse as simple time value
+    return this.parseTime(trimmed);
   }
 
   /**

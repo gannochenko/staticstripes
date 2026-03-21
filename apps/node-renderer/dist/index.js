@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.OpenAINode = exports.ElevenLabsNode = exports.AIMusicAPINode = exports.InstagramNode = exports.S3Node = exports.YouTubeNode = exports.FilesystemNode = exports.ProjectNode = exports.NodeCache = exports.ExecutionContext = exports.DAGRunner = exports.DAGValidator = exports.NodeFactory = exports.findChildElementsByTagName = exports.getTextContent = exports.HTMLParser = void 0;
+exports.AppNode = exports.OpenAINode = exports.ElevenLabsNode = exports.AIMusicAPINode = exports.InstagramNode = exports.S3Node = exports.YouTubeNode = exports.FilesystemNode = exports.ProjectNode = exports.NodeCache = exports.ExecutionContext = exports.DAGRunner = exports.DAGValidator = exports.NodeFactory = exports.findChildElementsByTagName = exports.getTextContent = exports.HTMLParser = void 0;
 // HTML Parser
 var html_parser_1 = require("./lib/html-parser");
 Object.defineProperty(exports, "HTMLParser", { enumerable: true, get: function () { return html_parser_1.HTMLParser; } });
@@ -34,4 +34,6 @@ var elevenlabs_1 = require("./nodes/elevenlabs");
 Object.defineProperty(exports, "ElevenLabsNode", { enumerable: true, get: function () { return elevenlabs_1.ElevenLabsNode; } });
 var openai_1 = require("./nodes/openai");
 Object.defineProperty(exports, "OpenAINode", { enumerable: true, get: function () { return openai_1.OpenAINode; } });
+var app_1 = require("./nodes/app");
+Object.defineProperty(exports, "AppNode", { enumerable: true, get: function () { return app_1.AppNode; } });
 //# sourceMappingURL=index.js.map
