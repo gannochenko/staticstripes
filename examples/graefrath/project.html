@@ -82,7 +82,7 @@
 
   <sequences>
     <sequence>
-      <fragment class="clip juno" data-asset="20251030_082624" id="staircase" />
+      <fragment class="clip" data-asset="20251030_082624" id="staircase" />
       <fragment
         class="clip"
         data-asset="20251030_075735"
@@ -98,11 +98,7 @@
         id="funny_faces"
       />
       <fragment class="clip" data-asset="20251030_081645" id="forks" />
-      <fragment
-        class="clip"
-        data-asset="20251030_081816"
-        id="chimney_smoke"
-      />
+      <fragment class="clip" data-asset="20251030_081816" id="chimney_smoke" />
       <fragment
         class="clip"
         data-asset="20251029_172045"
@@ -194,9 +190,10 @@
           url(#roofs.time.duration) + url(#fountain.time.duration) +
           url(#fluger.time.duration) + url(#mill_wheels.time.duration) +
           url(#funny_faces.time.duration) + url(#forks.time.duration) +
-          url(#chimney_smoke.time.duration) + url(#steet_view_dusk_2.time.duration) +
-          url(#street_view_darkness.time.duration) + url(#museum_darkness.time.duration) +
-          url(#car.time.duration)
+          url(#chimney_smoke.time.duration) +
+          url(#steet_view_dusk_2.time.duration) +
+          url(#street_view_darkness.time.duration) +
+          url(#museum_darkness.time.duration) + url(#car.time.duration)
       );
       -transition-start: fade-in 500ms;
       -transition-end: fade-out 2000ms;
@@ -208,12 +205,16 @@
     }
 
     .text_overlay_2 {
-      -duration: calc(url(#static_building.time.duration) + url(#roofs.time.duration));
+      -duration: calc(
+        url(#static_building.time.duration) + url(#roofs.time.duration)
+      );
       -offset-start: calc(url(#static_building.time.start));
     }
 
     .text_overlay_3 {
-      -duration: calc(url(#fountain.time.duration) + url(#fluger.time.duration));
+      -duration: calc(
+        url(#fountain.time.duration) + url(#fluger.time.duration)
+      );
       -offset-start: calc(url(#fountain.time.start));
     }
 
@@ -233,12 +234,17 @@
     }
 
     .text_overlay_7 {
-      -duration: calc(url(#street_view_darkness.time.duration) + url(#steet_view_dusk_2.time.duration));
+      -duration: calc(
+        url(#street_view_darkness.time.duration) +
+          url(#steet_view_dusk_2.time.duration)
+      );
       -offset-start: calc(url(#steet_view_dusk_2.time.start));
     }
 
     .text_overlay_8 {
-      -duration: calc(url(#car.time.duration) + url(#museum_darkness.time.duration));
+      -duration: calc(
+        url(#car.time.duration) + url(#museum_darkness.time.duration)
+      );
       -offset-start: calc(url(#museum_darkness.time.start));
     }
 
@@ -248,9 +254,10 @@
           url(#roofs.time.duration) + url(#fountain.time.duration) +
           url(#fluger.time.duration) + url(#mill_wheels.time.duration) +
           url(#funny_faces.time.duration) + url(#forks.time.duration) +
-          url(#chimney_smoke.time.duration) + url(#steet_view_dusk_2.time.duration) +
-          url(#street_view_darkness.time.duration) + url(#museum_darkness.time.duration) +
-          url(#car.time.duration)
+          url(#chimney_smoke.time.duration) +
+          url(#steet_view_dusk_2.time.duration) +
+          url(#street_view_darkness.time.duration) +
+          url(#museum_darkness.time.duration) + url(#car.time.duration)
       );
     }
   </style>

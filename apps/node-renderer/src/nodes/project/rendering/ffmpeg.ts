@@ -389,11 +389,11 @@ export function makeOverlay(
     isAudio: false,
   };
 
-  let overlayParams = 'alpha=premultiplied';
+  let overlayParams = 'format=auto';
   if (options?.x !== undefined || options?.y !== undefined) {
     const x = options.x ?? 0;
     const y = options.y ?? 0;
-    overlayParams = `x=${x}:y=${y}:alpha=premultiplied`;
+    overlayParams = `x=${x}:y=${y}:format=auto`;
   }
 
   return new Filter(
