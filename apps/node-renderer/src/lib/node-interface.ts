@@ -46,6 +46,16 @@ export interface NodeExecutionContext {
    * Cache directory for this node
    */
   cacheDir?: string;
+
+  /**
+   * Output resolution from project configuration
+   */
+  outputResolution: { width: number; height: number };
+
+  /**
+   * Output FPS from project configuration
+   */
+  outputFps: number;
 }
 
 /**

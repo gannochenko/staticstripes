@@ -76,6 +76,6 @@ export declare class DAGValidator {
     /**
      * Validates the entire DAG structure
      */
-    static validate(parsedNodes: ParsedNode[], nodes: INode[]): DAGValidationResult;
+    static validate(parsedNodes: ParsedNode[], nodes: INode[], projectOutputs?: import('./type').Output[]): DAGValidationResult;
 }
 //# sourceMappingURL=dag-validator.d.ts.map

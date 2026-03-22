@@ -190,7 +190,7 @@ class DAGValidator {
     /**
      * Validates the entire DAG structure
      */
-    static validate(parsedNodes, nodes) {
+    static validate(parsedNodes, nodes, projectOutputs = []) {
         const errors = [];
         // 1. Check for project node
         const projectNodes = parsedNodes.filter((n) => n.type === 'project');
@@ -233,7 +233,11 @@ class DAGValidator {
             const parsedNode = parsedNodes[i];
             const name = parsedNode.name || parsedNode.type;
             const node = nodes[i];
-            const outputs = node.getOutputs().map((o) => o.name);
+            // For project node, use outputs from parameter instead of node.getOutputs()
+            // because node was created before validation
+            const outputs = parsedNode.type === 'project'
+                ? projectOutputs.map((o) => o.name)
+                : node.getOutputs().map((o) => o.name);
             outputMap.set(name, new Set(outputs));
         }
         // 5. Validate all node references

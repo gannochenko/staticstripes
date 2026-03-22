@@ -67,7 +67,7 @@ export declare class HTMLParser {
      */
     private extractAssets;
     /**
-     * Extracts outputs from <outputs> section
+     * Extracts outputs from top-level <outputs> element
      */
     private extractOutputs;
     /**

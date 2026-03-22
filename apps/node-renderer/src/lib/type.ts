@@ -94,9 +94,6 @@ export interface ProjectContent {
   /** Asset definitions */
   assets: Asset[];
 
-  /** Output configurations */
-  outputs: Output[];
-
   /** Sequences with fragments */
   sequences: Sequence[];
 
@@ -125,6 +122,9 @@ export interface ParsedNode {
 
   /** Parsed project content (only for project nodes) */
   projectContent?: ProjectContent;
+
+  /** Conditional execution: node executes only when this output is selected (e.g., "$output.vertical_30") */
+  when?: string;
 }
 
 /**
@@ -139,4 +139,7 @@ export interface ParsedProject {
 
   /** Project node (should be exactly one) */
   projectNode: ParsedNode | null;
+
+  /** Output configurations (defined at top level, outside project node) */
+  outputs: Output[];
 }

@@ -1,3 +1,7 @@
+<outputs>
+  <output name="instagram_shorts" resolution="1080x1920" fps="30" />
+</outputs>
+
 <!-- App nodes for text overlays -->
 <node.app
   name="text_1"
@@ -276,10 +280,6 @@
     <asset name="text_8_overlay" input="$text_8.output.video" />
     <asset name="geo_overlay" input="$geo_text.output.video" />
   </assets>
-
-  <outputs>
-    <output name="instagram_shorts" resolution="1080x1920" fps="30" />
-  </outputs>
 
   <ffmpeg>
     <option name="preview">

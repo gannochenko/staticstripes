@@ -136,13 +136,15 @@ class DAGRunner {
     nodes;
     projectDir;
     options;
+    outputs;
     cache;
     context;
-    constructor(parsedNodes, nodes, projectDir, options = {}) {
+    constructor(parsedNodes, nodes, projectDir, options = {}, outputs = []) {
         this.parsedNodes = parsedNodes;
         this.nodes = nodes;
         this.projectDir = projectDir;
         this.options = options;
+        this.outputs = outputs;
         this.cache = new NodeCache();
         this.context = new ExecutionContext();
     }
@@ -241,6 +243,8 @@ class DAGRunner {
                     },
                     projectDir: this.projectDir,
                     cacheDir: undefined, // TODO: Implement cache directory
+                    outputResolution: this.options.outputResolution || { width: 1920, height: 1080 },
+                    outputFps: this.options.outputFps || 30,
                 };
                 const result = await node.execute(nodeContext);
                 // Store results in outputs map
@@ -332,7 +336,7 @@ class DAGRunner {
         const executedNodes = [];
         try {
             // Validate DAG first
-            const validation = dag_validator_1.DAGValidator.validate(this.parsedNodes, this.nodes);
+            const validation = dag_validator_1.DAGValidator.validate(this.parsedNodes, this.nodes, this.outputs);
             if (!validation.valid) {
                 throw new Error(`DAG validation failed: ${validation.errors.map((e) => e.message).join(', ')}`);
             }

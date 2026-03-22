@@ -1,5 +1,5 @@
 import type { INode } from './node-interface';
-import type { ParsedNode } from './type';
+import type { ParsedNode, Output } from './type';
 import { DAGValidator } from './dag-validator';
 import * as crypto from 'crypto';
 
@@ -163,6 +163,8 @@ export interface DAGRunnerOptions {
   onNodeStart?: (nodeName: string) => void;
   onNodeComplete?: (result: NodeExecutionResult) => void;
   onNodeError?: (nodeName: string, error: Error) => void;
+  outputResolution?: { width: number; height: number };
+  outputFps?: number;
 }
 
 /**
@@ -177,6 +179,7 @@ export class DAGRunner {
     private nodes: INode[],
     private projectDir: string,
     private options: DAGRunnerOptions = {},
+    private outputs: Output[] = [],
   ) {
     this.cache = new NodeCache();
     this.context = new ExecutionContext();
@@ -301,6 +304,8 @@ export class DAGRunner {
           },
           projectDir: this.projectDir,
           cacheDir: undefined, // TODO: Implement cache directory
+          outputResolution: this.options.outputResolution || { width: 1920, height: 1080 },
+          outputFps: this.options.outputFps || 30,
         };
 
         const result = await node.execute(nodeContext);
@@ -409,7 +414,7 @@ export class DAGRunner {
 
     try {
       // Validate DAG first
-      const validation = DAGValidator.validate(this.parsedNodes, this.nodes);
+      const validation = DAGValidator.validate(this.parsedNodes, this.nodes, this.outputs);
 
       if (!validation.valid) {
         throw new Error(

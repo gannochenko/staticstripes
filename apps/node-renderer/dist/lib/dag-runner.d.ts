@@ -1,5 +1,5 @@
 import type { INode } from './node-interface';
-import type { ParsedNode } from './type';
+import type { ParsedNode, Output } from './type';
 /**
  * Stores the output values from executed nodes
  */
@@ -109,6 +109,11 @@ export interface DAGRunnerOptions {
     onNodeStart?: (nodeName: string) => void;
     onNodeComplete?: (result: NodeExecutionResult) => void;
     onNodeError?: (nodeName: string, error: Error) => void;
+    outputResolution?: {
+        width: number;
+        height: number;
+    };
+    outputFps?: number;
 }
 /**
  * Executes a DAG of nodes
@@ -118,9 +123,10 @@ export declare class DAGRunner {
     private nodes;
     private projectDir;
     private options;
+    private outputs;
     private cache;
     private context;
-    constructor(parsedNodes: ParsedNode[], nodes: INode[], projectDir: string, options?: DAGRunnerOptions);
+    constructor(parsedNodes: ParsedNode[], nodes: INode[], projectDir: string, options?: DAGRunnerOptions, outputs?: Output[]);
     /**
      * Gets the execution context
      */

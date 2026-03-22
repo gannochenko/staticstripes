@@ -1,5 +1,5 @@
 import type { INode } from './node-interface';
-import type { ParsedNode } from './type';
+import type { ParsedNode, Output } from './type';
 import { getTextContent, findChildElementsByTagName } from './html-parser';
 
 import { ProjectNode, type ProjectNodeParams } from '../nodes/project';
@@ -26,10 +26,10 @@ export class NodeFactory {
   /**
    * Creates a node instance based on the parsed node type
    */
-  public static createNode(parsedNode: ParsedNode): INode {
+  public static createNode(parsedNode: ParsedNode, outputs: Output[] = []): INode {
     switch (parsedNode.type) {
       case 'project':
-        return new ProjectNode(this.extractProjectParams(parsedNode));
+        return new ProjectNode(this.extractProjectParams(parsedNode, outputs));
       case 'filesystem':
         return new FilesystemNode(this.extractFilesystemParams(parsedNode));
       case 'youtube':
@@ -54,8 +54,8 @@ export class NodeFactory {
   /**
    * Creates node instances for all parsed nodes
    */
-  public static createNodes(parsedNodes: ParsedNode[]): INode[] {
-    return parsedNodes.map((parsedNode) => this.createNode(parsedNode));
+  public static createNodes(parsedNodes: ParsedNode[], outputs: Output[] = []): INode[] {
+    return parsedNodes.map((parsedNode) => this.createNode(parsedNode, outputs));
   }
 
   /**
@@ -79,6 +79,7 @@ export class NodeFactory {
 
   private static extractProjectParams(
     parsedNode: ParsedNode,
+    outputs: Output[],
   ): ProjectNodeParams {
     const content = parsedNode.projectContent;
     if (!content) {
@@ -89,7 +90,7 @@ export class NodeFactory {
       name: parsedNode.name,
       title: content.title,
       tags: content.tags,
-      outputs: content.outputs,
+      outputs,
       sequences: content.sequences,
       assets: content.assets,
       ffmpegOptions: content.ffmpegOptions,

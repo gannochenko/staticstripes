@@ -72,8 +72,6 @@ export interface ProjectContent {
     css: Map<Element, CSSProperties>;
     /** Asset definitions */
     assets: Asset[];
-    /** Output configurations */
-    outputs: Output[];
     /** Sequences with fragments */
     sequences: Sequence[];
     /** FFmpeg encoding options */
@@ -95,6 +93,8 @@ export interface ParsedNode {
     children: Element[];
     /** Parsed project content (only for project nodes) */
     projectContent?: ProjectContent;
+    /** Conditional execution: node executes only when this output is selected (e.g., "$output.vertical_30") */
+    when?: string;
 }
 /**
  * Represents the complete parsed project
@@ -106,5 +106,7 @@ export interface ParsedProject {
     nodes: ParsedNode[];
     /** Project node (should be exactly one) */
     projectNode: ParsedNode | null;
+    /** Output configurations (defined at top level, outside project node) */
+    outputs: Output[];
 }
 //# sourceMappingURL=type.d.ts.map

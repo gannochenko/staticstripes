@@ -102,13 +102,13 @@ async function validateProject(
 
     // Create nodes
     console.log('🏗️  Creating node instances...');
-    const nodes = NodeFactory.createNodes(result.nodes);
+    const nodes = NodeFactory.createNodes(result.nodes, result.outputs);
     console.log(`✅ Created ${nodes.length} node instance(s)`);
     console.log();
 
     // Validate DAG
     console.log('🔍 Validating DAG structure...');
-    const validation = DAGValidator.validate(result.nodes, nodes);
+    const validation = DAGValidator.validate(result.nodes, nodes, result.outputs);
 
     if (!validation.valid) {
       console.error('❌ Validation failed!\n');
@@ -193,14 +193,32 @@ async function executeProject(
     // Parse and validate
     const parser = new HTMLParser();
     const result = await parser.parseFile(absolutePath);
-    const nodes = NodeFactory.createNodes(result.nodes);
+    const nodes = NodeFactory.createNodes(result.nodes, result.outputs);
 
     // Get project directory (directory containing project.html)
     const projectDir = path.dirname(absolutePath);
 
+    // Extract output resolution and FPS from top-level outputs
+    let outputResolution = { width: 1920, height: 1080 }; // default
+    let outputFps = 30; // default
+
+    if (result.outputs.length > 0) {
+      const firstOutput = result.outputs[0];
+      // Parse resolution "1080x1920"
+      const [width, height] = firstOutput.resolution.split('x').map(Number);
+      if (width && height) {
+        outputResolution = { width, height };
+      }
+      if (firstOutput.fps) {
+        outputFps = firstOutput.fps;
+      }
+    }
+
     // Create runner
     const runner = new DAGRunner(result.nodes, nodes, projectDir, {
       enableCache,
+      outputResolution,
+      outputFps,
       onNodeStart: (nodeName) => {
         console.log(`🔄 Executing: ${nodeName}`);
       },
@@ -222,10 +240,21 @@ async function executeProject(
           console.error(error.stack);
         }
       },
-    });
+    }, result.outputs);
 
     console.log(`Cache: ${enableCache ? 'enabled' : 'disabled'}`);
     console.log();
+
+    // Validate DAG
+    const validation = DAGValidator.validate(result.nodes, nodes, result.outputs);
+    if (!validation.valid) {
+      printSeparator('=');
+      console.log('  ❌ Validation Failed');
+      printSeparator('=');
+      console.log();
+      console.log('Please fix the errors above and try again.');
+      process.exit(1);
+    }
 
     // Execute
     const startTime = Date.now();

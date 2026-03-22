@@ -4,7 +4,6 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.renderApp = renderApp;
-exports.renderApps = renderApps;
 const puppeteer_1 = __importDefault(require("puppeteer"));
 const promises_1 = require("fs/promises");
 const path_1 = require("path");
@@ -13,16 +12,16 @@ const crypto_1 = require("crypto");
 const child_process_1 = require("child_process");
 const RENDER_TIMEOUT_MS = 30000; // Increased for animated apps
 function generateAppCacheKey(src, parameters, title, date, tags, outputName, fps, duration) {
-    const hash = (0, crypto_1.createHash)('sha256');
+    const hash = (0, crypto_1.createHash)("sha256");
     hash.update(src);
     hash.update(JSON.stringify(parameters));
     hash.update(title);
-    hash.update(date ?? '');
-    hash.update(tags.join(','));
+    hash.update(date ?? "");
+    hash.update(tags.join(","));
     hash.update(outputName);
     hash.update(fps.toString());
     hash.update(duration.toString());
-    return hash.digest('hex').substring(0, 16);
+    return hash.digest("hex").substring(0, 16);
 }
 /**
  * Merges a sequence of PNG frames into an MP4 video using FFmpeg
@@ -34,7 +33,7 @@ async function mergeFramesToVideo(capturedFrames, outputPath, fps, width, height
         // Calculate how many output frames we need for the full duration
         const totalFrames = Math.ceil((duration / 1000) * fps);
         console.log(`\nDuplicating ${capturedFrames.length} captured frames to ${totalFrames} output frames`);
-        console.log(`  Captured frame numbers: ${capturedFrames.map(f => f.number).join(', ')}`);
+        console.log(`  Captured frame numbers: ${capturedFrames.map((f) => f.number).join(", ")}`);
         // Sort captured frames by frame number (just in case they arrived out of order)
         capturedFrames.sort((a, b) => a.number - b.number);
         // Build output frame sequence by filling gaps between captured frames
@@ -52,13 +51,16 @@ async function mergeFramesToVideo(capturedFrames, outputPath, fps, width, height
         let currentCaptureIndex = 0;
         let rangeStart = 0;
         for (let i = 0; i <= totalFrames; i++) {
-            if (i === totalFrames || (currentCaptureIndex < capturedFrames.length - 1 && capturedFrames[currentCaptureIndex + 1].number <= i)) {
+            if (i === totalFrames ||
+                (currentCaptureIndex < capturedFrames.length - 1 &&
+                    capturedFrames[currentCaptureIndex + 1].number <= i)) {
                 const rangeEnd = i - 1;
                 if (rangeStart <= rangeEnd) {
                     console.log(`    Frames ${rangeStart}-${rangeEnd}: use capture #${capturedFrames[currentCaptureIndex].number}`);
                 }
                 rangeStart = i;
-                if (currentCaptureIndex < capturedFrames.length - 1 && capturedFrames[currentCaptureIndex + 1].number <= i) {
+                if (currentCaptureIndex < capturedFrames.length - 1 &&
+                    capturedFrames[currentCaptureIndex + 1].number <= i) {
                     currentCaptureIndex++;
                 }
             }
@@ -66,23 +68,28 @@ async function mergeFramesToVideo(capturedFrames, outputPath, fps, width, height
         // Write duplicated frames to temp directory
         const padding = totalFrames.toString().length;
         for (let i = 0; i < outputFrames.length; i++) {
-            const frameNum = i.toString().padStart(padding, '0');
+            const frameNum = i.toString().padStart(padding, "0");
             await (0, promises_1.writeFile)((0, path_1.resolve)(tempDir, `frame_${frameNum}.png`), outputFrames[i]);
         }
         // Merge with FFmpeg
         // Using APNG (Animated PNG) codec which natively supports alpha transparency
         const ffmpegCmd = [
-            'ffmpeg',
-            '-framerate', fps.toString(),
-            '-i', (0, path_1.resolve)(tempDir, `frame_%0${padding}d.png`),
-            '-c:v', 'apng', // APNG codec with native RGBA support
-            '-plays', '0', // Loop indefinitely
-            '-vf', `scale=${width}:${height}`, // Scale only - APNG preserves alpha automatically
-            '-y',
+            "ffmpeg",
+            "-framerate",
+            fps.toString(),
+            "-i",
+            (0, path_1.resolve)(tempDir, `frame_%0${padding}d.png`),
+            "-c:v",
+            "apng", // APNG codec with native RGBA support
+            "-plays",
+            "0", // Loop indefinitely
+            "-vf",
+            `scale=${width}:${height}`, // Scale only - APNG preserves alpha automatically
+            "-y",
             outputPath,
-        ].join(' ');
+        ].join(" ");
         console.log(`\nMerging ${outputFrames.length} frames to video: ${ffmpegCmd}`);
-        (0, child_process_1.execSync)(ffmpegCmd, { stdio: 'inherit' });
+        (0, child_process_1.execSync)(ffmpegCmd, { stdio: "inherit" });
     }
     finally {
         // Cleanup temp frames
@@ -102,7 +109,7 @@ async function mergeFramesToVideo(capturedFrames, outputPath, fps, width, height
 async function renderApp(options) {
     const { app, width, height, projectDir, outputName, title, date, tags, fps, duration, browser: sharedBrowser, } = options;
     // Create cache directory organized by app ID
-    const cacheDir = (0, path_1.resolve)(projectDir, 'cache', app.id);
+    const cacheDir = (0, path_1.resolve)(projectDir, "cache", app.id);
     if (!(0, fs_1.existsSync)(cacheDir)) {
         await (0, promises_1.mkdir)(cacheDir, { recursive: true });
     }
@@ -115,27 +122,25 @@ async function renderApp(options) {
         // TODO: Extract metadata from video (frameCount, duration, fps)
         return {
             app,
-            mode: 'animated',
+            mode: "animated",
             path: cachedApng,
         };
     }
     // Resolve index.html
-    const appDir = (0, path_1.isAbsolute)(app.src)
-        ? app.src
-        : (0, path_1.resolve)(projectDir, app.src);
-    const indexPath = (0, path_1.resolve)(appDir, 'index.html');
+    const appDir = (0, path_1.isAbsolute)(app.src) ? app.src : (0, path_1.resolve)(projectDir, app.src);
+    const indexPath = (0, path_1.resolve)(appDir, "index.html");
     if (!(0, fs_1.existsSync)(indexPath)) {
         throw new Error(`App "${app.id}": index.html not found at ${indexPath}`);
     }
     // Build URL with query parameters including fps and duration
-    const searchParams = new URLSearchParams({ rendering: '' });
-    searchParams.set('fps', fps.toString());
-    searchParams.set('duration', duration.toString());
-    searchParams.set('title', title);
+    const searchParams = new URLSearchParams({ rendering: "" });
+    searchParams.set("fps", fps.toString());
+    searchParams.set("duration", duration.toString());
+    searchParams.set("title", title);
     if (date)
-        searchParams.set('date', date);
+        searchParams.set("date", date);
     if (tags.length > 0)
-        searchParams.set('tags', tags.join(','));
+        searchParams.set("tags", tags.join(","));
     for (const [key, value] of Object.entries(app.parameters)) {
         searchParams.set(key, value);
     }
@@ -146,43 +151,34 @@ async function renderApp(options) {
         ? null
         : await puppeteer_1.default.launch({
             headless: true,
-            args: ['--no-sandbox', '--disable-setuid-sandbox'],
+            args: ["--no-sandbox", "--disable-setuid-sandbox"],
+            protocolTimeout: 120000, // 2 minutes for screenshot operations
         });
     const browser = sharedBrowser ?? ownBrowser;
     const page = await browser.newPage();
     try {
         await page.setViewport({ width, height });
-        // Inject CSS before page load to ensure transparent background
+        // Inject CSS before page load to ensure transparent background and consistent rem sizing
         await page.evaluateOnNewDocument(() => {
             // @ts-expect-error - This runs in browser context
-            const style = document.createElement('style');
+            const style = document.createElement("style");
             style.textContent = `
+        html { font-size: 16px !important; }
         * { background: transparent !important; }
         html, body { background: transparent !important; }
       `;
-            // Wait for DOM to be ready before trying to append
             // @ts-expect-error - This runs in browser context
-            if (document.readyState === 'loading') {
-                // @ts-expect-error - This runs in browser context
-                document.addEventListener('DOMContentLoaded', () => {
-                    // @ts-expect-error - This runs in browser context
-                    (document.head || document.documentElement).appendChild(style);
-                });
-            }
-            else {
-                // @ts-expect-error - This runs in browser context
-                (document.head || document.documentElement).appendChild(style);
-            }
+            document.head?.appendChild(style) || document.documentElement.appendChild(style);
         });
-        page.on('console', (msg) => console.log(`[app:${app.id}] console.${msg.type()}: ${msg.text()}`));
-        page.on('pageerror', (err) => console.error(`[app:${app.id}] page error: ${String(err)}`));
-        page.on('requestfailed', (req) => console.error(`[app:${app.id}] request failed: ${req.url()} — ${req.failure()?.errorText}`));
+        page.on("console", (msg) => console.log(`[app:${app.id}] console.${msg.type()}: ${msg.text()}`));
+        page.on("pageerror", (err) => console.error(`[app:${app.id}] page error: ${String(err)}`));
+        page.on("requestfailed", (req) => console.error(`[app:${app.id}] request failed: ${req.url()} — ${req.failure()?.errorText}`));
         const frames = [];
         // Expose frame capture function that apps can call with explicit frame numbers
         // This returns a promise that resolves when screenshot is complete (ACK)
-        await page.exposeFunction('__stsCaptureFrame', async (frameNumber) => {
+        await page.exposeFunction("__stsCaptureFrame", async (frameNumber) => {
             const screenshot = await page.screenshot({
-                type: 'png',
+                type: "png",
                 omitBackground: true,
                 clip: { x: 0, y: 0, width, height },
             });
@@ -200,30 +196,30 @@ async function renderApp(options) {
             renderingCompleteResolve = resolve;
         });
         // Expose a function that the page can call when rendering is complete
-        await page.exposeFunction('__stsNotifyRenderComplete', () => {
+        await page.exposeFunction("__stsNotifyRenderComplete", () => {
             renderingCompleteResolve();
         });
         // Set up event listener and backward compatibility BEFORE navigation
         await page.evaluateOnNewDocument(() => {
             // Set up listener for 'sts-done-rendering' event
             // @ts-expect-error - This runs in browser context
-            document.addEventListener('sts-done-rendering', () => {
+            document.addEventListener("sts-done-rendering", () => {
                 // @ts-expect-error - This is the exposed function
                 window.__stsNotifyRenderComplete();
             });
             // For backward compatibility with old apps using window.__stsRenderComplete
             // @ts-expect-error - This runs in browser context
-            Object.defineProperty(window, '__stsRenderComplete', {
+            Object.defineProperty(window, "__stsRenderComplete", {
                 set: (value) => {
                     if (value === true) {
                         // @ts-expect-error - This runs in browser context
-                        document.dispatchEvent(new CustomEvent('sts-done-rendering'));
+                        document.dispatchEvent(new CustomEvent("sts-done-rendering"));
                     }
                 },
                 get: () => false,
             });
         });
-        await page.goto(url, { waitUntil: 'networkidle0' });
+        await page.goto(url, { waitUntil: "networkidle0" });
         await Promise.race([
             renderingPromise,
             new Promise((_, reject) => setTimeout(() => reject(new Error(`App "${app.id}" did not signal completion within ${RENDER_TIMEOUT_MS}ms`)), RENDER_TIMEOUT_MS)),
@@ -233,7 +229,7 @@ async function renderApp(options) {
             // Static mode - take a single screenshot and convert to APNG for proper alpha handling
             console.log(`App "${app.id}" is static (no frames captured)`);
             const screenshot = await page.screenshot({
-                type: 'png',
+                type: "png",
                 omitBackground: true,
                 clip: { x: 0, y: 0, width, height },
             });
@@ -243,15 +239,18 @@ async function renderApp(options) {
             try {
                 // Create 1-frame APNG using FFmpeg
                 const ffmpegCmd = [
-                    'ffmpeg',
-                    '-i', tempPng,
-                    '-c:v', 'apng', // APNG codec with native RGBA support
-                    '-plays', '0', // Loop indefinitely
-                    '-y',
+                    "ffmpeg",
+                    "-i",
+                    tempPng,
+                    "-c:v",
+                    "apng", // APNG codec with native RGBA support
+                    "-plays",
+                    "0", // Loop indefinitely
+                    "-y",
                     cachedApng,
-                ].join(' ');
+                ].join(" ");
                 console.log(`Converting static screenshot to APNG: ${ffmpegCmd}`);
-                (0, child_process_1.execSync)(ffmpegCmd, { stdio: 'inherit' });
+                (0, child_process_1.execSync)(ffmpegCmd, { stdio: "inherit" });
             }
             finally {
                 // Cleanup temp file
@@ -260,7 +259,7 @@ async function renderApp(options) {
             console.log(`Rendered static app "${app.id}" (hash: ${cacheKey}) to ${cachedApng}`);
             return {
                 app,
-                mode: 'static',
+                mode: "static",
                 path: cachedApng,
             };
         }
@@ -274,7 +273,7 @@ async function renderApp(options) {
             console.log(`Rendered animated app "${app.id}" (hash: ${cacheKey}) to ${cachedApng}`);
             return {
                 app,
-                mode: 'animated',
+                mode: "animated",
                 path: cachedApng,
                 frameCount: frames.length,
                 duration,
@@ -286,90 +285,6 @@ async function renderApp(options) {
         await page.close();
         if (ownBrowser)
             await ownBrowser.close();
-    }
-}
-/**
- * Renders multiple apps in sequence, reusing a single browser instance.
- */
-async function renderApps(apps, width, height, projectDir, outputName, title, date, tags, fps, duration, activeCacheKeys) {
-    const results = [];
-    // First, check which apps are cached and which need rendering
-    const appsToRender = [];
-    const cachedResults = new Map();
-    for (const app of apps) {
-        const cacheKey = generateAppCacheKey(app.src, app.parameters, title, date, tags, outputName, fps, duration);
-        if (activeCacheKeys) {
-            activeCacheKeys.add(cacheKey);
-        }
-        // Check if cached APNG exists
-        const cacheDir = (0, path_1.resolve)(projectDir, 'cache', app.id);
-        const cachedApng = (0, path_1.resolve)(cacheDir, `${cacheKey}.apng`);
-        if ((0, fs_1.existsSync)(cachedApng)) {
-            console.log(`Using cached app "${app.id}" (hash: ${cacheKey}) from ${cachedApng}`);
-            cachedResults.set(app.id, {
-                app,
-                mode: 'animated',
-                path: cachedApng,
-            });
-        }
-        else {
-            appsToRender.push(app);
-        }
-    }
-    // Only launch browser if there are apps that need rendering
-    let browser = null;
-    if (appsToRender.length > 0) {
-        // Launch once and reuse across all apps.
-        // --allow-file-access-from-files is required so Chromium allows
-        // <script type="module"> and <link> tags to load sibling files
-        // when the page itself is served via file://.
-        browser = await puppeteer_1.default.launch({
-            headless: true,
-            args: [
-                '--no-sandbox',
-                '--disable-setuid-sandbox',
-                '--allow-file-access-from-files',
-            ],
-        });
-    }
-    try {
-        // Render apps that need rendering
-        for (const app of appsToRender) {
-            const result = await renderApp({
-                app,
-                width,
-                height,
-                projectDir,
-                outputName,
-                title,
-                date,
-                tags,
-                fps,
-                duration,
-                browser: browser,
-            });
-            results.push(result);
-        }
-        // Combine results in original order
-        const finalResults = [];
-        for (const app of apps) {
-            const cachedResult = cachedResults.get(app.id);
-            if (cachedResult) {
-                finalResults.push(cachedResult);
-            }
-            else {
-                const renderedResult = results.find(r => r.app.id === app.id);
-                if (renderedResult) {
-                    finalResults.push(renderedResult);
-                }
-            }
-        }
-        return finalResults;
-    }
-    finally {
-        if (browser) {
-            await browser.close();
-        }
     }
 }
 //# sourceMappingURL=app-renderer.js.map

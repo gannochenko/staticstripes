@@ -52,6 +52,10 @@ export class HTMLParser {
 
     const nodes: ParsedNode[] = [];
     let projectNode: ParsedNode | null = null;
+    const outputs: Output[] = [];
+
+    // Extract top-level <outputs> element
+    this.extractOutputs(ast, outputs);
 
     // Traverse the AST and find all node elements
     this.traverseAndExtractNodes(ast, nodes);
@@ -63,6 +67,7 @@ export class HTMLParser {
       ast,
       nodes,
       projectNode,
+      outputs,
     };
   }
 
@@ -99,6 +104,7 @@ export class HTMLParser {
     const attributes = this.getAttributes(element);
     const children = this.getChildElements(element);
     const name = attributes.get('name');
+    const when = attributes.get('when');
 
     const node: ParsedNode = {
       type: nodeType,
@@ -106,6 +112,7 @@ export class HTMLParser {
       element,
       attributes,
       children,
+      when,
     };
 
     // If this is a project node, parse its content
@@ -136,9 +143,6 @@ export class HTMLParser {
     // Extract assets
     const assets = this.extractAssets(projectElement);
 
-    // Extract outputs
-    const outputs = this.extractOutputs(projectElement);
-
     // Extract sequences
     const sequences = this.extractSequences(projectElement);
 
@@ -151,7 +155,6 @@ export class HTMLParser {
       cssText,
       css,
       assets,
-      outputs,
       sequences,
       ffmpegOptions,
     };
@@ -323,40 +326,44 @@ export class HTMLParser {
   }
 
   /**
-   * Extracts outputs from <outputs> section
+   * Extracts outputs from top-level <outputs> element
    */
-  private extractOutputs(projectElement: Element): Output[] {
-    const outputsElements = findChildElementsByTagName(
-      projectElement,
-      'outputs',
-    );
-    if (outputsElements.length === 0) {
-      return [];
-    }
+  private extractOutputs(ast: Document, outputs: Output[]): void {
+    // Traverse the AST to find top-level <outputs> element
+    const traverse = (node: AnyNode) => {
+      if (node.type === 'tag') {
+        const element = node as Element;
 
-    const outputsElement = outputsElements[0];
-    const outputElements = findChildElementsByTagName(outputsElement, 'output');
+        // Check if this is the <outputs> element
+        if (element.name === 'outputs') {
+          const outputElements = findChildElementsByTagName(element, 'output');
 
-    return outputElements
-      .map((outputEl) => {
-        const attrs = this.getAttributes(outputEl);
-        const name = attrs.get('name');
-        const resolution = attrs.get('resolution');
-        const fpsStr = attrs.get('fps');
+          for (const outputEl of outputElements) {
+            const attrs = this.getAttributes(outputEl);
+            const name = attrs.get('name');
+            const resolution = attrs.get('resolution');
+            const fpsStr = attrs.get('fps');
 
-        if (!name || !resolution) {
-          return null;
+            if (name && resolution) {
+              const fps = fpsStr ? parseInt(fpsStr, 10) : 30;
+              outputs.push({
+                name,
+                resolution,
+                fps,
+              });
+            }
+          }
         }
+      }
 
-        const fps = fpsStr ? parseInt(fpsStr, 10) : 30;
+      if ('children' in node && node.children) {
+        for (const child of node.children) {
+          traverse(child);
+        }
+      }
+    };
 
-        return {
-          name,
-          resolution,
-          fps,
-        };
-      })
-      .filter((output): output is Output => output !== null);
+    traverse(ast);
   }
 
   /**

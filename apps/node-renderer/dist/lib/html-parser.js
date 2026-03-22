@@ -75,6 +75,9 @@ class HTMLParser {
         });
         const nodes = [];
         let projectNode = null;
+        const outputs = [];
+        // Extract top-level <outputs> element
+        this.extractOutputs(ast, outputs);
         // Traverse the AST and find all node elements
         this.traverseAndExtractNodes(ast, nodes);
         // Find the project node
@@ -83,6 +86,7 @@ class HTMLParser {
             ast,
             nodes,
             projectNode,
+            outputs,
         };
     }
     /**
@@ -114,12 +118,14 @@ class HTMLParser {
         const attributes = this.getAttributes(element);
         const children = this.getChildElements(element);
         const name = attributes.get('name');
+        const when = attributes.get('when');
         const node = {
             type: nodeType,
             name,
             element,
             attributes,
             children,
+            when,
         };
         // If this is a project node, parse its content
         if (nodeType === 'project') {
@@ -143,8 +149,6 @@ class HTMLParser {
         this.applyStylesToElement(projectElement, styleRules, css);
         // Extract assets
         const assets = this.extractAssets(projectElement);
-        // Extract outputs
-        const outputs = this.extractOutputs(projectElement);
         // Extract sequences
         const sequences = this.extractSequences(projectElement);
         // Extract ffmpeg options
@@ -155,7 +159,6 @@ class HTMLParser {
             cssText,
             css,
             assets,
-            outputs,
             sequences,
             ffmpegOptions,
         };
@@ -292,32 +295,39 @@ class HTMLParser {
             .filter((asset) => asset !== null);
     }
     /**
-     * Extracts outputs from <outputs> section
+     * Extracts outputs from top-level <outputs> element
      */
-    extractOutputs(projectElement) {
-        const outputsElements = findChildElementsByTagName(projectElement, 'outputs');
-        if (outputsElements.length === 0) {
-            return [];
-        }
-        const outputsElement = outputsElements[0];
-        const outputElements = findChildElementsByTagName(outputsElement, 'output');
-        return outputElements
-            .map((outputEl) => {
-            const attrs = this.getAttributes(outputEl);
-            const name = attrs.get('name');
-            const resolution = attrs.get('resolution');
-            const fpsStr = attrs.get('fps');
-            if (!name || !resolution) {
-                return null;
+    extractOutputs(ast, outputs) {
+        // Traverse the AST to find top-level <outputs> element
+        const traverse = (node) => {
+            if (node.type === 'tag') {
+                const element = node;
+                // Check if this is the <outputs> element
+                if (element.name === 'outputs') {
+                    const outputElements = findChildElementsByTagName(element, 'output');
+                    for (const outputEl of outputElements) {
+                        const attrs = this.getAttributes(outputEl);
+                        const name = attrs.get('name');
+                        const resolution = attrs.get('resolution');
+                        const fpsStr = attrs.get('fps');
+                        if (name && resolution) {
+                            const fps = fpsStr ? parseInt(fpsStr, 10) : 30;
+                            outputs.push({
+                                name,
+                                resolution,
+                                fps,
+                            });
+                        }
+                    }
+                }
             }
-            const fps = fpsStr ? parseInt(fpsStr, 10) : 30;
-            return {
-                name,
-                resolution,
-                fps,
-            };
-        })
-            .filter((output) => output !== null);
+            if ('children' in node && node.children) {
+                for (const child of node.children) {
+                    traverse(child);
+                }
+            }
+        };
+        traverse(ast);
     }
     /**
      * Extracts sequences from <sequences> section

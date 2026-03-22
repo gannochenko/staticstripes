@@ -1,4 +1,4 @@
-import { Browser } from 'puppeteer';
+import { Browser } from "puppeteer";
 export type App = {
     id: string;
     src: string;
@@ -6,7 +6,7 @@ export type App = {
 };
 export type AppRenderResult = {
     app: App;
-    mode: 'static' | 'animated';
+    mode: "static" | "animated";
     path: string;
     frameCount?: number;
     duration?: number;
@@ -36,8 +36,4 @@ export interface RenderAppOptions {
  * If frames are captured, merges them into an MP4 video.
  */
 export declare function renderApp(options: RenderAppOptions): Promise<AppRenderResult>;
-/**
- * Renders multiple apps in sequence, reusing a single browser instance.
- */
-export declare function renderApps(apps: App[], width: number, height: number, projectDir: string, outputName: string, title: string, date: string | undefined, tags: string[], fps: number, duration: number, activeCacheKeys?: Set<string>): Promise<AppRenderResult[]>;
 //# sourceMappingURL=app-renderer.d.ts.map

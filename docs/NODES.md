@@ -72,6 +72,11 @@ Milestone 7: Implement support for youtube, s3 and instagram nodes. Borrow every
 Example of `project.html`:
 
 ```html
+<outputs>
+  <output name="horizontal_30" resolution="1920x1080" fps="30" />
+  <output name="vertical_30" resolution="1080x1920" fps="30" />
+</outputs>
+
 <node.project>
   <title>Christmas Morning in Liberec</title>
   <tag>Winter</tag>
@@ -210,12 +215,6 @@ Example of `project.html`:
     <asset name="joke_karaoke_text" input="$joke_karakoke.output.text" />
   </assets>
 
-  <outputs>
-    <output name="youtube" resolution="1920x1080" fps="30" />
-    <output name="youtube_shorts" resolution="1080x1920" fps="30" />
-    <output name="instagram_shorts" resolution="1080x1920" fps="30" />
-  </outputs>
-
   <ffmpeg>
     <option name="preview">
       -c:v h264_nvenc -preset fast -c:a aac -b:a 192k
@@ -226,11 +225,19 @@ Example of `project.html`:
   </ffmpeg>
 </node.project>
 
-<node.filesystem name="preview_youtube" path="$project.output.youtube">
+<node.filesystem
+  name="preview_youtube"
+  path="$project.output.path"
+  when="$output.vertical_30"
+>
   <path> output/preview_youtube.mp4 </path>
 </node.filesystem>
 
-<node.youtube name="yt_primary" path="$project.output.youtube">
+<node.youtube
+  name="yt_primary"
+  path="$project.output.path"
+  when="$output.vertical_30"
+>
   <unlisted />
   <made-for-kids />
   <category name="entertainment" />
@@ -245,7 +252,11 @@ Thanks for watching!
   </pre>
 </node.youtube>
 
-<node.s3 name="s3_primary" path="$project.output.youtube">
+<node.s3
+  name="s3_primary"
+  path="$project.output.path"
+  when="$output.vertical_30"
+>
   <endpoint name="digitaloceanspaces.com" />
   <region name="ams3" />
   <bucket name="photoframe-photos-content-ams3-production" />
@@ -256,7 +267,11 @@ Thanks for watching!
   <thumbnail timecode="1000ms" />
 </node.s3>
 
-<node.s3 name="s3_instagram" path="$project.output.youtube">
+<node.s3
+  name="s3_instagram"
+  path="$project.output.path"
+  when="$output.vertical_30"
+>
   <endpoint name="digitaloceanspaces.com" />
   <region name="ams3" />
   <bucket name="photoframe-photos-content-ams3-production" />
@@ -264,7 +279,11 @@ Thanks for watching!
   <acl name="public-read" />
 </node.s3>
 
-<node.instagram name="ig_primary" url="$s3_instagram.output.url">
+<node.instagram
+  name="ig_primary"
+  url="$s3_instagram.output.url"
+  when="$output.vertical_30"
+>
   <thumbnail timecode="1000ms" />
   <pre>
 ${project.title} ❄️🏔️

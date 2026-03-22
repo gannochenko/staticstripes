@@ -19,10 +19,10 @@ class NodeFactory {
     /**
      * Creates a node instance based on the parsed node type
      */
-    static createNode(parsedNode) {
+    static createNode(parsedNode, outputs = []) {
         switch (parsedNode.type) {
             case 'project':
-                return new project_1.ProjectNode(this.extractProjectParams(parsedNode));
+                return new project_1.ProjectNode(this.extractProjectParams(parsedNode, outputs));
             case 'filesystem':
                 return new filesystem_1.FilesystemNode(this.extractFilesystemParams(parsedNode));
             case 'youtube':
@@ -46,8 +46,8 @@ class NodeFactory {
     /**
      * Creates node instances for all parsed nodes
      */
-    static createNodes(parsedNodes) {
-        return parsedNodes.map((parsedNode) => this.createNode(parsedNode));
+    static createNodes(parsedNodes, outputs = []) {
+        return parsedNodes.map((parsedNode) => this.createNode(parsedNode, outputs));
     }
     /**
      * Checks if a node type is supported
@@ -66,7 +66,7 @@ class NodeFactory {
         ].includes(nodeType);
     }
     // Parameter extraction methods
-    static extractProjectParams(parsedNode) {
+    static extractProjectParams(parsedNode, outputs) {
         const content = parsedNode.projectContent;
         if (!content) {
             throw new Error('Project node must have project content');
@@ -75,7 +75,7 @@ class NodeFactory {
             name: parsedNode.name,
             title: content.title,
             tags: content.tags,
-            outputs: content.outputs,
+            outputs,
             sequences: content.sequences,
             assets: content.assets,
             ffmpegOptions: content.ffmpegOptions,

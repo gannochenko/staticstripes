@@ -84,12 +84,12 @@ class AppNode {
             projectDir: context.projectDir,
             force: false,
         });
-        // For now, use default values for fps, duration, resolution
-        // TODO: These should come from the project node configuration
-        const fps = 30;
+        // Get fps and resolution from context (set by project node)
+        const fps = context.outputFps;
+        const width = context.outputResolution.width;
+        const height = context.outputResolution.height;
+        // TODO: Duration should come from fragment/sequence, for now use default
         const duration = 5000; // 5 seconds default
-        const width = 1920;
-        const height = 1080;
         // Create app object
         const app = {
             id: this.params.name || `app_${Date.now()}`,
@@ -118,6 +118,7 @@ class AppNode {
                 '--disable-setuid-sandbox',
                 '--allow-file-access-from-files',
             ],
+            protocolTimeout: 120000, // 2 minutes for screenshot operations
         });
         try {
             const result = await (0, app_renderer_1.renderApp)({

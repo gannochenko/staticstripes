@@ -288,6 +288,7 @@ export class DAGValidator {
   public static validate(
     parsedNodes: ParsedNode[],
     nodes: INode[],
+    projectOutputs: import('./type').Output[] = [],
   ): DAGValidationResult {
     const errors: DAGValidationError[] = [];
 
@@ -336,7 +337,12 @@ export class DAGValidator {
       const parsedNode = parsedNodes[i];
       const name = parsedNode.name || parsedNode.type;
       const node = nodes[i];
-      const outputs = node.getOutputs().map((o) => o.name);
+      // For project node, use outputs from parameter instead of node.getOutputs()
+      // because node was created before validation
+      const outputs =
+        parsedNode.type === 'project'
+          ? projectOutputs.map((o) => o.name)
+          : node.getOutputs().map((o) => o.name);
       outputMap.set(name, new Set(outputs));
     }
 

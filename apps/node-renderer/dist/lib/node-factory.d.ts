@@ -1,5 +1,5 @@
 import type { INode } from './node-interface';
-import type { ParsedNode } from './type';
+import type { ParsedNode, Output } from './type';
 /**
  * Factory for creating node instances from parsed nodes
  * Extracts parameters from HTML structure and passes them to node constructors
@@ -8,11 +8,11 @@ export declare class NodeFactory {
     /**
      * Creates a node instance based on the parsed node type
      */
-    static createNode(parsedNode: ParsedNode): INode;
+    static createNode(parsedNode: ParsedNode, outputs?: Output[]): INode;
     /**
      * Creates node instances for all parsed nodes
      */
-    static createNodes(parsedNodes: ParsedNode[]): INode[];
+    static createNodes(parsedNodes: ParsedNode[], outputs?: Output[]): INode[];
     /**
      * Checks if a node type is supported
      */
