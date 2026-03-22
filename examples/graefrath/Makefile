@@ -2,7 +2,7 @@ render:
 	node ../../apps/node-renderer/dist/cli.js project.html
 
 render-verbose:
-	node ../../apps/node-renderer/dist/cli.js project.html --verbose
+	DEBUG=1 node ../../apps/node-renderer/dist/cli.js project.html --verbose
 
 validate:
 	node ../../apps/node-renderer/dist/cli.js project.html --validate-only

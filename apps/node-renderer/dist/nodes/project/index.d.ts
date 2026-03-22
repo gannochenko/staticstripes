@@ -1,5 +1,5 @@
-import type { INode, NodeInput, NodeOutput, NodeParameter, ValidationError, NodeExecutionContext } from '../../lib/node-interface';
-import type { Output, Sequence, Asset, FFmpegOption } from '../../lib/type';
+import type { INode, NodeInput, NodeOutput, NodeParameter, ValidationError, NodeExecutionContext } from "../../lib/node-interface";
+import type { Output, Sequence, Asset, FFmpegOption } from "../../lib/type";
 export interface ProjectNodeParams {
     name?: string;
     title?: string;

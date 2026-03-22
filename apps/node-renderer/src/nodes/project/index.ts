@@ -5,8 +5,8 @@ import type {
   NodeParameter,
   ValidationError,
   NodeExecutionContext,
-} from '../../lib/node-interface';
-import type { Output, Sequence, Asset, FFmpegOption } from '../../lib/type';
+} from "../../lib/node-interface";
+import type { Output, Sequence, Asset, FFmpegOption } from "../../lib/type";
 import {
   AssetManager,
   ExpressionContext,
@@ -15,11 +15,14 @@ import {
   makeFFmpegCommand,
   runFFMpeg,
   getAssetDuration,
-} from './rendering';
-import { resolve, dirname } from 'path';
-import { existsSync, mkdirSync } from 'fs';
-import type { Asset as RenderAsset, Output as RenderOutput } from './rendering/types';
-import { CSSProcessor } from './css-processor';
+} from "./rendering";
+import { resolve, dirname } from "path";
+import { existsSync, mkdirSync } from "fs";
+import type {
+  Asset as RenderAsset,
+  Output as RenderOutput,
+} from "./rendering/types";
+import { CSSProcessor } from "./rendering/css-processor";
 
 export interface ProjectNodeParams {
   name?: string;
@@ -39,7 +42,7 @@ export class ProjectNode implements INode {
   constructor(private params: ProjectNodeParams) {}
 
   public getType(): string {
-    return 'project';
+    return "project";
   }
 
   public getName(): string | undefined {
@@ -62,22 +65,22 @@ export class ProjectNode implements INode {
 
     if (this.params.outputs.length === 0) {
       errors.push({
-        text: 'Project node must have at least one output defined',
-        field: 'outputs',
+        text: "Project node must have at least one output defined",
+        field: "outputs",
       });
     }
 
     if (this.params.sequences.length === 0) {
       errors.push({
-        text: 'Project node must have at least one sequence defined',
-        field: 'sequences',
+        text: "Project node must have at least one sequence defined",
+        field: "sequences",
       });
     }
 
     if (this.params.assets.length === 0) {
       errors.push({
-        text: 'Project node should have at least one asset defined',
-        field: 'assets',
+        text: "Project node should have at least one asset defined",
+        field: "assets",
       });
     }
 
@@ -87,42 +90,44 @@ export class ProjectNode implements INode {
   public getParameterSchema(): NodeParameter[] {
     return [
       {
-        name: 'title',
+        name: "title",
         required: false,
-        description: 'Project title',
-        type: 'string',
+        description: "Project title",
+        type: "string",
       },
       {
-        name: 'tags',
+        name: "tags",
         required: false,
-        description: 'Project tags',
-        type: 'string',
+        description: "Project tags",
+        type: "string",
       },
       {
-        name: 'sequences',
+        name: "sequences",
         required: true,
-        description: 'Video sequences with fragments',
+        description: "Video sequences with fragments",
       },
       {
-        name: 'assets',
+        name: "assets",
         required: true,
-        description: 'Media assets (video, audio, images)',
+        description: "Media assets (video, audio, images)",
       },
       {
-        name: 'outputs',
+        name: "outputs",
         required: true,
-        description: 'Output configurations (resolution, fps)',
+        description: "Output configurations (resolution, fps)",
       },
       {
-        name: 'ffmpeg',
+        name: "ffmpeg",
         required: false,
-        description: 'FFmpeg encoding options',
+        description: "FFmpeg encoding options",
       },
     ];
   }
 
-  public async execute(context: NodeExecutionContext): Promise<Record<string, any>> {
-    console.log('🎬 Executing project node...');
+  public async execute(
+    context: NodeExecutionContext,
+  ): Promise<Record<string, any>> {
+    console.log("🎬 Executing project node...");
 
     // Convert assets to render format (resolve paths, probe durations)
     const renderAssets = await this.prepareAssets(context);
@@ -140,17 +145,23 @@ export class ProjectNode implements INode {
 
     // Render each output
     for (const output of this.params.outputs) {
-      console.log(`\n📹 Rendering output: ${output.name} (${output.resolution}@${output.fps}fps)`);
+      console.log(
+        `\n📹 Rendering output: ${output.name} (${output.resolution}@${output.fps}fps)`,
+      );
 
       //  Generate output path
-      const outputPath = resolve(context.projectDir, 'output', `${output.name}.mp4`);
+      const outputPath = resolve(
+        context.projectDir,
+        "output",
+        `${output.name}.mp4`,
+      );
 
       const renderOutput: RenderOutput = {
         name: output.name,
         path: outputPath,
         resolution: {
-          width: parseInt(output.resolution.split('x')[0]),
-          height: parseInt(output.resolution.split('x')[1]),
+          width: parseInt(output.resolution.split("x")[0]),
+          height: parseInt(output.resolution.split("x")[1]),
         },
         fps: output.fps,
       };
@@ -169,13 +180,15 @@ export class ProjectNode implements INode {
       );
 
       const filterComplex = filterBuffer.render();
-      console.log(`\n🔍 Filter complex length: ${filterComplex.length} characters`);
+      console.log(
+        `\n🔍 Filter complex length: ${filterComplex.length} characters`,
+      );
       if (filterComplex.length < 500) {
         console.log(`   Filter: ${filterComplex.substring(0, 200)}...`);
       }
 
       // Get FFmpeg args from options
-      const ffmpegArgs = this.params.ffmpegOptions[0]?.args || '';
+      const ffmpegArgs = this.params.ffmpegOptions[0]?.args || "";
 
       // Generate FFmpeg command
       const ffmpegCommand = makeFFmpegCommand(
@@ -191,14 +204,18 @@ export class ProjectNode implements INode {
       // Run FFmpeg
       await runFFMpeg(ffmpegCommand);
 
-      console.log(`✅ Output "${output.name}" rendered to: ${renderOutput.path}`);
+      console.log(
+        `✅ Output "${output.name}" rendered to: ${renderOutput.path}`,
+      );
       results[output.name] = renderOutput.path;
     }
 
     return results;
   }
 
-  private async prepareAssets(context: NodeExecutionContext): Promise<RenderAsset[]> {
+  private async prepareAssets(
+    context: NodeExecutionContext,
+  ): Promise<RenderAsset[]> {
     const renderAssets: RenderAsset[] = [];
 
     for (const asset of this.params.assets) {
@@ -223,20 +240,22 @@ export class ProjectNode implements INode {
           continue;
         }
 
-        console.log(`✅ Resolved app asset "${asset.name}" from ${nodeName}.${outputName}`);
+        console.log(
+          `✅ Resolved app asset "${asset.name}" from ${nodeName}.${outputName}`,
+        );
 
         // Determine type from file extension
-        const ext = outputPath.split('.').pop()?.toLowerCase() || '';
-        let assetType: 'video' | 'image' | 'audio' = 'image';
-        if (ext === 'apng' || ext === 'mp4') {
-          assetType = 'video';
-        } else if (['mp3', 'wav', 'aac'].includes(ext)) {
-          assetType = 'audio';
+        const ext = outputPath.split(".").pop()?.toLowerCase() || "";
+        let assetType: "video" | "image" | "audio" = "image";
+        if (ext === "apng" || ext === "mp4") {
+          assetType = "video";
+        } else if (["mp3", "wav", "aac"].includes(ext)) {
+          assetType = "audio";
         }
 
         // Probe duration for video/audio assets (including APNG)
         let duration = 0;
-        if (assetType === 'video' || assetType === 'audio') {
+        if (assetType === "video" || assetType === "audio") {
           duration = await getAssetDuration(outputPath);
         }
 
@@ -249,7 +268,7 @@ export class ProjectNode implements INode {
           width: 1920,
           height: 1080,
           rotation: 0,
-          hasVideo: assetType === 'video' || assetType === 'image',
+          hasVideo: assetType === "video" || assetType === "image",
           hasAudio: false, // Apps don't have audio
         };
 
@@ -266,17 +285,17 @@ export class ProjectNode implements INode {
       const assetPath = resolve(context.projectDir, asset.path);
 
       // Determine asset type from file extension
-      const ext = asset.path.split('.').pop()?.toLowerCase() || '';
-      let assetType: 'video' | 'image' | 'audio' = 'video';
-      if (['jpg', 'jpeg', 'png', 'webp'].includes(ext)) {
-        assetType = 'image';
-      } else if (['mp3', 'wav', 'aac', 'm4a'].includes(ext)) {
-        assetType = 'audio';
+      const ext = asset.path.split(".").pop()?.toLowerCase() || "";
+      let assetType: "video" | "image" | "audio" = "video";
+      if (["jpg", "jpeg", "png", "webp"].includes(ext)) {
+        assetType = "image";
+      } else if (["mp3", "wav", "aac", "m4a"].includes(ext)) {
+        assetType = "audio";
       }
 
       // Probe duration for videos and audio
       let duration = 0;
-      if (assetType === 'video' || assetType === 'audio') {
+      if (assetType === "video" || assetType === "audio") {
         duration = await getAssetDuration(assetPath);
       }
 
@@ -289,8 +308,8 @@ export class ProjectNode implements INode {
         width: 1920,
         height: 1080,
         rotation: 0,
-        hasVideo: assetType === 'video' || assetType === 'image',
-        hasAudio: assetType === 'video' || assetType === 'audio',
+        hasVideo: assetType === "video" || assetType === "image",
+        hasAudio: assetType === "video" || assetType === "audio",
       };
 
       renderAssets.push(renderAsset);
@@ -318,7 +337,9 @@ export class ProjectNode implements INode {
 
     // Build each sequence
     for (const renderSequenceDef of renderSequences) {
-      console.log(`   Building sequence with ${renderSequenceDef.fragments.length} fragment(s)`);
+      console.log(
+        `   Building sequence with ${renderSequenceDef.fragments.length} fragment(s)`,
+      );
 
       const seq = new RenderSequence(
         buf,
@@ -335,6 +356,28 @@ export class ProjectNode implements INode {
 
       seq.build();
 
+      // Output fragment timing summary in verbose mode
+      if (process.env.DEBUG) {
+        const debugInfo = seq.getDebugInfo();
+        console.error(`\n📊 Fragment timing summary (${debugInfo.length} fragments):`);
+        console.error('╔════════════════════════════════════════════════════════════════════════════╗');
+        console.error('║ ID                    │ Asset           │ Start   │ Duration │ End     ║');
+        console.error('╠════════════════════════════════════════════════════════════════════════════╣');
+
+        for (const fragment of debugInfo) {
+          const id = fragment.id.padEnd(20).substring(0, 20);
+          const asset = fragment.assetName.padEnd(14).substring(0, 14);
+          const start = `${fragment.startTime}ms`.padEnd(7);
+          const duration = `${fragment.duration}ms`.padEnd(9);
+          const end = `${fragment.endTime}ms`;
+
+          console.error(`║ ${id} │ ${asset} │ ${start} │ ${duration} │ ${end} ║`);
+        }
+
+        console.error('╚════════════════════════════════════════════════════════════════════════════╝');
+        console.error(`   Total duration: ${seq.getTotalDuration()}ms\n`);
+      }
+
       if (!mainSequence) {
         mainSequence = seq;
       } else {
@@ -345,11 +388,11 @@ export class ProjectNode implements INode {
     // End streams with final output labels
     if (mainSequence) {
       mainSequence.getVideoStream().endTo({
-        tag: 'outv',
+        tag: "outv",
         isAudio: false,
       });
       mainSequence.getAudioStream().endTo({
-        tag: 'outa',
+        tag: "outa",
         isAudio: true,
       });
     }

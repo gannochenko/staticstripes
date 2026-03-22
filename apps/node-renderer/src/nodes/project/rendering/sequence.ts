@@ -55,15 +55,6 @@ export class Sequence {
         this.expressionContext,
       );
 
-      // Debug: log NaN durations
-      if (isNaN(calculatedDuration)) {
-        console.error(`[DEBUG] Fragment has NaN duration:`);
-        console.error(`  Fragment ID: ${fragment.id}`);
-        console.error(`  Asset: ${fragment.assetName}`);
-        console.error(`  Duration value:`, fragment.duration);
-        console.error(`  Available fragments in context:`, Array.from(this.expressionContext.fragments.keys()));
-      }
-
       const timeContext: TimeData = {
         start: 0,
         end: 0,
@@ -109,16 +100,6 @@ export class Sequence {
         currentAudioStream = makeSilentStream(calculatedDuration, this.buf);
       }
 
-      // duration and clipping adjustment
-      if (process.env.DEBUG) {
-        console.error(`[DEBUG] Trim check for ${fragment.id}:`);
-        console.error(`  calculatedTrimLeft: ${calculatedTrimLeft}`);
-        console.error(`  calculatedDuration: ${calculatedDuration}`);
-        console.error(`  asset.duration: ${asset.duration}`);
-        console.error(`  hasVideo: ${asset.hasVideo}`);
-        console.error(`  Will trim: ${calculatedTrimLeft != 0 || calculatedDuration < asset.duration}`);
-      }
-
       if (calculatedTrimLeft != 0 || calculatedDuration < asset.duration) {
         // Only trim video if it came from an actual source
         if (asset.hasVideo) {
@@ -141,7 +122,7 @@ export class Sequence {
       // This prevents swscaler warnings from appearing in all subsequent filters
       // For PNG images with alpha, use yuva420p to preserve transparency
       if (asset.hasVideo && asset.type === "image") {
-        const isPng = asset.path.toLowerCase().endsWith('.png');
+        const isPng = asset.path.toLowerCase().endsWith(".png");
         currentVideoStream.convertPixelFormat(isPng ? "yuva420p" : "yuv420p");
       }
 
@@ -155,7 +136,7 @@ export class Sequence {
         asset.duration === 0 &&
         calculatedDuration > 0 &&
         asset.type === "image" &&
-        !asset.path.toLowerCase().endsWith('.apng') &&
+        !asset.path.toLowerCase().endsWith(".apng") &&
         fragment.objectFit !== "ken-burns"
       ) {
         // special case for static images (PNG, JPG, etc) - extend to desired duration
@@ -203,8 +184,12 @@ export class Sequence {
             };
           } else if (fragment.objectFitContain === PILLARBOX) {
             // For PNG/APNG files with alpha, use transparent padding instead of black
-            const isPngWithAlpha = asset.path.toLowerCase().match(/\.(png|apng)$/);
-            const pillarboxColor = isPngWithAlpha ? '#00000000' : fragment.objectFitContainPillarboxColor;
+            const isPngWithAlpha = asset.path
+              .toLowerCase()
+              .match(/\.(png|apng)$/);
+            const pillarboxColor = isPngWithAlpha
+              ? "#00000000"
+              : fragment.objectFitContainPillarboxColor;
 
             options.pillarbox = {
               color: pillarboxColor,
@@ -329,11 +314,6 @@ export class Sequence {
       timeContext.end = this.time + calculatedDuration + calculatedOverlayLeft;
       this.time += calculatedDuration + calculatedOverlayLeft;
 
-      // Debug: log fragment addition to context
-      if (process.env.DEBUG) {
-        console.error(`[DEBUG] Adding fragment "${fragment.id}" to context: start=${timeContext.start}ms, end=${timeContext.end}ms, duration=${calculatedDuration}ms, overlayLeft=${calculatedOverlayLeft}ms`);
-      }
-
       this.expressionContext.fragments.set(fragment.id, {
         time: timeContext,
       });
@@ -366,27 +346,12 @@ export class Sequence {
   }
 
   overlayWith(sequence: Sequence) {
-    // Get offset from the first fragment of the overlaying sequence
-    // Use debugInfo which contains the CALCULATED overlayLeft value
-    const debugInfo = sequence.getDebugInfo();
-    const firstFragmentDebug = debugInfo[0];
-    const overlayOffset = firstFragmentDebug?.overlayLeft || 0;
-
-    // If there's an offset, we need to provide duration information
-    if (overlayOffset && typeof overlayOffset === 'number' && overlayOffset > 0) {
-      const options = {
-        offset: {
-          streamDuration: this.getTotalDuration(),
-          otherStreamDuration: sequence.getTotalDuration(),
-          otherStreamOffsetLeft: overlayOffset / 1000, // convert ms to seconds
-        },
-      };
-      this.videoStream.overlayStream(sequence.getVideoStream(), options);
-      this.audioStream.overlayStream(sequence.getAudioStream(), options);
-    } else {
-      this.videoStream.overlayStream(sequence.getVideoStream(), {});
-      this.audioStream.overlayStream(sequence.getAudioStream(), {});
-    }
+    // DON'T pass offset to overlayStream!
+    // The first fragment of the overlaying sequence already has tPad applied in sequence.build()
+    // (see lines 290-300 where we apply tPad for firstOne with calculatedOverlayLeft > 0)
+    // Passing offset here would apply tPad TWICE, doubling the delay!
+    this.videoStream.overlayStream(sequence.getVideoStream(), {});
+    this.audioStream.overlayStream(sequence.getAudioStream(), {});
   }
 
   public getVideoStream(): Stream {
