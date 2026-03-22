@@ -25,7 +25,7 @@ export declare class AppNode implements INode {
     /**
      * Calculate the duration for the app based on its parameters
      * For karaoke text apps, parse word timings to determine actual duration
-     * Falls back to 5000ms default for apps without timing data
+     * THROWS ERROR if no duration can be determined - NO HARDCODED DEFAULTS!
      */
     private calculateDuration;
     execute(context: NodeExecutionContext): Promise<Record<string, any>>;

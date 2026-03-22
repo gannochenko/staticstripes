@@ -104,13 +104,21 @@ export class AppNode implements INode {
   /**
    * Calculate the duration for the app based on its parameters
    * For karaoke text apps, parse word timings to determine actual duration
-   * Falls back to 5000ms default for apps without timing data
+   * THROWS ERROR if no duration can be determined - NO HARDCODED DEFAULTS!
    */
   private calculateDuration(parameters: Record<string, string>): number {
-    const DEFAULT_DURATION = 5000; // 5 seconds fallback
     const DURATION_BUFFER = 500; // Add 500ms buffer for fade-out
 
-    // Check if this is a karaoke text app with word timings
+    // Check if duration is explicitly provided as a parameter (highest priority)
+    if (parameters.duration) {
+      const explicitDuration = parseInt(parameters.duration, 10);
+      if (!isNaN(explicitDuration) && explicitDuration > 0) {
+        console.log(`📊 Using explicit duration parameter: ${explicitDuration}ms`);
+        return explicitDuration;
+      }
+    }
+
+    // Check if this is a karaoke text app with word timings (fallback for karaoke apps)
     if (parameters.words) {
       try {
         const words = JSON.parse(parameters.words);
@@ -129,17 +137,13 @@ export class AppNode implements INode {
       }
     }
 
-    // Check if duration is explicitly provided as a parameter
-    if (parameters.duration) {
-      const explicitDuration = parseInt(parameters.duration, 10);
-      if (!isNaN(explicitDuration) && explicitDuration > 0) {
-        console.log(`📊 Using explicit duration parameter: ${explicitDuration}ms`);
-        return explicitDuration;
-      }
-    }
-
-    console.log(`📊 Using default duration: ${DEFAULT_DURATION}ms`);
-    return DEFAULT_DURATION;
+    // NO DEFAULT - throw error instead!
+    const appName = this.params.name || 'unnamed';
+    throw new Error(
+      `❌ App node "${appName}" requires explicit "duration" parameter.\n` +
+      `   Add duration="<milliseconds>" to the <node.app> element.\n` +
+      `   Example: <node.app name="${appName}" duration="5000" ... />`
+    );
   }
 
   public async execute(context: NodeExecutionContext): Promise<Record<string, any>> {
