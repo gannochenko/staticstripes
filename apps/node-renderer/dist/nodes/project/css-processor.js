@@ -43,9 +43,9 @@ class CSSProcessor {
         // Extract duration (in milliseconds)
         const durationStr = styles['-duration'] || '0ms';
         const duration = this.parseTimeOrExpression(durationStr);
-        // Extract trim-start
+        // Extract trim-start (support expressions)
         const trimLeftStr = styles['-trim-start'] || '0ms';
-        const trimLeft = this.parseTime(trimLeftStr);
+        const trimLeft = this.parseTimeOrExpression(trimLeftStr);
         // Extract overlay/offset
         const offsetStartStr = styles['-offset-start'] || '0ms';
         const overlayLeft = this.parseTimeOrExpression(offsetStartStr);

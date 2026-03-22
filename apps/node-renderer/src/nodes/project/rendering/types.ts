@@ -18,7 +18,7 @@ export type Fragment = {
   enabled: boolean;
   assetName: string;
   duration: number | CompiledExpression; // calculated, in milliseconds
-  trimLeft: number; // in milliseconds
+  trimLeft: number | CompiledExpression; // in milliseconds
   overlayLeft: number | CompiledExpression; // milliseconds to overlay with previous fragment
   overlayZIndex: number;
   transitionIn: string; // how to transition into the fragment

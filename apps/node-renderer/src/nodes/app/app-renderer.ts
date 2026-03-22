@@ -22,7 +22,7 @@ export type AppRenderResult = {
   fps?: number; // calculated from frame timing
 };
 
-const RENDER_TIMEOUT_MS = 30000; // Increased for animated apps
+const RENDER_TIMEOUT_MS = 300000; // 5 minutes for animated apps with many frames
 
 export interface RenderAppOptions {
   app: App;
@@ -250,6 +250,7 @@ export async function renderApp(
 
   console.log(`\nRendering app "${app.id}" from ${url}`);
   console.log(`  FPS: ${fps}, Duration: ${duration}ms`);
+  console.log(`  Parameters:`, app.parameters);
 
   const ownBrowser = sharedBrowser
     ? null
@@ -267,15 +268,34 @@ export async function renderApp(
 
     // Inject CSS before page load to ensure transparent background and consistent rem sizing
     await page.evaluateOnNewDocument(() => {
+      // Wait for DOM to be ready
+      const injectStyles = () => {
+        // @ts-expect-error - document exists in browser context
+        if (!document.documentElement) {
+          // DOM not ready yet, try again on next tick
+          setTimeout(injectStyles, 0);
+          return;
+        }
+
+        // @ts-expect-error - This runs in browser context
+        const style = document.createElement("style");
+        style.textContent = `
+          html { font-size: 16px !important; }
+          * { background: transparent !important; }
+          html, body { background: transparent !important; }
+        `;
+        // @ts-expect-error - This runs in browser context
+        const target = document.head || document.documentElement;
+        target.appendChild(style);
+      };
+
       // @ts-expect-error - This runs in browser context
-      const style = document.createElement("style");
-      style.textContent = `
-        html { font-size: 16px !important; }
-        * { background: transparent !important; }
-        html, body { background: transparent !important; }
-      `;
-      // @ts-expect-error - This runs in browser context
-      document.head?.appendChild(style) || document.documentElement.appendChild(style);
+      if (document.readyState === 'loading') {
+        // @ts-expect-error - This runs in browser context
+        document.addEventListener('DOMContentLoaded', injectStyles);
+      } else {
+        injectStyles();
+      }
     });
 
     page.on("console", (msg) =>
@@ -297,6 +317,7 @@ export async function renderApp(
     await page.exposeFunction(
       "__stsCaptureFrame",
       async (frameNumber: number) => {
+        console.log(`[app:${app.id}] 🎬 Starting capture frame ${frameNumber}...`);
         const screenshot = await page.screenshot({
           type: "png",
           omitBackground: true,
@@ -308,7 +329,7 @@ export async function renderApp(
           buffer: Buffer.from(screenshot),
         });
         console.log(
-          `[app:${app.id}] Captured frame ${frameNumber} (${frames.length} total)`,
+          `[app:${app.id}] ✅ Captured frame ${frameNumber} (${frames.length} total)`,
         );
 
         // Promise resolution is the ACK!
@@ -329,24 +350,40 @@ export async function renderApp(
 
     // Set up event listener and backward compatibility BEFORE navigation
     await page.evaluateOnNewDocument(() => {
-      // Set up listener for 'sts-done-rendering' event
-      // @ts-expect-error - This runs in browser context
-      document.addEventListener("sts-done-rendering", () => {
-        // @ts-expect-error - This is the exposed function
-        window.__stsNotifyRenderComplete();
-      });
+      const setupEventListeners = () => {
+        // @ts-expect-error - document exists in browser context
+        if (!document) {
+          setTimeout(setupEventListeners, 0);
+          return;
+        }
 
-      // For backward compatibility with old apps using window.__stsRenderComplete
+        // Set up listener for 'sts-done-rendering' event
+        // @ts-expect-error - This runs in browser context
+        document.addEventListener("sts-done-rendering", () => {
+          // @ts-expect-error - This is the exposed function
+          window.__stsNotifyRenderComplete();
+        });
+
+        // For backward compatibility with old apps using window.__stsRenderComplete
+        // @ts-expect-error - This runs in browser context
+        Object.defineProperty(window, "__stsRenderComplete", {
+          set: (value: boolean) => {
+            if (value === true) {
+              // @ts-expect-error - This runs in browser context
+              document.dispatchEvent(new CustomEvent("sts-done-rendering"));
+            }
+          },
+          get: () => false,
+        });
+      };
+
       // @ts-expect-error - This runs in browser context
-      Object.defineProperty(window, "__stsRenderComplete", {
-        set: (value: boolean) => {
-          if (value === true) {
-            // @ts-expect-error - This runs in browser context
-            document.dispatchEvent(new CustomEvent("sts-done-rendering"));
-          }
-        },
-        get: () => false,
-      });
+      if (typeof document !== 'undefined' && document.readyState === 'loading') {
+        // @ts-expect-error - This runs in browser context
+        document.addEventListener('DOMContentLoaded', setupEventListeners);
+      } else {
+        setupEventListeners();
+      }
     });
 
     await page.goto(url, { waitUntil: "networkidle0" });

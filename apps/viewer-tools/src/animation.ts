@@ -143,28 +143,37 @@ export async function captureAnimation(
   }
 
   const totalFrames = capture.totalFrames;
+  console.log(`[AnimationCapture] fps=${capture.fps}, duration=${capture.duration}ms, totalFrames=${totalFrames}`);
 
-  for (let i = 0; i < totalFrames; i++) {
-    const progress = totalFrames > 1 ? i / (totalFrames - 1) : 1;
+  try {
+    for (let i = 0; i < totalFrames; i++) {
+      const progress = totalFrames > 1 ? i / (totalFrames - 1) : 1;
 
-    // Update app state
-    await onFrame(i, progress);
+      // Update app state
+      await onFrame(i, progress);
 
-    // Wait for React/DOM to render the changes
-    // Double RAF ensures layout and paint are complete
-    await new Promise(resolve => requestAnimationFrame(resolve));
-    await new Promise(resolve => requestAnimationFrame(resolve));
+      // Wait for React/DOM to render the changes
+      // Double RAF ensures layout and paint are complete
+      await new Promise(resolve => requestAnimationFrame(resolve));
+      await new Promise(resolve => requestAnimationFrame(resolve));
 
-    // Request capture with explicit frame number and WAIT for Puppeteer ACK
-    await capture.captureFrame(i);
+      // Request capture with explicit frame number and WAIT for Puppeteer ACK
+      console.log(`[AnimationCapture] About to capture frame ${i}...`);
+      await capture.captureFrame(i);
+      console.log(`[AnimationCapture] Captured frame ${i} successfully`);
 
-    // Optional: maintain consistent timing (useful for debugging)
-    // In production, Puppeteer's screenshot speed controls pacing
-    if (i < totalFrames - 1) {
-      await new Promise(resolve => setTimeout(resolve, 1));
+      // Optional: maintain consistent timing (useful for debugging)
+      // In production, Puppeteer's screenshot speed controls pacing
+      if (i < totalFrames - 1) {
+        await new Promise(resolve => setTimeout(resolve, 1));
+      }
     }
+  } catch (error) {
+    console.error(`[AnimationCapture] FATAL ERROR in capture loop:`, error);
+    throw error;
   }
 
+  console.log(`[AnimationCapture] Loop completed! Calling done()...`);
   capture.done();
 }
 

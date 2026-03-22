@@ -10,7 +10,7 @@ const path_1 = require("path");
 const fs_1 = require("fs");
 const crypto_1 = require("crypto");
 const child_process_1 = require("child_process");
-const RENDER_TIMEOUT_MS = 30000; // Increased for animated apps
+const RENDER_TIMEOUT_MS = 300000; // 5 minutes for animated apps with many frames
 function generateAppCacheKey(src, parameters, title, date, tags, outputName, fps, duration) {
     const hash = (0, crypto_1.createHash)("sha256");
     hash.update(src);
@@ -147,6 +147,7 @@ async function renderApp(options) {
     const url = `file://${indexPath}?${searchParams.toString()}`;
     console.log(`\nRendering app "${app.id}" from ${url}`);
     console.log(`  FPS: ${fps}, Duration: ${duration}ms`);
+    console.log(`  Parameters:`, app.parameters);
     const ownBrowser = sharedBrowser
         ? null
         : await puppeteer_1.default.launch({
@@ -160,15 +161,33 @@ async function renderApp(options) {
         await page.setViewport({ width, height });
         // Inject CSS before page load to ensure transparent background and consistent rem sizing
         await page.evaluateOnNewDocument(() => {
+            // Wait for DOM to be ready
+            const injectStyles = () => {
+                // @ts-expect-error - document exists in browser context
+                if (!document.documentElement) {
+                    // DOM not ready yet, try again on next tick
+                    setTimeout(injectStyles, 0);
+                    return;
+                }
+                // @ts-expect-error - This runs in browser context
+                const style = document.createElement("style");
+                style.textContent = `
+          html { font-size: 16px !important; }
+          * { background: transparent !important; }
+          html, body { background: transparent !important; }
+        `;
+                // @ts-expect-error - This runs in browser context
+                const target = document.head || document.documentElement;
+                target.appendChild(style);
+            };
             // @ts-expect-error - This runs in browser context
-            const style = document.createElement("style");
-            style.textContent = `
-        html { font-size: 16px !important; }
-        * { background: transparent !important; }
-        html, body { background: transparent !important; }
-      `;
-            // @ts-expect-error - This runs in browser context
-            document.head?.appendChild(style) || document.documentElement.appendChild(style);
+            if (document.readyState === 'loading') {
+                // @ts-expect-error - This runs in browser context
+                document.addEventListener('DOMContentLoaded', injectStyles);
+            }
+            else {
+                injectStyles();
+            }
         });
         page.on("console", (msg) => console.log(`[app:${app.id}] console.${msg.type()}: ${msg.text()}`));
         page.on("pageerror", (err) => console.error(`[app:${app.id}] page error: ${String(err)}`));
@@ -177,6 +196,7 @@ async function renderApp(options) {
         // Expose frame capture function that apps can call with explicit frame numbers
         // This returns a promise that resolves when screenshot is complete (ACK)
         await page.exposeFunction("__stsCaptureFrame", async (frameNumber) => {
+            console.log(`[app:${app.id}] 🎬 Starting capture frame ${frameNumber}...`);
             const screenshot = await page.screenshot({
                 type: "png",
                 omitBackground: true,
@@ -186,7 +206,7 @@ async function renderApp(options) {
                 number: frameNumber,
                 buffer: Buffer.from(screenshot),
             });
-            console.log(`[app:${app.id}] Captured frame ${frameNumber} (${frames.length} total)`);
+            console.log(`[app:${app.id}] ✅ Captured frame ${frameNumber} (${frames.length} total)`);
             // Promise resolution is the ACK!
             return true;
         });
@@ -201,23 +221,38 @@ async function renderApp(options) {
         });
         // Set up event listener and backward compatibility BEFORE navigation
         await page.evaluateOnNewDocument(() => {
-            // Set up listener for 'sts-done-rendering' event
+            const setupEventListeners = () => {
+                // @ts-expect-error - document exists in browser context
+                if (!document) {
+                    setTimeout(setupEventListeners, 0);
+                    return;
+                }
+                // Set up listener for 'sts-done-rendering' event
+                // @ts-expect-error - This runs in browser context
+                document.addEventListener("sts-done-rendering", () => {
+                    // @ts-expect-error - This is the exposed function
+                    window.__stsNotifyRenderComplete();
+                });
+                // For backward compatibility with old apps using window.__stsRenderComplete
+                // @ts-expect-error - This runs in browser context
+                Object.defineProperty(window, "__stsRenderComplete", {
+                    set: (value) => {
+                        if (value === true) {
+                            // @ts-expect-error - This runs in browser context
+                            document.dispatchEvent(new CustomEvent("sts-done-rendering"));
+                        }
+                    },
+                    get: () => false,
+                });
+            };
             // @ts-expect-error - This runs in browser context
-            document.addEventListener("sts-done-rendering", () => {
-                // @ts-expect-error - This is the exposed function
-                window.__stsNotifyRenderComplete();
-            });
-            // For backward compatibility with old apps using window.__stsRenderComplete
-            // @ts-expect-error - This runs in browser context
-            Object.defineProperty(window, "__stsRenderComplete", {
-                set: (value) => {
-                    if (value === true) {
-                        // @ts-expect-error - This runs in browser context
-                        document.dispatchEvent(new CustomEvent("sts-done-rendering"));
-                    }
-                },
-                get: () => false,
-            });
+            if (typeof document !== 'undefined' && document.readyState === 'loading') {
+                // @ts-expect-error - This runs in browser context
+                document.addEventListener('DOMContentLoaded', setupEventListeners);
+            }
+            else {
+                setupEventListeners();
+            }
         });
         await page.goto(url, { waitUntil: "networkidle0" });
         await Promise.race([

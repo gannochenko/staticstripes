@@ -373,10 +373,14 @@ class Stream {
                 throw new Error('exact duration of the fragment in the joining stream must be provided');
             }
             const offsetLeft = offset.otherStreamOffsetLeft;
+            console.log(`🔍 [overlayStream] offset.otherStreamOffsetLeft = ${offsetLeft}, offset.streamDuration = ${offset.streamDuration}, offset.otherStreamDuration = ${offset.otherStreamDuration}`);
             if (offsetLeft > 0) {
-                // Pad the joining stream on the left
+                // Pad the joining stream on the left with transparent frames
+                // offsetLeft is in seconds, convert to milliseconds
+                console.log(`🔍 [overlayStream] Applying offset padding: ${offsetLeft}s = ${offsetLeft * 1000}ms, mode=add, color=transparent`);
                 stream.tPad({
-                    start: offsetLeft,
+                    start: offsetLeft * 1000,
+                    startMode: 'add', // Use 'add' mode to create transparent frames, not 'clone'
                     ...(isAudio ? {} : { color: Colors.Transparent }),
                 });
                 // Pad the main stream on the right if needed

@@ -28,6 +28,7 @@ class Sequence {
             }
             const calculatedOverlayLeft = (0, expression_parser_1.calculateFinalValue)(fragment.overlayLeft, this.expressionContext);
             const calculatedDuration = (0, expression_parser_1.calculateFinalValue)(fragment.duration, this.expressionContext);
+            const calculatedTrimLeft = (0, expression_parser_1.calculateFinalValue)(fragment.trimLeft, this.expressionContext);
             // Debug: log NaN durations
             if (isNaN(calculatedDuration)) {
                 console.error(`[DEBUG] Fragment has NaN duration:`);
@@ -71,20 +72,20 @@ class Sequence {
             // duration and clipping adjustment
             if (process.env.DEBUG) {
                 console.error(`[DEBUG] Trim check for ${fragment.id}:`);
-                console.error(`  trimLeft: ${fragment.trimLeft}`);
+                console.error(`  calculatedTrimLeft: ${calculatedTrimLeft}`);
                 console.error(`  calculatedDuration: ${calculatedDuration}`);
                 console.error(`  asset.duration: ${asset.duration}`);
                 console.error(`  hasVideo: ${asset.hasVideo}`);
-                console.error(`  Will trim: ${fragment.trimLeft != 0 || calculatedDuration < asset.duration}`);
+                console.error(`  Will trim: ${calculatedTrimLeft != 0 || calculatedDuration < asset.duration}`);
             }
-            if (fragment.trimLeft != 0 || calculatedDuration < asset.duration) {
+            if (calculatedTrimLeft != 0 || calculatedDuration < asset.duration) {
                 // Only trim video if it came from an actual source
                 if (asset.hasVideo) {
-                    currentVideoStream.trim(fragment.trimLeft, fragment.trimLeft + calculatedDuration);
+                    currentVideoStream.trim(calculatedTrimLeft, calculatedTrimLeft + calculatedDuration);
                 }
                 // Only trim audio if it came from an actual source AND sound is not off
                 if (asset.hasAudio && fragment.sound !== "off") {
-                    currentAudioStream.trim(fragment.trimLeft, fragment.trimLeft + calculatedDuration);
+                    currentAudioStream.trim(calculatedTrimLeft, calculatedTrimLeft + calculatedDuration);
                 }
             }
             // Convert deprecated JPEG pixel format (yuvj420p) to standard yuv420p early
@@ -101,9 +102,11 @@ class Sequence {
             }
             if (asset.duration === 0 &&
                 calculatedDuration > 0 &&
-                (asset.type === "image" || asset.path.toLowerCase().match(/\.(png|apng)$/)) &&
+                asset.type === "image" &&
+                !asset.path.toLowerCase().endsWith('.apng') &&
                 fragment.objectFit !== "ken-burns") {
-                // special case for images and static APNG files - extend to desired duration
+                // special case for static images (PNG, JPG, etc) - extend to desired duration
+                // APNG files are animated and should NOT be cloned
                 // Skip tpad for Ken Burns - zoompan will generate the frames
                 currentVideoStream.tPad({
                     start: calculatedDuration,
@@ -268,7 +271,7 @@ class Sequence {
             this.time += calculatedDuration + calculatedOverlayLeft;
             // Debug: log fragment addition to context
             if (process.env.DEBUG) {
-                console.error(`[DEBUG] Adding fragment to context: ${fragment.id} (duration: ${calculatedDuration}ms)`);
+                console.error(`[DEBUG] Adding fragment "${fragment.id}" to context: start=${timeContext.start}ms, end=${timeContext.end}ms, duration=${calculatedDuration}ms, overlayLeft=${calculatedOverlayLeft}ms`);
             }
             this.expressionContext.fragments.set(fragment.id, {
                 time: timeContext,
@@ -280,7 +283,7 @@ class Sequence {
                 startTime: timeContext.start,
                 endTime: timeContext.end,
                 duration: calculatedDuration,
-                trimLeft: fragment.trimLeft,
+                trimLeft: calculatedTrimLeft,
                 overlayLeft: calculatedOverlayLeft,
                 enabled: fragment.enabled,
             });
@@ -299,8 +302,10 @@ class Sequence {
     }
     overlayWith(sequence) {
         // Get offset from the first fragment of the overlaying sequence
-        const firstFragment = sequence.definition.fragments[0];
-        const overlayOffset = firstFragment?.overlayLeft || 0;
+        // Use debugInfo which contains the CALCULATED overlayLeft value
+        const debugInfo = sequence.getDebugInfo();
+        const firstFragmentDebug = debugInfo[0];
+        const overlayOffset = firstFragmentDebug?.overlayLeft || 0;
         // If there's an offset, we need to provide duration information
         if (overlayOffset && typeof overlayOffset === 'number' && overlayOffset > 0) {
             const options = {

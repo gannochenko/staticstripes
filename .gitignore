@@ -23,6 +23,7 @@ output/*
 *.mp3
 *.jpg
 *.png
+*.apng
 images/*
 !images/.gitkeep
 

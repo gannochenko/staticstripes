@@ -22,7 +22,8 @@ export function RenderingView({ children }: RenderingViewProps) {
     document.body.style.background = "transparent";
     document.body.style.overflow = "hidden";
 
-    (window as unknown as Record<string, unknown>)["__stsRenderComplete"] = true;
+    // Note: __stsRenderComplete is handled by AnimationCapture.done() in animation.ts
+    // Don't set it here as it would signal completion too early!
   }, []);
 
   return <div className={styles.container}>{children}</div>;

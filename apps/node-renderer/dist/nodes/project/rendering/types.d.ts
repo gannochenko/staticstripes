@@ -16,7 +16,7 @@ export type Fragment = {
     enabled: boolean;
     assetName: string;
     duration: number | CompiledExpression;
-    trimLeft: number;
+    trimLeft: number | CompiledExpression;
     overlayLeft: number | CompiledExpression;
     overlayZIndex: number;
     transitionIn: string;

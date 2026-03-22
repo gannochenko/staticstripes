@@ -76,6 +76,44 @@ class AppNode {
             },
         ];
     }
+    /**
+     * Calculate the duration for the app based on its parameters
+     * For karaoke text apps, parse word timings to determine actual duration
+     * Falls back to 5000ms default for apps without timing data
+     */
+    calculateDuration(parameters) {
+        const DEFAULT_DURATION = 5000; // 5 seconds fallback
+        const DURATION_BUFFER = 500; // Add 500ms buffer for fade-out
+        // Check if this is a karaoke text app with word timings
+        if (parameters.words) {
+            try {
+                const words = JSON.parse(parameters.words);
+                if (Array.isArray(words) && words.length > 0) {
+                    // Find the maximum end time from all words
+                    const maxEndTime = Math.max(...words.map((w) => w.end || 0));
+                    if (maxEndTime > 0) {
+                        // Convert from seconds to milliseconds and add buffer
+                        const calculatedDuration = Math.ceil(maxEndTime * 1000) + DURATION_BUFFER;
+                        console.log(`📊 Calculated duration from word timings: ${calculatedDuration}ms (max word end: ${maxEndTime}s)`);
+                        return calculatedDuration;
+                    }
+                }
+            }
+            catch (error) {
+                console.warn(`⚠️  Failed to parse word timings for duration calculation:`, error);
+            }
+        }
+        // Check if duration is explicitly provided as a parameter
+        if (parameters.duration) {
+            const explicitDuration = parseInt(parameters.duration, 10);
+            if (!isNaN(explicitDuration) && explicitDuration > 0) {
+                console.log(`📊 Using explicit duration parameter: ${explicitDuration}ms`);
+                return explicitDuration;
+            }
+        }
+        console.log(`📊 Using default duration: ${DEFAULT_DURATION}ms`);
+        return DEFAULT_DURATION;
+    }
     async execute(context) {
         console.log(`🎨 Executing app node "${this.params.name || 'unnamed'}"...`);
         // Build app if needed
@@ -88,8 +126,8 @@ class AppNode {
         const fps = context.outputFps;
         const width = context.outputResolution.width;
         const height = context.outputResolution.height;
-        // TODO: Duration should come from fragment/sequence, for now use default
-        const duration = 5000; // 5 seconds default
+        // Calculate duration based on app parameters
+        const duration = this.calculateDuration(this.params.parameters);
         // Create app object
         const app = {
             id: this.params.name || `app_${Date.now()}`,
