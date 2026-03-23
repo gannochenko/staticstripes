@@ -321,11 +321,29 @@ export class NodeFactory {
     const model =
       modelElements.length > 0 ? modelElements[0].attribs?.name : undefined;
 
+    // Extract optional parameters from attributes
+    const outputFormat = parsedNode.attributes.get('outputFormat');
+    const stabilityStr = parsedNode.attributes.get('stability');
+    const stability = stabilityStr ? parseFloat(stabilityStr) : undefined;
+    const similarityBoostStr = parsedNode.attributes.get('similarityBoost');
+    const similarityBoost = similarityBoostStr ? parseFloat(similarityBoostStr) : undefined;
+    const styleStr = parsedNode.attributes.get('style');
+    const style = styleStr ? parseFloat(styleStr) : undefined;
+    const useSpeakerBoostStr = parsedNode.attributes.get('useSpeakerBoost');
+    const useSpeakerBoost = useSpeakerBoostStr ? useSpeakerBoostStr === 'true' : undefined;
+    const salt = parsedNode.attributes.get('salt');
+
     return {
       name: parsedNode.name,
       textRef,
       voice,
       model,
+      outputFormat,
+      stability,
+      similarityBoost,
+      style,
+      useSpeakerBoost,
+      salt,
     };
   }
 
@@ -350,10 +368,24 @@ export class NodeFactory {
     const model =
       modelElements.length > 0 ? modelElements[0].attribs?.name : undefined;
 
+    // Extract maxTokens from attributes
+    const maxTokensStr = parsedNode.attributes.get('maxTokens');
+    const maxTokens = maxTokensStr ? parseInt(maxTokensStr, 10) : undefined;
+
+    // Extract temperature from attributes
+    const temperatureStr = parsedNode.attributes.get('temperature');
+    const temperature = temperatureStr ? parseFloat(temperatureStr) : undefined;
+
+    // Extract salt from attributes
+    const salt = parsedNode.attributes.get('salt');
+
     return {
       name: parsedNode.name,
       prompt,
       model,
+      maxTokens,
+      temperature,
+      salt,
     };
   }
 

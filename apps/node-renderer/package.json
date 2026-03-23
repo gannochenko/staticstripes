@@ -38,6 +38,7 @@
     "css-tree": "^3.1.0",
     "expr-eval": "^2.0.2",
     "htmlparser2": "^10.1.0",
+    "openai": "^6.32.0",
     "puppeteer": "^24.40.0"
   }
 }

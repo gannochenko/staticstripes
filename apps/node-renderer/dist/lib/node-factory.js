@@ -207,11 +207,28 @@ class NodeFactory {
         const voice = voiceElements.length > 0 ? voiceElements[0].attribs?.name : undefined;
         const modelElements = (0, html_parser_1.findChildElementsByTagName)(parsedNode.element, 'model');
         const model = modelElements.length > 0 ? modelElements[0].attribs?.name : undefined;
+        // Extract optional parameters from attributes
+        const outputFormat = parsedNode.attributes.get('outputFormat');
+        const stabilityStr = parsedNode.attributes.get('stability');
+        const stability = stabilityStr ? parseFloat(stabilityStr) : undefined;
+        const similarityBoostStr = parsedNode.attributes.get('similarityBoost');
+        const similarityBoost = similarityBoostStr ? parseFloat(similarityBoostStr) : undefined;
+        const styleStr = parsedNode.attributes.get('style');
+        const style = styleStr ? parseFloat(styleStr) : undefined;
+        const useSpeakerBoostStr = parsedNode.attributes.get('useSpeakerBoost');
+        const useSpeakerBoost = useSpeakerBoostStr ? useSpeakerBoostStr === 'true' : undefined;
+        const salt = parsedNode.attributes.get('salt');
         return {
             name: parsedNode.name,
             textRef,
             voice,
             model,
+            outputFormat,
+            stability,
+            similarityBoost,
+            style,
+            useSpeakerBoost,
+            salt,
         };
     }
     static extractOpenAIParams(parsedNode) {
@@ -223,10 +240,21 @@ class NodeFactory {
         // Extract model
         const modelElements = (0, html_parser_1.findChildElementsByTagName)(parsedNode.element, 'model');
         const model = modelElements.length > 0 ? modelElements[0].attribs?.name : undefined;
+        // Extract maxTokens from attributes
+        const maxTokensStr = parsedNode.attributes.get('maxTokens');
+        const maxTokens = maxTokensStr ? parseInt(maxTokensStr, 10) : undefined;
+        // Extract temperature from attributes
+        const temperatureStr = parsedNode.attributes.get('temperature');
+        const temperature = temperatureStr ? parseFloat(temperatureStr) : undefined;
+        // Extract salt from attributes
+        const salt = parsedNode.attributes.get('salt');
         return {
             name: parsedNode.name,
             prompt,
             model,
+            maxTokens,
+            temperature,
+            salt,
         };
     }
     static extractAppParams(parsedNode) {
