@@ -377,10 +377,10 @@ class Stream {
             if (offsetLeft > 0) {
                 // Pad the joining stream on the left with transparent frames
                 // offsetLeft is in seconds, convert to milliseconds
-                console.log(`🔍 [overlayStream] Applying offset padding: ${offsetLeft}s = ${offsetLeft * 1000}ms, mode=add, color=transparent`);
+                console.log(`🔍 [overlayStream] Applying offset padding: ${offsetLeft}s = ${offsetLeft * 1000}ms, mode=clone (default), color=transparent`);
                 stream.tPad({
                     start: offsetLeft * 1000,
-                    startMode: 'add', // Use 'add' mode to create transparent frames, not 'clone'
+                    // NO startMode - defaults to 'clone' which preserves the last frame
                     ...(isAudio ? {} : { color: Colors.Transparent }),
                 });
                 // Pad the main stream on the right if needed

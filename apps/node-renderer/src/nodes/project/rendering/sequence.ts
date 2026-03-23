@@ -120,10 +120,10 @@ export class Sequence {
 
       // Convert deprecated JPEG pixel format (yuvj420p) to standard yuv420p early
       // This prevents swscaler warnings from appearing in all subsequent filters
-      // For PNG images with alpha, use yuva420p to preserve transparency
+      // For PNG/APNG images with alpha, use yuva420p to preserve transparency
       if (asset.hasVideo && asset.type === "image") {
-        const isPng = asset.path.toLowerCase().endsWith(".png");
-        currentVideoStream.convertPixelFormat(isPng ? "yuva420p" : "yuv420p");
+        const hasAlpha = asset.path.toLowerCase().match(/\.(png|apng)$/);
+        currentVideoStream.convertPixelFormat(hasAlpha ? "yuva420p" : "yuv420p");
       }
 
       // Apply visual filter early for static images (before padding/cloning)

@@ -281,7 +281,6 @@ export async function renderApp(
         const style = document.createElement("style");
         style.textContent = `
           html { font-size: 16px !important; }
-          * { background: transparent !important; }
           html, body { background: transparent !important; }
         `;
         // @ts-expect-error - This runs in browser context
