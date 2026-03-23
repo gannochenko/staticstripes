@@ -42,7 +42,9 @@ export interface DAGValidationResult {
 export declare class DAGValidator {
     /**
      * Parses a node reference string
-     * Format: $nodeName.output.outputName
+     * Supports two formats:
+     * - Explicit: $nodeName.output.outputName
+     * - Shorthand: $nodeName.outputName
      */
     static parseNodeReference(ref: string): NodeReference | null;
     /**

@@ -46,7 +46,18 @@ class AppNode {
         return this.params.name;
     }
     getInputs() {
-        return [];
+        // Dynamically determine inputs based on parameters that look like references
+        const inputs = [];
+        for (const [key, value] of Object.entries(this.params.parameters)) {
+            // Check if value is a node reference (starts with $)
+            if (typeof value === 'string' && value.startsWith('$')) {
+                inputs.push({
+                    name: key,
+                    description: `Dynamic input for ${key}`,
+                });
+            }
+        }
+        return inputs;
     }
     getOutputs() {
         return [
@@ -94,7 +105,10 @@ class AppNode {
         // Check if this is a karaoke text app with word timings (fallback for karaoke apps)
         if (parameters.words) {
             try {
-                const words = JSON.parse(parameters.words);
+                // Handle both array (from resolved input) and JSON string (from static parameter)
+                const words = Array.isArray(parameters.words)
+                    ? parameters.words
+                    : JSON.parse(parameters.words);
                 if (Array.isArray(words) && words.length > 0) {
                     // Find the maximum end time from all words
                     const maxEndTime = Math.max(...words.map((w) => w.end || 0));
@@ -128,16 +142,36 @@ class AppNode {
         const fps = context.outputFps;
         const width = context.outputResolution.width;
         const height = context.outputResolution.height;
-        // Calculate duration based on app parameters
-        const duration = this.calculateDuration(this.params.parameters);
-        // Create app object
+        // Merge resolved inputs with static parameters BEFORE calculating duration
+        const mergedParameters = { ...this.params.parameters };
+        if (context.inputs && context.inputs.size > 0) {
+            for (const [key, value] of context.inputs.entries()) {
+                // For duration calculation, keep arrays as-is
+                // For URL parameters, we'll stringify later
+                mergedParameters[key] = value;
+            }
+        }
+        // Calculate duration based on merged parameters (may use word timing array)
+        const duration = this.calculateDuration(mergedParameters);
+        // Now convert objects to JSON strings for URL parameters
+        const urlParameters = {};
+        for (const [key, value] of Object.entries(mergedParameters)) {
+            if (typeof value === 'object') {
+                urlParameters[key] = JSON.stringify(value);
+            }
+            else {
+                urlParameters[key] = String(value);
+            }
+        }
+        // Create app object (use urlParameters for URL, but mergedParameters for cache key)
         const app = {
             id: this.params.name || `app_${Date.now()}`,
             src: this.params.src,
-            parameters: this.params.parameters,
+            parameters: urlParameters, // Use stringified parameters for URL
         };
         // Check if cached result exists before launching browser
-        const cacheKey = generateAppCacheKey(app.src, app.parameters, '', // title
+        // Use mergedParameters (with actual data) for cache key, not urlParameters (with stringified data)
+        const cacheKey = generateAppCacheKey(app.src, mergedParameters, '', // title
         undefined, // date
         [], // tags
         'default', // outputName

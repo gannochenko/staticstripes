@@ -32,6 +32,11 @@ export interface NodeExecutionContext {
      */
     getOutput(nodeName: string, outputName: string): any;
     /**
+     * Resolved input values for this node
+     * Maps input names to their resolved values from upstream nodes
+     */
+    inputs?: Map<string, any>;
+    /**
      * Project directory path (where project.html lives)
      */
     projectDir: string;

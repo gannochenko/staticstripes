@@ -23,6 +23,7 @@ import type {
   Output as RenderOutput,
 } from "./rendering/types";
 import { CSSProcessor } from "./rendering/css-processor";
+import { DAGValidator } from "../../lib/dag-validator";
 
 export interface ProjectNodeParams {
   name?: string;
@@ -221,16 +222,16 @@ export class ProjectNode implements INode {
     for (const asset of this.params.assets) {
       // Resolve assets that reference node outputs (e.g., app outputs)
       if (asset.input) {
-        // Parse input reference: $nodeName.output.outputName
-        const match = asset.input.match(/^\$([^.]+)\.output\.([^.]+)$/);
-        if (!match) {
+        // Parse input reference: supports both $nodeName.output.outputName and $nodeName.outputName
+        const ref = DAGValidator.parseNodeReference(asset.input);
+        if (!ref) {
           console.warn(
             `⚠️  Asset "${asset.name}" has invalid input format: ${asset.input}`,
           );
           continue;
         }
 
-        const [, nodeName, outputName] = match;
+        const { nodeName, outputName } = ref;
         const outputPath = context.getOutput(nodeName, outputName);
 
         if (!outputPath) {

@@ -5,13 +5,22 @@ import { DAGValidator } from './dag-validator';
 
 describe('DAGValidator', () => {
   describe('Node reference parsing', () => {
-    it('should parse valid node reference', () => {
+    it('should parse valid node reference (explicit format)', () => {
       const ref = DAGValidator.parseNodeReference('$project.output.youtube');
 
       expect(ref).not.toBeNull();
       expect(ref?.nodeName).toBe('project');
       expect(ref?.outputName).toBe('youtube');
       expect(ref?.originalString).toBe('$project.output.youtube');
+    });
+
+    it('should parse valid node reference (shorthand format)', () => {
+      const ref = DAGValidator.parseNodeReference('$joke_speech.wordTiming');
+
+      expect(ref).not.toBeNull();
+      expect(ref?.nodeName).toBe('joke_speech');
+      expect(ref?.outputName).toBe('wordTiming');
+      expect(ref?.originalString).toBe('$joke_speech.wordTiming');
     });
 
     it('should parse node reference with underscores', () => {

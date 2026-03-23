@@ -302,6 +302,7 @@ export class DAGRunner {
           getOutput: (nodeName: string, outputName: string) => {
             return this.context.getOutput(nodeName, outputName);
           },
+          inputs, // Pass resolved inputs to the node
           projectDir: this.projectDir,
           cacheDir: undefined, // TODO: Implement cache directory
           outputResolution: this.options.outputResolution || { width: 1920, height: 1080 },

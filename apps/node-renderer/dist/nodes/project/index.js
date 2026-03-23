@@ -5,6 +5,7 @@ const rendering_1 = require("./rendering");
 const path_1 = require("path");
 const fs_1 = require("fs");
 const css_processor_1 = require("./rendering/css-processor");
+const dag_validator_1 = require("../../lib/dag-validator");
 /**
  * Project Node - Main node that runs ffmpeg to render video
  */
@@ -141,13 +142,13 @@ class ProjectNode {
         for (const asset of this.params.assets) {
             // Resolve assets that reference node outputs (e.g., app outputs)
             if (asset.input) {
-                // Parse input reference: $nodeName.output.outputName
-                const match = asset.input.match(/^\$([^.]+)\.output\.([^.]+)$/);
-                if (!match) {
+                // Parse input reference: supports both $nodeName.output.outputName and $nodeName.outputName
+                const ref = dag_validator_1.DAGValidator.parseNodeReference(asset.input);
+                if (!ref) {
                     console.warn(`⚠️  Asset "${asset.name}" has invalid input format: ${asset.input}`);
                     continue;
                 }
-                const [, nodeName, outputName] = match;
+                const { nodeName, outputName } = ref;
                 const outputPath = context.getOutput(nodeName, outputName);
                 if (!outputPath) {
                     console.warn(`⚠️  Asset "${asset.name}" references missing output: ${asset.input}`);

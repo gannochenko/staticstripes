@@ -57,23 +57,36 @@ export interface DAGValidationResult {
 export class DAGValidator {
   /**
    * Parses a node reference string
-   * Format: $nodeName.output.outputName
+   * Supports two formats:
+   * - Explicit: $nodeName.output.outputName
+   * - Shorthand: $nodeName.outputName
    */
   public static parseNodeReference(ref: string): NodeReference | null {
     if (!ref || !ref.startsWith('$')) {
       return null;
     }
 
-    const match = ref.match(/^\$([^.]+)\.output\.([^.]+)$/);
-    if (!match) {
-      return null;
+    // Try explicit format first: $nodeName.output.outputName
+    let match = ref.match(/^\$([^.]+)\.output\.([^.]+)$/);
+    if (match) {
+      return {
+        nodeName: match[1],
+        outputName: match[2],
+        originalString: ref,
+      };
     }
 
-    return {
-      nodeName: match[1],
-      outputName: match[2],
-      originalString: ref,
-    };
+    // Try shorthand format: $nodeName.outputName
+    match = ref.match(/^\$([^.]+)\.([^.]+)$/);
+    if (match) {
+      return {
+        nodeName: match[1],
+        outputName: match[2],
+        originalString: ref,
+      };
+    }
+
+    return null;
   }
 
   /**

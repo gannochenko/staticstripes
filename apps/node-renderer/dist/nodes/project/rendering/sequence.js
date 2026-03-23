@@ -29,15 +29,18 @@ class Sequence {
             const calculatedOverlayLeft = (0, expression_parser_1.calculateFinalValue)(fragment.overlayLeft, this.expressionContext);
             const calculatedDuration = (0, expression_parser_1.calculateFinalValue)(fragment.duration, this.expressionContext);
             const calculatedTrimLeft = (0, expression_parser_1.calculateFinalValue)(fragment.trimLeft, this.expressionContext);
-            const timeContext = {
-                start: 0,
-                end: 0,
-                duration: calculatedDuration,
-            };
             const asset = this.assetManager.getAssetByName(fragment.assetName);
             if (!asset) {
                 return;
             }
+            // If fragment duration is 0 (not explicitly set), use asset's natural duration
+            // This prevents creating null sources with duration=0ms which causes FFmpeg to hang
+            const effectiveDuration = calculatedDuration > 0 ? calculatedDuration : asset.duration;
+            const timeContext = {
+                start: 0,
+                end: 0,
+                duration: effectiveDuration,
+            };
             // Create video stream: use actual video if available, otherwise create blank stream
             let currentVideoStream;
             if (asset.hasVideo) {
@@ -45,30 +48,53 @@ class Sequence {
             }
             else {
                 // Create blank transparent video stream for audio-only assets
-                currentVideoStream = (0, stream_1.makeBlankStream)(calculatedDuration, this.output.resolution.width, this.output.resolution.height, this.output.fps, this.buf);
+                // If effectiveDuration is 0, don't create a synthetic stream with 0 duration
+                // Instead, FFmpeg will use the audio stream's duration automatically
+                if (effectiveDuration > 0) {
+                    currentVideoStream = (0, stream_1.makeBlankStream)(effectiveDuration, this.output.resolution.width, this.output.resolution.height, this.output.fps, this.buf);
+                }
+                else {
+                    // For audio-only assets with unknown duration, create a long blank stream
+                    // and let FFmpeg trim it to match the audio duration
+                    currentVideoStream = (0, stream_1.makeBlankStream)(asset.duration || 10000, // Default to 10 seconds if unknown
+                    this.output.resolution.width, this.output.resolution.height, this.output.fps, this.buf);
+                }
             }
             // Create audio stream: use actual audio if available, otherwise create silent stream
             // If fragment has -sound: off, always use silence
             let currentAudioStream;
             if (fragment.sound === "off") {
                 // Force silent audio when -sound: off
-                currentAudioStream = (0, stream_1.makeSilentStream)(calculatedDuration, this.buf);
+                if (effectiveDuration > 0) {
+                    currentAudioStream = (0, stream_1.makeSilentStream)(effectiveDuration, this.buf);
+                }
+                else {
+                    currentAudioStream = (0, stream_1.makeSilentStream)(asset.duration || 10000, this.buf);
+                }
             }
             else if (asset.hasAudio) {
                 currentAudioStream = (0, stream_1.makeStream)(this.assetManager.getAudioInputLabelByAssetName(fragment.assetName), this.buf);
             }
             else {
                 // Create silent audio stream matching the video duration
-                currentAudioStream = (0, stream_1.makeSilentStream)(calculatedDuration, this.buf);
+                // If effectiveDuration is 0, don't create a synthetic stream with 0 duration
+                if (effectiveDuration > 0) {
+                    currentAudioStream = (0, stream_1.makeSilentStream)(effectiveDuration, this.buf);
+                }
+                else {
+                    // For video-only assets with unknown duration, create a long silent stream
+                    // and let FFmpeg trim it to match the video duration
+                    currentAudioStream = (0, stream_1.makeSilentStream)(asset.duration || 10000, this.buf);
+                }
             }
-            if (calculatedTrimLeft != 0 || calculatedDuration < asset.duration) {
+            if ((calculatedTrimLeft != 0 || (effectiveDuration < asset.duration && effectiveDuration > 0))) {
                 // Only trim video if it came from an actual source
-                if (asset.hasVideo) {
-                    currentVideoStream.trim(calculatedTrimLeft, calculatedTrimLeft + calculatedDuration);
+                if (asset.hasVideo && effectiveDuration > 0) {
+                    currentVideoStream.trim(calculatedTrimLeft, calculatedTrimLeft + effectiveDuration);
                 }
                 // Only trim audio if it came from an actual source AND sound is not off
-                if (asset.hasAudio && fragment.sound !== "off") {
-                    currentAudioStream.trim(calculatedTrimLeft, calculatedTrimLeft + calculatedDuration);
+                if (asset.hasAudio && fragment.sound !== "off" && effectiveDuration > 0) {
+                    currentAudioStream.trim(calculatedTrimLeft, calculatedTrimLeft + effectiveDuration);
                 }
             }
             // Convert deprecated JPEG pixel format (yuvj420p) to standard yuv420p early
@@ -84,7 +110,7 @@ class Sequence {
                 currentVideoStream.filter(fragment.visualFilter);
             }
             if (asset.duration === 0 &&
-                calculatedDuration > 0 &&
+                effectiveDuration > 0 &&
                 asset.type === "image" &&
                 !asset.path.toLowerCase().endsWith(".apng") &&
                 fragment.objectFit !== "ken-burns") {
@@ -92,7 +118,7 @@ class Sequence {
                 // APNG files are animated and should NOT be cloned
                 // Skip tpad for Ken Burns - zoompan will generate the frames
                 currentVideoStream.tPad({
-                    start: calculatedDuration,
+                    start: effectiveDuration,
                     startMode: "clone",
                 });
             }
@@ -107,7 +133,7 @@ class Sequence {
                         effect: fragment.objectFitKenBurns,
                         zoom: fragment.objectFitKenBurnsZoom,
                         effectDuration: fragment.objectFitKenBurnsEffectDuration,
-                        fragmentDuration: calculatedDuration,
+                        fragmentDuration: effectiveDuration,
                         easing: fragment.objectFitKenBurnsEasing,
                         width: this.output.resolution.width,
                         height: this.output.resolution.height,
@@ -188,7 +214,7 @@ class Sequence {
                     fades: [
                         {
                             type: "out",
-                            startTime: calculatedDuration - fragment.transitionOutDuration,
+                            startTime: effectiveDuration - fragment.transitionOutDuration,
                             duration: fragment.transitionOutDuration,
                         },
                     ],
@@ -197,7 +223,7 @@ class Sequence {
                     fades: [
                         {
                             type: "out",
-                            startTime: calculatedDuration - fragment.transitionOutDuration,
+                            startTime: effectiveDuration - fragment.transitionOutDuration,
                             duration: fragment.transitionOutDuration,
                         },
                     ],
@@ -218,14 +244,14 @@ class Sequence {
                         flipLayers: fragment.overlayZIndex < 0,
                         offset: {
                             streamDuration: this.time,
-                            otherStreamDuration: calculatedDuration,
+                            otherStreamDuration: effectiveDuration,
                             otherStreamOffsetLeft: otherStreamOffsetLeft,
                         },
                     });
                     this.audioStream.overlayStream(currentAudioStream, {
                         offset: {
                             streamDuration: this.time,
-                            otherStreamDuration: calculatedDuration,
+                            otherStreamDuration: effectiveDuration,
                             otherStreamOffsetLeft: otherStreamOffsetLeft,
                         },
                     });
@@ -254,8 +280,8 @@ class Sequence {
                 this.audioStream = currentAudioStream;
             }
             timeContext.start = this.time + calculatedOverlayLeft;
-            timeContext.end = this.time + calculatedDuration + calculatedOverlayLeft;
-            this.time += calculatedDuration + calculatedOverlayLeft;
+            timeContext.end = this.time + effectiveDuration + calculatedOverlayLeft;
+            this.time += effectiveDuration + calculatedOverlayLeft;
             this.expressionContext.fragments.set(fragment.id, {
                 time: timeContext,
             });
@@ -265,7 +291,7 @@ class Sequence {
                 assetName: fragment.assetName,
                 startTime: timeContext.start,
                 endTime: timeContext.end,
-                duration: calculatedDuration,
+                duration: effectiveDuration,
                 trimLeft: calculatedTrimLeft,
                 overlayLeft: calculatedOverlayLeft,
                 enabled: fragment.enabled,

@@ -42,7 +42,7 @@
   <tag>dad-joke</tag>
 
   <assets>
-    <asset name="joke_text_video" input="$joke_text.output.video" />
+    <asset name="joke_text_video" input="$joke_text.video" />
     <asset name="joke_audio" input="$joke_speech.audio" />
   </assets>
 
@@ -50,7 +50,7 @@
     <output
       name="youtube_short"
       dir="output"
-      filename="dad_joke.mp4"
+      filename="dad_joke_simple.mp4"
       ffmpeg-args="-c:v libx264 -preset medium -crf 23 -c:a aac -b:a 192k"
     />
   </outputs>
@@ -60,18 +60,12 @@
       <fragment
         id="joke_display"
         data-asset="joke_text_video"
-        data-duration="5000ms"
-        data-transition-in="fade-in"
-        data-transition-in-duration="500"
-        data-transition-out="fade-out"
-        data-transition-out-duration="500"
       />
     </sequence>
     <sequence>
       <fragment
         id="joke_audio_track"
         data-asset="joke_audio"
-        data-duration="5000ms"
       />
     </sequence>
   </sequences>
@@ -84,5 +78,5 @@
 </node.project>
 
 <node.filesystem name="local_output" path="$project.output.youtube_short">
-  <path>output/dad_joke.mp4</path>
+  <path>output/dad_joke_simple.mp4</path>
 </node.filesystem>
