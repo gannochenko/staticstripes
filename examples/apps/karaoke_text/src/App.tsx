@@ -63,10 +63,10 @@ function KaraokeText({
     return result;
   }, [words]);
 
-  const { progress, isRendering, frameNumber, params } = useAnimationProgress({
+  const { progress, isRendering, frameNumber, params, duration } = useAnimationProgress({
     onFrame: (frame, prog) => {
       // Calculate current time in seconds
-      const currentTime = (prog * params.duration) / 1000;
+      const currentTime = (prog * duration) / 1000;
 
       // Find active chunk
       let activeChunkIdx = -1;
@@ -101,7 +101,9 @@ function KaraokeText({
   });
 
   // Calculate current time from progress
-  const currentTime = (progress * params.duration) / 1000;
+  const currentTime = (progress * duration) / 1000;
+
+  console.log(`[KaraokeText RENDER] progress=${progress.toFixed(3)}, currentTime=${currentTime.toFixed(3)}s, duration=${duration}`);
 
   // Find the active chunk based on current time
   const { activeChunk, currentWordIndexInChunk } = useMemo(() => {

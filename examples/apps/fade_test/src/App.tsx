@@ -22,6 +22,8 @@ function AnimatedFade({ text }: AnimatedFadeProps) {
   const translateY = 50 * (1 - progress);
   const scale = 0.8 + 0.2 * progress;
 
+  console.log(`[AnimatedFade RENDER] progress=${progress.toFixed(3)}, opacity=${opacity.toFixed(3)}, translateY=${translateY.toFixed(1)}`);
+
   return (
     <div
       style={{

@@ -54,6 +54,7 @@ export function VideoFrame<T extends ContentParams = ContentParams>({
     }
 
     throttleTimeoutRef.current = window.setTimeout(() => {
+      console.log(`[VideoFrame] setContentTime(${time})`);
       setContentTime(time);
       throttleTimeoutRef.current = null;
     }, 16);
