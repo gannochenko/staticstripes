@@ -195,7 +195,21 @@ export class AppNode implements INode {
     // Now convert objects to JSON strings for URL parameters
     const urlParameters: Record<string, string> = {};
     for (const [key, value] of Object.entries(mergedParameters)) {
-      if (typeof value === 'object') {
+      // Special handling for word timing data: transform "word" field to "text"
+      // This ensures compatibility between ElevenLabs output and karaoke app input
+      if (key === 'words' && Array.isArray(value)) {
+        const transformedWords = value.map((item: any) => {
+          if (item.word !== undefined) {
+            return {
+              text: item.word,
+              start: item.start,
+              end: item.end,
+            };
+          }
+          return item;
+        });
+        urlParameters[key] = JSON.stringify(transformedWords);
+      } else if (typeof value === 'object' && value !== null) {
         urlParameters[key] = JSON.stringify(value);
       } else {
         urlParameters[key] = String(value);

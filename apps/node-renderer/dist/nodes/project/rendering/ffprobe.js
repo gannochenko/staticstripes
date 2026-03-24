@@ -18,7 +18,11 @@ const getAssetDuration = async (path) => {
             path,
         ]);
         const durationSeconds = parseFloat(stdout.trim());
-        if (!isNaN(durationSeconds) && durationSeconds > 0) {
+        // Only return early if we got a valid positive duration
+        // Otherwise, try special APNG handling below
+        const hasValidDuration = !isNaN(durationSeconds) && durationSeconds > 0;
+        // If duration is valid and positive, return it immediately
+        if (hasValidDuration) {
             return Math.round(durationSeconds * 1000);
         }
         // If duration is NaN or 0, try special handling for APNG files
