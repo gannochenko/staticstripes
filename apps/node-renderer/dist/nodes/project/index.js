@@ -158,7 +158,12 @@ class ProjectNode {
                 // Determine type from file extension
                 const ext = outputPath.split(".").pop()?.toLowerCase() || "";
                 let assetType = "image";
-                if (ext === "apng" || ext === "mp4") {
+                let isApng = false;
+                if (ext === "apng") {
+                    assetType = "video";
+                    isApng = true; // APNG files never have audio
+                }
+                else if (ext === "mp4") {
                     assetType = "video";
                 }
                 else if (["mp3", "wav", "aac"].includes(ext)) {
@@ -179,7 +184,7 @@ class ProjectNode {
                     height: 1080,
                     rotation: 0,
                     hasVideo: assetType === "video" || assetType === "image",
-                    hasAudio: false, // Apps don't have audio
+                    hasAudio: (assetType === "video" && !isApng) || assetType === "audio",
                 };
                 renderAssets.push(renderAsset);
                 continue;
@@ -216,6 +221,7 @@ class ProjectNode {
                 hasVideo: assetType === "video" || assetType === "image",
                 hasAudio: assetType === "video" || assetType === "audio",
             };
+            console.log(`   Asset "${asset.name}": type=${assetType}, hasVideo=${renderAsset.hasVideo}, hasAudio=${renderAsset.hasAudio}`);
             renderAssets.push(renderAsset);
         }
         return renderAssets;
