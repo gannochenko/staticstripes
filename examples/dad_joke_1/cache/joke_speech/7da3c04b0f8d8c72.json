@@ -1,0 +1,82 @@
+[
+  {
+    "word": "Why",
+    "start": 0,
+    "end": 0.197
+  },
+  {
+    "word": "did",
+    "start": 0.244,
+    "end": 0.348
+  },
+  {
+    "word": "the",
+    "start": 0.372,
+    "end": 0.441
+  },
+  {
+    "word": "computer",
+    "start": 0.476,
+    "end": 0.824
+  },
+  {
+    "word": "go",
+    "start": 0.859,
+    "end": 0.952
+  },
+  {
+    "word": "to",
+    "start": 0.998,
+    "end": 1.045
+  },
+  {
+    "word": "therapy",
+    "start": 1.091,
+    "end": 1.544
+  },
+  {
+    "word": "Because",
+    "start": 1.962,
+    "end": 2.252
+  },
+  {
+    "word": "it",
+    "start": 2.287,
+    "end": 2.345
+  },
+  {
+    "word": "had",
+    "start": 2.392,
+    "end": 2.531
+  },
+  {
+    "word": "too",
+    "start": 2.589,
+    "end": 2.74
+  },
+  {
+    "word": "many",
+    "start": 2.798,
+    "end": 2.961
+  },
+  {
+    "word": "bytes",
+    "start": 3.03,
+    "end": 3.332
+  },
+  {
+    "word": "of",
+    "start": 3.367,
+    "end": 3.437
+  },
+  {
+    "word": "unresolved",
+    "start": 3.553,
+    "end": 4.133
+  },
+  {
+    "word": "issues",
+    "start": 4.168,
+    "end": 4.54
+  }
+]

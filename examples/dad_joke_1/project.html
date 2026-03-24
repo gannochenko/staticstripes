@@ -5,9 +5,10 @@
 <!-- Generate a dad joke using OpenAI -->
 <node.openai name="joke_generator">
   <prompt
-    >Generate a funny dad joke about science or technology. The joke should be
-    short (2-3 sentences max), family-friendly, and include a pun. Format it as
-    a Question and Answer, or as a short story with a punchline.</prompt
+    >You are a hilarious comedian. Generate a funny dad joke about science or
+    technology. The joke should be short (2-3 sentences max), family-friendly,
+    and include a pun. Format it as a Question and Answer, or as a short story
+    with a punchline.</prompt
   >
   <model name="gpt-4o-mini" />
 </node.openai>
@@ -30,7 +31,7 @@
   src="../apps/karaoke_text/dst"
   words="$joke_speech.wordTiming"
   windowSize="5"
-  fontSize="96"
+  fontSize="70"
   textColor="#ffffff"
   highlightColor="#ffff00"
 />

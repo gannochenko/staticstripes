@@ -12,6 +12,7 @@
   padding: 0.75rem;
   backdrop-filter: blur(6px);
   min-width: 16rem;
+  user-select: none;
 }
 
 .field {
@@ -38,6 +39,7 @@
   padding: 0.35rem 0.5rem;
   outline: none;
   transition: border-color 0.15s, background 0.15s;
+  user-select: text;
 }
 
 .input::placeholder {

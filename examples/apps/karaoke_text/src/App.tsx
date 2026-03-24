@@ -6,7 +6,7 @@ import {
   useAnimationProgress,
 } from "@gannochenko/viewer-tools";
 import "@gannochenko/viewer-tools/styles.css";
-import { PARAMETER_SCHEMA, type AppParams, type WordTiming } from "./schema";
+import { PARAMETER_SCHEMA, type AppParams, type WordTiming, getWordText } from "./schema";
 
 interface KaraokeTextProps {
   words: WordTiming[];
@@ -85,17 +85,17 @@ function KaraokeText({
       ) ?? -1;
 
       console.log(
-        `Frame ${frame}: time=${currentTime.toFixed(2)}s, chunk=${activeChunkIdx}, word=${currentWordIndex >= 0 && chunk ? chunk.words[currentWordIndex].word : "none"}`
+        `Frame ${frame}: time=${currentTime.toFixed(2)}s, chunk=${activeChunkIdx}, word=${currentWordIndex >= 0 && chunk ? getWordText(chunk.words[currentWordIndex]) : "none"}`
       );
 
       // Capture frames at word boundaries
       const globalWordIndex = chunk && currentWordIndex >= 0
-        ? words.findIndex(w => w.word === chunk.words[currentWordIndex].word && w.start === chunk.words[currentWordIndex].start)
+        ? words.findIndex(w => getWordText(w) === getWordText(chunk.words[currentWordIndex]) && w.start === chunk.words[currentWordIndex].start)
         : -1;
 
       if (globalWordIndex >= 0 && !capturedFrameIndexRef.current.has(globalWordIndex)) {
         capturedFrameIndexRef.current.add(globalWordIndex);
-        console.log(`  → Capturing frame for word "${words[globalWordIndex].word}"`);
+        console.log(`  → Capturing frame for word "${getWordText(words[globalWordIndex])}"`);
       }
     },
   });
@@ -208,7 +208,7 @@ function KaraokeText({
 
           return (
             <span
-              key={`${word.index}-${word.word}`}
+              key={`${word.index}-${getWordText(word)}`}
               style={{
                 fontSize: `${fontSize}px`,
                 fontWeight: "bold",
@@ -217,14 +217,14 @@ function KaraokeText({
                   ? "none"
                   : "0 2px 10px rgba(0, 0, 0, 0.5)",
                 background: isHighlighted ? "#ffffff" : "transparent",
-                padding: isHighlighted ? "8px 20px" : "0",
-                borderRadius: isHighlighted ? "12px" : "0",
+                padding: "2px 6px", // Even smaller padding
+                borderRadius: "6px",
                 transition: params.rendering ? "none" : "all 0.2s ease-out",
-                transform: isHighlighted ? "scale(1.1)" : "scale(1)",
                 display: "inline-block",
+                position: "relative",
               }}
             >
-              {word.word}
+              {getWordText(word)}
             </span>
           );
         })}
@@ -245,7 +245,7 @@ function KaraokeText({
         >
           Frame: {frameNumber} ({Math.round(progress * 100)}%)<br />
           Time: {currentTime.toFixed(2)}s<br />
-          Current word: {currentWordIndexInChunk >= 0 && activeChunk ? activeChunk.words[currentWordIndexInChunk].word : "none"}
+          Current word: {currentWordIndexInChunk >= 0 && activeChunk ? getWordText(activeChunk.words[currentWordIndexInChunk]) : "none"}
           <br />
           FPS: {params.fps}
           <br />
