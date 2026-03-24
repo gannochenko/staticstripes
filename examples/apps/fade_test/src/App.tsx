@@ -95,6 +95,7 @@ export default function App() {
         text: resolvedText,
       }}
       schema={PARAMETER_SCHEMA}
+      duration={3000}
     >
       {(content) => (
         <div style={{ width: "100%", height: "100%" }}>

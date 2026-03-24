@@ -5,8 +5,8 @@ export const PARAMETER_SCHEMA: ParameterSchema = {
     {
       name: "words",
       label: "Word Timing Data (JSON)",
-      placeholder: '[{"text":"Hello","start":0,"end":0.5}]',
-      defaultValue: '[{"text":"Welcome","start":0,"end":0.5},{"text":"to","start":0.5,"end":0.8},{"text":"karaoke","start":0.8,"end":1.5},{"text":"mode!","start":1.5,"end":2.0}]',
+      placeholder: '[{"word":"Hello","start":0,"end":0.5}]',
+      defaultValue: '[{"word":"Welcome","start":0,"end":0.5},{"word":"to","start":0.5,"end":0.8},{"word":"karaoke","start":0.8,"end":1.5},{"word":"mode!","start":1.5,"end":2.0}]',
     },
     {
       name: "windowSize",
@@ -36,7 +36,7 @@ export const PARAMETER_SCHEMA: ParameterSchema = {
 };
 
 export interface WordTiming {
-  text: string;
+  word: string;
   start: number; // seconds
   end: number; // seconds
 }

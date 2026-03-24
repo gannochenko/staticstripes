@@ -85,17 +85,17 @@ function KaraokeText({
       ) ?? -1;
 
       console.log(
-        `Frame ${frame}: time=${currentTime.toFixed(2)}s, chunk=${activeChunkIdx}, word=${currentWordIndex >= 0 && chunk ? chunk.words[currentWordIndex].text : "none"}`
+        `Frame ${frame}: time=${currentTime.toFixed(2)}s, chunk=${activeChunkIdx}, word=${currentWordIndex >= 0 && chunk ? chunk.words[currentWordIndex].word : "none"}`
       );
 
       // Capture frames at word boundaries
       const globalWordIndex = chunk && currentWordIndex >= 0
-        ? words.findIndex(w => w.text === chunk.words[currentWordIndex].text && w.start === chunk.words[currentWordIndex].start)
+        ? words.findIndex(w => w.word === chunk.words[currentWordIndex].word && w.start === chunk.words[currentWordIndex].start)
         : -1;
 
       if (globalWordIndex >= 0 && !capturedFrameIndexRef.current.has(globalWordIndex)) {
         capturedFrameIndexRef.current.add(globalWordIndex);
-        console.log(`  → Capturing frame for word "${words[globalWordIndex].text}"`);
+        console.log(`  → Capturing frame for word "${words[globalWordIndex].word}"`);
       }
     },
   });
@@ -206,7 +206,7 @@ function KaraokeText({
 
           return (
             <span
-              key={`${word.index}-${word.text}`}
+              key={`${word.index}-${word.word}`}
               style={{
                 fontSize: `${fontSize}px`,
                 fontWeight: "bold",
@@ -222,7 +222,7 @@ function KaraokeText({
                 display: "inline-block",
               }}
             >
-              {word.text}
+              {word.word}
             </span>
           );
         })}
@@ -243,7 +243,7 @@ function KaraokeText({
         >
           Frame: {frameNumber} ({Math.round(progress * 100)}%)<br />
           Time: {currentTime.toFixed(2)}s<br />
-          Current word: {currentWordIndexInChunk >= 0 && activeChunk ? activeChunk.words[currentWordIndexInChunk].text : "none"}
+          Current word: {currentWordIndexInChunk >= 0 && activeChunk ? activeChunk.words[currentWordIndexInChunk].word : "none"}
           <br />
           FPS: {params.fps}
           <br />
@@ -301,6 +301,7 @@ export default function App() {
         highlightColor: params.highlightColor || "#ffff00",
       }}
       schema={PARAMETER_SCHEMA}
+      duration={3000}
     >
       {(content) => (
         <div style={{ width: "100%", height: "100%" }}>

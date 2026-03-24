@@ -1,7 +1,9 @@
-export { VideoFrame } from "./components/VideoFrame";
+export { VideoFrame, ManualAnimationTimeContext, DurationOverrideContext } from "./components/VideoFrame";
 export { FormatPanel, FORMATS } from "./components/FormatPanel";
 export { PreviewPanel } from "./components/PreviewPanel";
 export { RenderingView } from "./components/RenderingView";
+export { AnimationProvider, useAnimation } from "./components/AnimationProvider";
+export { AnimationTimeline } from "./components/AnimationTimeline";
 export { useLocalStorage } from "./hooks/useLocalStorage";
 export { useAppParams } from "./hooks/useAppParams";
 export { useAnimationProgress } from "./hooks/useAnimationProgress";

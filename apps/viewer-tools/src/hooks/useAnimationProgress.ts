@@ -1,5 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useContext } from 'react';
 import { captureAnimation, getAnimationParams } from '../animation';
+import { ManualAnimationTimeContext, DurationOverrideContext } from '../components/VideoFrame/VideoFrame';
 
 export interface UseAnimationProgressOptions {
   /**
@@ -7,6 +8,16 @@ export interface UseAnimationProgressOptions {
    * Useful for custom logic beyond just setting progress.
    */
   onFrame?: (frameNumber: number, progress: number) => void | Promise<void>;
+  /**
+   * Manual time control for preview mode (in milliseconds).
+   * When provided, the animation will be at this specific time instead of final state.
+   */
+  manualTime?: number;
+  /**
+   * Override duration for calculations (in milliseconds).
+   * Useful when params.duration is 0 in preview mode.
+   */
+  durationOverride?: number;
 }
 
 export interface UseAnimationProgressResult {
@@ -64,13 +75,28 @@ export function useAnimationProgress(
   const [frameNumber, setFrameNumber] = useState(0);
   const params = getAnimationParams();
 
-  const totalFrames = Math.ceil((params.fps * params.duration) / 1000);
+  // Get manual time and duration from VideoFrame context if available
+  const contextManualTime = useContext(ManualAnimationTimeContext);
+  const contextDuration = useContext(DurationOverrideContext);
+  const manualTime = options.manualTime ?? contextManualTime;
+
+  const effectiveDuration = options.durationOverride ?? contextDuration ?? params.duration;
+  const totalFrames = Math.ceil((params.fps * effectiveDuration) / 1000);
 
   useEffect(() => {
     if (!params.rendering) {
-      // Preview mode - just show final state
-      setProgress(1);
-      setFrameNumber(0);
+      // Preview mode
+      if (manualTime !== undefined) {
+        // Use manual time control for scrubbing
+        const prog = effectiveDuration > 0 ? Math.min(1, Math.max(0, manualTime / effectiveDuration)) : 0;
+        const frame = Math.floor((params.fps * manualTime) / 1000);
+        setProgress(prog);
+        setFrameNumber(frame);
+      } else {
+        // Default preview mode - show final state
+        setProgress(1);
+        setFrameNumber(0);
+      }
       return;
     }
 
@@ -85,7 +111,7 @@ export function useAnimationProgress(
       }
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [params.rendering]); // Intentionally exclude options.onFrame to prevent re-renders
+  }, [params.rendering, manualTime, effectiveDuration]); // Intentionally exclude options.onFrame to prevent re-renders
 
   return {
     progress,
