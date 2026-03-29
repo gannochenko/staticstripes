@@ -1,0 +1,199 @@
+<!-- material source: <PHOTOS>/TODO/Berlin -->
+
+<node.project>
+  <title>Berlin, 70 Years Too Late</title>
+  <tag>travel</tag>
+  <tag>vlog</tag>
+  <tag>berlin</tag>
+  <tag>germany</tag>
+
+  <sequences>
+    <sequence>
+      <!-- TODO: replace each data-asset with the actual filename (without extension) from the ./video/ folder -->
+      <!-- Suggested shots:                                                      -->
+      <!--   clip_01 — arriving shot, platform / street, setting the scene      -->
+      <!--   clip_02 — bullet holes or war-scarred facade                       -->
+      <!--   clip_03 — Brandenburg Gate or Reichstag silhouette                 -->
+      <!--   clip_04 — Wall remnant / East Side Gallery                         -->
+      <!--   clip_05 — Plattenbauten (GDR-era prefab housing blocks)            -->
+      <!--   clip_06 — memorial / cemetery / stolperstein close-up              -->
+      <!--   clip_07 — quiet street, graffiti-covered wall                      -->
+      <!--   clip_08 — wide city panorama or skyline                            -->
+      <!--   clip_09 — closing shot, contemplative / fading light               -->
+
+      <fragment
+        class="clip"
+        data-asset="clip_02"
+        style="-duration: 1000ms"
+        id="arriving"
+      />
+      <!-- <fragment class="clip" data-asset="clip_02" style="-duration: 2000ms" id="scars" />
+    <fragment class="clip hudson" data-asset="clip_03" style="-duration: 2000ms" id="gate" />
+    <fragment class="clip" data-asset="clip_04" style="-duration: 2000ms; -trim-start: 1000ms" id="wall" />
+
+    <fragment class="clip" data-asset="clip_05" style="-duration: 1500ms" id="plattenbau" />
+    <fragment class="clip earlybird" data-asset="clip_06" style="-duration: 2000ms" id="memorial" />
+    <fragment class="clip" data-asset="clip_07" style="-duration: 1500ms" id="street" />
+    <fragment class="clip" data-asset="clip_08" style="-duration: 2000ms; -trim-start: 1000ms" id="panorama" />
+    <fragment class="clip juno" data-asset="clip_09" style="-duration: 2500ms" id="closing" /> -->
+    </sequence>
+
+    <!-- Caption overlays
+  <sequence>
+    <fragment style="-duration: calc(url(#arriving.time.duration))">
+      <app
+        src="../../z_assets/apps/tafel/dst"
+        data-parameters='{"title": "When you arrive to the train station…", "fontSize": "3", "verticalOffset": "60"}'
+      />
+    </fragment>
+  </sequence>
+  <sequence>
+    <fragment style="-duration: calc(url(#scars.time.duration)); -offset-start: calc(url(#scars.time.start))">
+      <app
+        src="../../z_assets/apps/tafel/dst"
+        data-parameters='{"title": "…but it is 70 years too late…", "fontSize": "3", "verticalOffset": "60"}'
+      />
+    </fragment>
+  </sequence>
+  <sequence>
+    <fragment style="-duration: calc(url(#gate.time.duration)); -offset-start: calc(url(#gate.time.start))">
+      <app
+        src="../../z_assets/apps/tafel/dst"
+        data-parameters='{"title": "Then you go to your hotel…", "fontSize": "3", "verticalOffset": "60"}'
+      />
+    </fragment>
+  </sequence>
+  <sequence>
+    <fragment
+      style="
+        -duration: calc(url(#wall.time.duration) + url(#plattenbau.time.duration));
+        -offset-start: calc(url(#wall.time.start));
+      "
+    >
+      <app
+        src="../../z_assets/apps/tafel/dst"
+        data-parameters='{"title": "…but it is burned down…", "fontSize": "3", "verticalOffset": "60"}'
+      />
+    </fragment>
+  </sequence>
+  <sequence>
+    <fragment style="-duration: calc(url(#memorial.time.duration)); -offset-start: calc(url(#memorial.time.start))">
+      <app
+        src="../../z_assets/apps/tafel/dst"
+        data-parameters='{"title": "Well, at least the wine house…", "fontSize": "3", "verticalOffset": "60"}'
+      />
+    </fragment>
+  </sequence>
+  <sequence>
+    <fragment style="-duration: calc(url(#street.time.duration)); -offset-start: calc(url(#street.time.start))">
+      <app
+        src="../../z_assets/apps/tafel/dst"
+        data-parameters='{"title": "…is still in place!", "fontSize": "3", "verticalOffset": "60"}'
+      />
+    </fragment>
+  </sequence>
+  <sequence>
+    <fragment
+      style="
+        -duration: calc(url(#panorama.time.duration) + url(#closing.time.duration));
+        -offset-start: calc(url(#panorama.time.start));
+      "
+    >
+      <app
+        src="../../z_assets/apps/tafel/dst"
+        data-parameters='{"title": "Berlin. 70 years too late.", "fontSize": "3", "verticalOffset": "60"}'
+      />
+    </fragment>
+  </sequence> -->
+
+    <!-- Geo tag overlay
+  <sequence>
+    <fragment style="-duration: 20000ms">
+      <app src="../../z_assets/apps/geo/dst" data-parameters='{"text": "Berlin 🇩🇪"}' />
+    </fragment>
+  </sequence> -->
+
+    <!-- Music
+    <sequence>
+      <fragment class="music" data-asset="guitar_01" style="-duration: 20000ms" />
+    </sequence> -->
+  </sequences>
+
+  <style>
+    .juno {
+      filter: instagram-juno;
+    }
+
+    .hudson {
+      filter: instagram-hudson;
+    }
+
+    .earlybird {
+      filter: instagram-earlybird;
+    }
+
+    .clip {
+      -sound: off;
+      -object-fit: contain ambient 25 -0.1 0.7;
+    }
+
+    .music {
+      -transition-start: fade-in 2000ms;
+      -transition-end: fade-out 2000ms;
+    }
+  </style>
+
+  <assets>
+    <!-- <asset name="clip_01" path="./video/20260309_192447.mp4" /> -->
+    <asset name="clip_02" path="./video/20260309_192501.mp4" />
+    <asset name="clip_03" path="./video/20260309_192540.mp4" />
+    <asset name="clip_04" path="./video/20260309_192615.mp4" />
+    <asset name="clip_05" path="./video/20260309_193512.mp4" />
+    <asset name="clip_06" path="./video/20260309_193544.mp4" />
+    <asset name="clip_07" path="./video/20260309_194718.mp4" />
+    <asset name="clip_08" path="./video/20260309_194823.mp4" />
+    <!-- <asset name="clip_09" path="./video/20260309_195131.mp4" /> -->
+    <!-- <asset
+      name="guitar_01"
+      path="../../z_assets/global_assets/audio/guitar_01.mp3"
+    /> -->
+  </assets>
+
+  <outputs>
+    <output name="instagram_shorts" resolution="1080x1920" fps="30" />
+  </outputs>
+
+  <ffmpeg>
+    <option name="preview">
+      -pix_fmt yuv420p -preset medium -c:a aac -b:a 192k
+    </option>
+  </ffmpeg>
+
+  <style>
+    .juno {
+      filter: instagram-juno;
+    }
+
+    .hudson {
+      filter: instagram-hudson;
+    }
+
+    .earlybird {
+      filter: instagram-earlybird;
+    }
+
+    .clip {
+      -sound: off;
+      -object-fit: contain ambient 25 -0.1 0.7;
+    }
+
+    .music {
+      -transition-start: fade-in 2000ms;
+      -transition-end: fade-out 2000ms;
+    }
+  </style>
+</node.project>
+
+<node.filesystem name="local_output" path="$project.output.instagram_shorts">
+  <path>output/instagram_shorts.mp4</path>
+</node.filesystem>

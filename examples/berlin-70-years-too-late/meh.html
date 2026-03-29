@@ -1,0 +1,28 @@
+<!-- S3 Upload Node -->
+<node.s3 name="s3_upload" path="$project.output.instagram_shorts">
+  <endpoint name="digitaloceanspaces.com" />
+  <region name="ams3" />
+  <bucket name="photoframe-photos-content-ams3-production" />
+  <path name="file">videos/instagram/${slug}/${output}.mp4</path>
+  <path name="metadata">videos/instagram/${slug}/metadata.json</path>
+  <path name="thumbnail">videos/instagram/${slug}/thumbnail.jpeg</path>
+  <acl name="public-read" />
+  <thumbnail timecode="1000ms" />
+</node.s3>
+
+<!-- Instagram Upload Node -->
+<node.instagram name="instagram_upload" url="$s3_upload.output.url">
+  <thumbnail timecode="1000ms" />
+  <location city="Berlin" country="Germany" />
+  <caption>
+    You come to Berlin 70 years too late. And exactly on time. 🇩🇪 Bullet holes
+    still pock the facades. Stolpersteine catch your foot mid-step. The
+    invisible line of the Wall runs through neighbourhoods like a phantom limb.
+    Berlin doesn't hide its wounds. It built memorials where other cities built
+    shopping centres. It left the rubble, then left the memory of the rubble.
+    This is a city that rebuilt itself — twice — and still chose to remember. 📍
+    52.5200, 13.4050 #berlin #visitberlin #germanytravel #berlinstory
+    #berlincity #europeantravel #historicberlin #travelreels #hiddengermany
+    #discovergermany
+  </caption>
+</node.instagram>

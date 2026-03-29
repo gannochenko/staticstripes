@@ -6,15 +6,16 @@ license: MIT
 
 ## What is StaticStripes?
 
-StaticStripes is a CLI tool that generates videos from HTML/CSS project definitions. It allows you to:
+StaticStripes is a CLI tool that generates videos from HTML/CSS project definitions using a **node-based architecture**. It allows you to:
 
-- Define video sequences using HTML syntax
+- Define video sequences using HTML syntax with a composable node system
 - Style video elements with CSS (including custom CSS properties)
 - Apply filters, transitions, and effects
 - Generate multiple output formats from a single project
-- Use AI to generate music and other assets
-- Upload videos to platforms like YouTube
+- Use AI to generate text, speech, and other assets
+- Upload videos to platforms like YouTube, Instagram, and S3
 - Use hardware acceleration for faster rendering
+- Chain nodes together to create automated content pipelines
 
 ## System Requirements
 
@@ -145,43 +146,261 @@ my-video-project/
 ├── audio/                # Audio tracks
 ├── images/               # Image assets
 ├── effects/              # Effect clips
+├── apps/                 # Custom HTML/CSS apps
 ├── output/               # Generated videos
-├── .cache/               # Temporary rendering cache
+├── cache/                # Temporary rendering cache
+│   ├── apps/            # Cached app renders
+│   └── containers/      # Cached container renders
 └── .auth/                # Authentication credentials (excluded from git)
-    └── youtube_<name>.json
+    ├── youtube_<name>.json
     └── <ai-provider-name>.json
 ```
 
-## Project File Format (project.html)
+## Node-Based Architecture
 
-### Basic Structure
+StaticStripes uses a **node-based architecture** where different nodes handle specific tasks in your video production pipeline. Nodes can reference each other's outputs, creating a composable and powerful workflow.
+
+### Available Node Types
+
+#### 1. `<node.project>` - Main Video Renderer
+
+The core node that defines your video composition with sequences, assets, and outputs.
+
+**Basic Structure:**
 
 ```html
-<style>
-  /* CSS for styling video elements */
-  .video-fragment {
-    -offset-start: 0s;
-    -offset-end: 5s;
-  }
-</style>
+<node.project>
+  <title>My Video Title</title>
+  <tag>mytag</tag>
 
-<outputs>
-  <output
-    data-name="youtube"
-    data-path="./output/youtube.mp4"
-    data-fps="30"
-    data-resolution="1920x1080"
-  />
-</outputs>
+  <sequences>
+    <sequence>
+      <fragment class="clip1" />
+    </sequence>
+  </sequences>
 
-<assets>
-  <asset data-name="clip_1" data-path="./input/video1.mp4" />
-  <asset data-name="track_1" data-path="./audio/music.mp3" />
-</assets>
+  <style>
+    .clip1 {
+      -asset: video1;
+      -duration: 5000ms;
+    }
+  </style>
 
-<sequence id="main">
-  <fragment data-asset="clip_1" class="video-fragment" />
-</sequence>
+  <assets>
+    <asset name="video1" path="./input/video.mp4" />
+  </assets>
+
+  <outputs>
+    <output name="youtube" resolution="1920x1080" fps="30" />
+  </outputs>
+</node.project>
+```
+
+**Outputs:**
+- `$project.output.<output-name>` - Reference to rendered video file
+
+#### 2. `<node.filesystem>` - Save to Local File
+
+Saves a rendered video to a specific local path.
+
+```html
+<node.filesystem name="local_output" path="$project.output.youtube">
+  <path>output/my_video.mp4</path>
+</node.filesystem>
+```
+
+**Attributes:**
+- `name` - Unique identifier for this node
+- `path` - Source file reference (e.g., `$project.output.youtube`)
+
+**Children:**
+- `<path>` - Destination file path
+
+#### 3. `<node.openai>` - Text Generation
+
+Generates text content using OpenAI's GPT models.
+
+```html
+<node.openai name="joke_generator">
+  <prompt>Generate a funny dad joke about technology.</prompt>
+  <model name="gpt-4o-mini" />
+</node.openai>
+```
+
+**Children:**
+- `<prompt>` - Text prompt for generation
+- `<model>` - Model to use (e.g., `gpt-4o-mini`, `gpt-4`)
+
+**Outputs:**
+- `$joke_generator.text` - Generated text content
+
+#### 4. `<node.elevenlabs>` - Text-to-Speech
+
+Converts text to speech with word-level timing data.
+
+```html
+<node.elevenlabs
+  name="narrator"
+  text="$joke_generator.text"
+  stability="0.7"
+  similarityBoost="0.8"
+  style="0.3">
+  <voice name="IKne3meq5aSn9XLyUdCD" />
+  <model name="eleven_multilingual_v2" />
+</node.elevenlabs>
+```
+
+**Attributes:**
+- `name` - Unique identifier
+- `text` - Text to convert (can reference other nodes)
+- `stability` - Voice stability (0-1)
+- `similarityBoost` - Similarity boost (0-1)
+- `style` - Style exaggeration (0-1)
+
+**Children:**
+- `<voice>` - Voice ID to use
+- `<model>` - TTS model name
+
+**Outputs:**
+- `$narrator.audio` - Generated audio file path
+- `$narrator.wordTiming` - Array of word timing data
+
+#### 5. `<node.app>` - Render HTML/CSS App
+
+Renders a custom HTML/CSS application to video with optional parameters.
+
+```html
+<node.app
+  name="karaoke_text"
+  src="../apps/karaoke_text/dst"
+  words="$narrator.wordTiming"
+  windowSize="5"
+  fontSize="70"
+  textColor="#ffffff"
+  highlightColor="#ffff00" />
+```
+
+**Attributes:**
+- `name` - Unique identifier
+- `src` - Path to app's built output directory
+- Any other attributes are passed as parameters to the app
+
+**Outputs:**
+- `$karaoke_text.output.video` - Rendered video file with alpha channel
+
+#### 6. `<node.s3>` - Upload to S3
+
+Uploads rendered video to S3-compatible storage (AWS S3, DigitalOcean Spaces, etc.).
+
+```html
+<node.s3 name="s3_upload" path="$project.output.youtube">
+  <endpoint name="digitaloceanspaces.com" />
+  <region name="ams3" />
+  <bucket name="my-bucket" />
+  <path name="file">videos/${slug}/${output}.mp4</path>
+  <path name="metadata">videos/${slug}/metadata.json</path>
+  <path name="thumbnail">videos/${slug}/thumbnail.jpeg</path>
+  <acl name="public-read" />
+  <thumbnail timecode="1000ms" />
+</node.s3>
+```
+
+**Attributes:**
+- `name` - Unique identifier
+- `path` - Source file reference
+
+**Children:**
+- `<endpoint>` - S3 endpoint (optional, defaults to AWS)
+- `<region>` - Storage region
+- `<bucket>` - Bucket name
+- `<path name="file">` - Video file path pattern
+- `<path name="metadata">` - Metadata file path pattern
+- `<path name="thumbnail">` - Thumbnail path pattern
+- `<acl>` - Access control (e.g., `public-read`)
+- `<thumbnail>` - Thumbnail extraction settings
+
+**Path Variables:**
+- `${slug}` - URL-friendly project name
+- `${output}` - Output name
+
+**Outputs:**
+- `$s3_upload.output.url` - Public URL of uploaded video
+
+#### 7. `<node.instagram>` - Upload to Instagram
+
+Publishes video to Instagram Reels.
+
+```html
+<node.instagram name="instagram_upload" url="$s3_upload.output.url">
+  <thumbnail timecode="1000ms" />
+  <location city="Berlin" country="Germany" />
+  <caption>
+    Your video description with #hashtags
+  </caption>
+</node.instagram>
+```
+
+**Attributes:**
+- `name` - Unique identifier
+- `url` - Public URL to video file
+
+**Children:**
+- `<thumbnail>` - Thumbnail extraction settings
+- `<location>` - Geolocation (city and country)
+- `<caption>` - Post caption with hashtags
+
+### Node Reference Syntax
+
+Nodes can reference outputs from other nodes using the `$nodename.output.property` syntax:
+
+- `$project.output.youtube` - Reference a project output
+- `$generator.text` - Reference generated text
+- `$speech.audio` - Reference audio file
+- `$speech.wordTiming` - Reference word timing data
+- `$s3.output.url` - Reference uploaded file URL
+
+## Project File Format (project.html)
+
+### Minimal Node-Based Example
+
+```html
+<node.project>
+  <title>My Video</title>
+
+  <sequences>
+    <sequence>
+      <fragment class="intro" />
+      <fragment class="main" />
+    </sequence>
+  </sequences>
+
+  <style>
+    .intro {
+      -asset: intro_img;
+      -duration: 3000ms;
+      -transition-end: fade-out 500ms;
+    }
+
+    .main {
+      -asset: main_clip;
+      -duration: 5000ms;
+      -transition-start: fade-in 500ms;
+    }
+  </style>
+
+  <assets>
+    <asset name="intro_img" path="./images/intro.jpg" />
+    <asset name="main_clip" path="./input/video.mp4" />
+  </assets>
+
+  <outputs>
+    <output name="youtube" resolution="1920x1080" fps="30" />
+  </outputs>
+</node.project>
+
+<node.filesystem name="local" path="$project.output.youtube">
+  <path>output/video.mp4</path>
+</node.filesystem>
 ```
 
 ### Key CSS Properties
@@ -202,8 +421,7 @@ Alternative to CSS properties, use `data-timing` attribute with short syntax:
 ```html
 <fragment
   data-asset="clip"
-  data-timing="ts=3000,te=5000,d=2000,os=1000,oe=7000"
-/>
+  data-timing="ts=3000,te=5000,d=2000,os=1000,oe=7000" />
 ```
 
 Where:
@@ -298,3037 +516,1766 @@ Zoom effects allow you to zoom in or out on a specific focal point with customiz
 
 - `zoom-in` - Zoom into the image from normal size to magnified
 - `zoom-out` - Zoom out from magnified to normal size
-
-*Parameters:*
-- `<focal-x%>` - Horizontal focal point (0-100%, where 0%=left edge, 50%=center, 100%=right edge)
-- `<focal-y%>` - Vertical focal point (0-100%, where 0%=top edge, 50%=center, 100%=bottom edge)
-- `<zoom%>` - Zoom percentage (e.g., 30% = 1.3x magnification, 50% = 1.5x magnification)
-- `<duration>` - Animation duration in milliseconds (e.g., 1000ms, 2s)
-- `[easing]` - Optional easing function: `linear`, `ease-in`, `ease-out`, `ease-in-out` (default: `linear`)
-
-*Examples:*
-```css
-/* Zoom in 50% on center over 1 second */
--object-fit-ken-burns: zoom-in 50% 50% 50% 1000ms ease-in-out;
-
-/* Zoom in 30% on top-left corner over 2 seconds */
--object-fit-ken-burns: zoom-in 30% 30% 30% 2000ms ease-in;
-
-/* Zoom out 40% from center over 1.5 seconds */
--object-fit-ken-burns: zoom-out 50% 50% 40% 1500ms ease-out;
-
-/* Zoom in on bottom-right, then hold */
--object-fit-ken-burns: zoom-in 80% 90% 60% 2000ms ease-in-out;
-```
-
-**Pan Effects:**
-
-Pan effects allow you to smoothly move across an image from a start position to an end position with customizable range control.
-
-*Syntax:* `<effect> <zoom%> <start%> <end%> <duration> [easing]`
-
-- `pan-left` - Pan from right to left (horizontal movement)
-- `pan-right` - Pan from left to right (horizontal movement)
-- `pan-top` - Pan from bottom to top (vertical movement)
-- `pan-bottom` - Pan from top to bottom (vertical movement)
-
-*Parameters:*
-- `<zoom%>` - Zoom percentage applied during panning (e.g., 30% = 1.3x magnification)
-- `<start%>` - Starting position (0-100%):
-  - For horizontal pans: 0%=left edge, 100%=right edge
-  - For vertical pans: 0%=top edge, 100%=bottom edge
-- `<end%>` - Ending position (0-100%, same scale as start)
+- `<focal-x%>` - Horizontal focal point (0-100, where 50 is center)
+- `<focal-y%>` - Vertical focal point (0-100, where 50 is center)
+- `<zoom%>` - Zoom amount (e.g., 30 = 30% zoom)
 - `<duration>` - Animation duration in milliseconds
-- `[easing]` - Optional easing function: `linear`, `ease-in`, `ease-out`, `ease-in-out`
-
-*Examples:*
-```css
-/* Pan left from 20% to 80% with 30% zoom */
--object-fit-ken-burns: pan-left 30% 20% 80% 2000ms ease-in;
-
-/* Full pan from right to left with 50% zoom */
--object-fit-ken-burns: pan-left 50% 0% 100% 3000ms linear;
-
-/* Partial pan right (center third) with 40% zoom */
--object-fit-ken-burns: pan-right 40% 30% 70% 2000ms ease-out;
-
-/* Pan down from 10% to 90% with 30% zoom */
--object-fit-ken-burns: pan-bottom 30% 10% 90% 2500ms ease-in-out;
-```
-
-**Hold Behavior:**
-
-Ken Burns effects support a "hold" behavior where the animation completes before the fragment ends, then holds the final state.
-
-*Example:*
-```css
-.intro_image {
-  -asset: photo;
-  -duration: 5000ms; /* Fragment lasts 5 seconds */
-  -object-fit: ken-burns;
-  -object-fit-ken-burns: zoom-in 50% 50% 50% 1000ms ease-in-out;
-  /* Zooms for 1 second, holds zoomed for remaining 4 seconds */
-}
-```
-
-**Easing Functions:**
-
-- `linear` - Constant speed throughout
-- `ease-in` - Starts slow, accelerates (quadratic)
-- `ease-out` - Starts fast, decelerates (quadratic)
-- `ease-in-out` - Starts slow, accelerates middle, decelerates end
-
-**Best Practices:**
-
-1. **Zoom percentage**: Use 20-60% for subtle effects, 60-100% for dramatic effects
-2. **Effect duration**: Match to music beats or natural pauses (typically 1-3 seconds)
-3. **Focal points**: Place at 1/3 or 2/3 positions for visual balance (rule of thirds)
-4. **Partial pans**: Use 20-80% ranges for subtle motion, 0-100% for full sweeps
-5. **Hold time**: Ensure effect duration is shorter than fragment duration for smooth transitions
-
-**Complete Example:**
-```html
-<style>
-  .intro_shot {
-    -asset: landscape_photo;
-    -duration: 8000ms;
-    -object-fit: ken-burns;
-    -object-fit-ken-burns: zoom-in 33% 40% 50% 2000ms ease-in-out;
-    -transition-start: fade-in 500ms;
-    -transition-end: fade-out 1000ms;
-    filter: instagram-lark;
-  }
-
-  .action_shot {
-    -asset: sports_photo;
-    -duration: 6000ms;
-    -object-fit: ken-burns;
-    -object-fit-ken-burns: pan-right 40% 10% 90% 3000ms ease-in;
-  }
-</style>
-
-<sequence>
-  <fragment class="intro_shot" data-timecode="Opening Scene" />
-  <fragment class="action_shot" data-timecode="The Action" />
-</sequence>
-```
-
----
-
-## Technical Reference: project.html Structure
-
-### Complete XML Schema
-
-The `project.html` file consists of the following root-level elements:
-
-<!-- Video metadata: title and tags -->
-<title>Video title</title>
-<tag name="travel" />
-<tag name="blog" />
-...
-
-<project>
-<!-- Video sequence definition -->
-  <sequence id="main">
-    <fragment id="..." data-asset="..." class="..." />
-    <fragment class="..." />
-  </sequence>
-  ...
-</project>
-
-```html
-<!-- CSS styles for fragments and containers -->
-<style>
-  /* Standard CSS with custom properties */
-</style>
-
-<!-- Output video configurations -->
-<outputs>
-  <output
-    data-name="..."
-    data-path="..."
-    data-fps="..."
-    data-resolution="..."
-  />
-</outputs>
-
-<!-- AI provider integrations -->
-<ai>
-  <ai-music-api-ai name="...">
-    <model name="..." />
-  </ai-music-api-ai>
-</ai>
-
-<!-- Media asset definitions -->
-<assets>
-  <asset data-name="..." data-path="...">
-    <ai data-integration-name="...">
-      <prompt>...</prompt>
-      <duration value="..." />
-    </ai>
-  </asset>
-</assets>
-
-<!-- Upload platform configurations -->
-<uploads>
-  <youtube name="..." data-output-name="..." id="...">
-    <!-- YouTube-specific tags -->
-  </youtube>
-</uploads>
-
-<!-- HTML/CSS containers rendered as PNG overlays -->
-<container id="...">
-  <!-- Standard HTML/CSS content -->
-</container>
-```
-
-### CSS Property Parsing Rules
-
-#### 1. `-duration` Property
-
-Accepts three types of values:
-
-**a) `auto` (default):**
-
-```css
--duration: auto;
-```
-
-Duration equals asset duration minus `-trim-start` value.
-
-**b) Percentage:**
-
-```css
--duration: 50%; /* 50% of asset duration, ignoring trim */
-```
-
-Takes the specified percentage of the asset's total duration.
-
-**c) Time value:**
-
-```css
--duration: 5s; /* 5 seconds */
--duration: 3000ms; /* 3000 milliseconds */
-```
-
-Sets exact duration. All time values are normalized to seconds internally.
-
-#### 2. `-offset-start` and `-offset-end` Properties
-
-Control fragment positioning in the timeline.
-
-**a) Simple time value:**
-
-```css
--offset-start: 1s;
--offset-end: 2s;
-```
-
-**b) Calc() expression:**
-
-```css
--offset-start: calc(url(#intro.time.end) + 500ms);
-```
-
-**Important:** `-offset-end` of fragment N controls the `-offset-start` of fragment N+1. They are additive:
-
-```css
-/* Fragment 1 */
-.frag1 {
-  -offset-start: 0s;
-  -offset-end: 1s; /* Adds 1s to next fragment's start */
-}
-
-/* Fragment 2 */
-.frag2 {
-  -offset-start: 500ms; /* Total offset: 1s + 500ms = 1.5s */
-}
-```
-
-#### 3. `-object-fit` Property
-
-Three possible configurations:
-
-**a) Cover mode (default):**
-
-```css
--object-fit: cover;
-```
-
-**b) Contain with pillarbox:**
-
-```css
--object-fit: contain pillarbox #000000;
--object-fit: contain pillarbox #000000ff; /* With alpha */
-```
-
-Maps to:
-
-- `objectFit = 'contain'`
-- `objectFitContain = 'pillarbox'`
-- `objectFitContainPillarboxColor = '#000000'`
-
-**c) Contain with ambient background:**
-
-```css
--object-fit: contain ambient 25 -0.1 0.7;
-```
-
-Syntax: `contain ambient <blur> <brightness> <saturation>`
-
-#### 4. `-chromakey` Property
-
-Syntax: `-chromakey: <blend> <similarity> <color>`
-
-```css
--chromakey: 0.1 0.3 #00ff00;
--chromakey: smooth good #00ff00; /* Using constants */
-```
-
-**Canned Constants:**
-
-Blend constants:
-
-- `hard` = `0.0`
-- `smooth` = `0.1`
-- `soft` = `0.2`
-
-Similarity constants:
-
-- `strict` = `0.1`
-- `good` = `0.3`
-- `forgiving` = `0.5`
-- `loose` = `0.7`
-
-Example with constants:
-
-```css
-.greenscreen {
-  -chromakey: smooth good #00ff00; /* Same as: 0.1 0.3 #00ff00 */
-}
-```
-
-#### 5. `-transition-start` and `-transition-end` Properties
-
-Syntax: `<transition-name> <duration>`
-
-```css
--transition-start: fade-in 1s;
--transition-start: fade-out 500ms;
-```
-
-Available transition names:
-
-- `fade-in`
-- `fade-out`
-
-#### 6. `-overlay-start-z-index` and `-overlay-end-z-index` Properties
-
-Control layering of overlaid fragments.
-
-```css
-.overlay {
-  -overlay-start-z-index: 10; /* This fragment's z-index */
-  -overlay-end-z-index: 5; /* Next fragment's z-index (becomes -5) */
-}
-```
-
-**Important:** `-overlay-end-z-index` value is **negated** when applied to the next fragment:
-
-- If current fragment has `-overlay-end-z-index: 100`
-- The next fragment's `-overlay-start-z-index` becomes `-100`
-- If the next fragment has its own `-overlay-start-z-index`, it takes precedence
-
-#### 7. `-trim-start` and `-trim-end` Properties
-
-Trim the beginning and/or end of the asset:
-
-```css
--trim-start: 2s; /* Skip first 2 seconds of asset */
--trim-start: 1500ms; /* Skip first 1.5 seconds */
-```
-
-```css
--trim-end: 3s; /* Cut last 3 seconds of asset */
--trim-end: 2500ms; /* Cut last 2.5 seconds */
-```
-
-Both properties work together with `-duration`:
-
-```css
-/* Example: 10-second video */
--trim-start: 2s;    /* Skip first 2 seconds */
--trim-end: 3s;      /* Cut last 3 seconds */
--duration: auto;    /* Auto = 10s - 2s - 3s = 5s */
-/* Result: Shows content from second 2 to second 7 (5 seconds total) */
-```
-
-```css
-/* Example: Explicit duration overrides auto calculation */
--trim-start: 2s;    /* Skip first 2 seconds */
--trim-end: 3s;      /* Ignored when duration is explicit */
--duration: 4s;      /* Use 4 seconds starting from second 2 */
-/* Result: Shows content from second 2 to second 6 (4 seconds total) */
-```
-
-Cannot be negative.
-
-### CSS Class Merging Rules
-
-CSS classes are merged like a browser would, with standard CSS specificity:
-
-**Priority (lowest to highest):**
-
-1. CSS class definitions (in `<style>`)
-2. Multiple classes (last class wins for conflicts)
-3. Inline `style` attribute (highest priority)
-
-**Example:**
-
-```html
-<style>
-  .base {
-    -offset-start: 0s;
-    -duration: 5s;
-    -transition-start: fade-in 1s;
-  }
-
-  .override {
-    -duration: 10s; /* Overrides .base duration */
-  }
-</style>
-
-<fragment
-  class="base override"
-  style="-transition-start: fade-in 2s"
-  data-asset="clip1"
-/>
-```
-
-Result:
-
-- `-offset-start: 0s` (from `.base`)
-- `-duration: 10s` (from `.override`, overrides `.base`)
-- `-transition-start: fade-in 2s` (from inline style, overrides both classes)
-
-### Calc() Expression Reference
-
-**Syntax:**
-
-```
-calc(<expression>)
-```
-
-**Available references:**
-
-```
-url(#<fragment_id>.time.start)  - Fragment start time
-url(#<fragment_id>.time.end)    - Fragment end time
-```
-
-**Supported operators:**
-
-- `+` (addition)
-- `-` (subtraction)
-
-**Time units:**
-
-- `s` (seconds)
-- `ms` (milliseconds)
+- `[easing]` - Optional: `linear`, `ease-in`, `ease-out`, `ease-in-out` (default: `ease-in-out`)
 
 **Examples:**
 
 ```css
-/* Start after intro ends */
--offset-start: calc(url(#intro.time.end));
+/* Zoom in on center point with 20% zoom over 3 seconds */
+-object-fit-ken-burns: zoom-in 50 50 20 3000 ease-in-out;
 
-/* Start 500ms after intro ends */
--offset-start: calc(url(#intro.time.end) + 500ms);
+/* Zoom in on top-right corner with 40% zoom over 5 seconds */
+-object-fit-ken-burns: zoom-in 80 20 40 5000 ease-in;
 
-/* Start 1s before outro ends */
--offset-start: calc(url(#outro.time.end) - 1s);
-
-/* Chain multiple fragments */
--offset-start: calc(url(#clip1.time.end) + 200ms);
+/* Zoom out from face (custom focal point) with 25% zoom */
+-object-fit-ken-burns: zoom-out 60 30 25 4000 ease-out;
 ```
 
-**Important:** Expressions are compiled and evaluated at build time, not runtime.
+**Pan Effects:**
 
-### Asset Naming Conventions
+Pan effects create smooth camera movements across the image.
 
-When using `staticstripes add-assets -p .`, assets are automatically named:
+*Syntax:* `<effect> <start-x%> <start-y%> <end-x%> <end-y%> <zoom%> <duration> [easing]`
 
-**Naming pattern:**
+- `pan-left` - Pan from right to left
+- `pan-right` - Pan from left to right
+- `pan-top` - Pan from bottom to top
+- `pan-bottom` - Pan from top to bottom
+- `<start-x%>`, `<start-y%>` - Starting position (0-100)
+- `<end-x%>`, `<end-y%>` - Ending position (0-100)
+- `<zoom%>` - Zoom level during pan
+- `<duration>` - Animation duration in milliseconds
+- `[easing]` - Optional easing function
 
-- Videos: `clip_N` (e.g., `clip_1`, `clip_2`, ...)
-- Audio: `track_N` (e.g., `track_1`, `track_2`, ...)
-- Images: `image_N` (e.g., `image_1`, `image_2`, ...)
+**Examples:**
 
-**Sorting order:**
-Files are sorted alphabetically by name before numbering.
+```css
+/* Pan from left to right with 15% zoom */
+-object-fit-ken-burns: pan-right 0 50 100 50 15 4000 linear;
+
+/* Pan from top to bottom with 20% zoom */
+-object-fit-ken-burns: pan-bottom 50 0 50 100 20 5000 ease-in-out;
+
+/* Diagonal pan with custom positions */
+-object-fit-ken-burns: pan-right 10 20 90 80 10 6000 ease-out;
+```
+
+## Complete XML Schema
+
+```html
+<node.project>
+  <title>Project Title</title>
+  <date>2024-01-01T12:00:00Z</date>
+  <tag>tag1</tag>
+  <tag>tag2</tag>
+
+  <sequences>
+    <sequence>
+      <fragment
+        class="css-class"
+        id="unique-id"
+        data-timecode="Label">
+        <container>
+          <div>HTML content</div>
+        </container>
+        <app
+          src="path/to/app/dst"
+          data-parameters='{"key": "value"}' />
+      </fragment>
+    </sequence>
+  </sequences>
+
+  <style>
+    /* CSS styling */
+    .css-class {
+      -asset: asset_name;
+      -duration: 5000ms;
+      -trim-start: 1000ms;
+      -transition-start: fade-in 500ms;
+      -transition-end: fade-out 500ms;
+      -object-fit: cover;
+      filter: instagram-nashville;
+    }
+  </style>
+
+  <assets>
+    <asset name="asset_name" path="./path/to/file.mp4" />
+  </assets>
+
+  <outputs>
+    <output
+      name="youtube"
+      resolution="1920x1080"
+      fps="30" />
+  </outputs>
+
+  <ffmpeg>
+    <option name="preview">
+      -c:v libx264 -preset fast -crf 23
+    </option>
+  </ffmpeg>
+
+  <ai>
+    <provider name="music_gen" tag="music-api-ai">
+      <model>sonic-v3-5</model>
+    </provider>
+  </ai>
+
+  <upload name="yt_main" tag="youtube" output="youtube">
+    <privacy>public</privacy>
+    <madeForKids>false</madeForKids>
+    <category>22</category>
+    <language>en</language>
+    <description>Video description</description>
+  </upload>
+</node.project>
+```
+
+## CSS Property Parsing Rules
+
+### Duration Property
+
+**Syntax:** `-duration: <value>`
+
+**Supported values:**
+
+1. **Time values:**
+   - Milliseconds: `5000ms` or `5000`
+   - Seconds: `5s` or `5.5s`
+
+2. **Percentage:**
+   - `50%` - Use 50% of asset's duration
+   - `100%` - Use full asset duration
+
+3. **Auto:**
+   - `auto` - Use remaining asset duration after trim-start
+
+4. **Calc expressions:**
+   - `calc(url(#fragment_id.time.duration))` - Reference another fragment's duration
+   - `calc(url(#fragment_id.time.end) + 500ms)` - Add offset to fragment's end time
+
+**Examples:**
+
+```css
+.clip {
+  -duration: 5000ms;        /* 5 seconds */
+  -duration: 3.5s;          /* 3.5 seconds */
+  -duration: 50%;           /* Half of asset duration */
+  -duration: auto;          /* Remaining duration */
+  -duration: calc(url(#intro.time.duration)); /* Match intro's duration */
+}
+```
+
+### Offset Properties
+
+**Syntax:**
+- `-offset-start: <time>`
+- `-offset-end: <time>`
+
+Controls absolute timing in the sequence. `-offset-start` sets when a fragment begins. `-offset-end` sets when it should end (which becomes the next fragment's `-offset-start`).
+
+**Examples:**
+
+```css
+.fragment1 {
+  -offset-start: 0s;
+  -offset-end: 5s;          /* Fragment lasts 5 seconds */
+}
+
+.fragment2 {
+  -offset-start: 5s;        /* Starts after fragment1 */
+  -offset-end: calc(url(#ending.time.start)); /* Sync with another fragment */
+}
+```
+
+### Object Fit Property
+
+**Syntax:** `-object-fit: <mode> [parameters]`
+
+**Modes:**
+
+1. **cover** (default)
+   ```css
+   -object-fit: cover;
+   ```
+
+2. **contain with pillarbox**
+   ```css
+   -object-fit: contain pillarbox #000000;
+   ```
+
+3. **contain with ambient**
+   ```css
+   -object-fit: contain ambient <blur> <brightness> <saturation>;
+   ```
+   Example:
+   ```css
+   -object-fit: contain ambient 20 -0.3 0.8;
+   /* blur: 20, brightness: -30%, saturation: 80% */
+   ```
+
+4. **ken-burns**
+   ```css
+   -object-fit: ken-burns;
+   -object-fit-ken-burns: zoom-in 50 50 20 3000 ease-in-out;
+   ```
+
+### Chromakey Property
+
+**Syntax:** `-chromakey: <blend> <similarity> <color>`
+
+Remove green screen or any color background.
+
+**Parameters:**
+
+- **blend** - Edge blending (0.0-1.0)
+  - `hard` = 0.0
+  - `smooth` = 0.1
+  - `soft` = 0.2
+
+- **similarity** - Color matching tolerance (0.0-1.0)
+  - `strict` = 0.1
+  - `good` = 0.3
+  - `forgiving` = 0.5
+  - `loose` = 0.7
+
+- **color** - Color to remove (hex format)
+  - `#00ff00` - Green
+  - `#0000ff` - Blue
+
+**Examples:**
+
+```css
+.greenscreen {
+  -chromakey: smooth good #00ff00;  /* Remove green */
+}
+
+.bluescreen {
+  -chromakey: 0.1 0.3 #0000ff;     /* Remove blue */
+}
+```
+
+### Transition Properties
+
+**Syntax:**
+- `-transition-start: <name> <duration>`
+- `-transition-end: <name> <duration>`
+
+**Available transitions:**
+- `fade-in` - Fade from black
+- `fade-out` - Fade to black
+
+**Examples:**
+
+```css
+.fragment {
+  -transition-start: fade-in 1000ms;    /* 1 second fade in */
+  -transition-end: fade-out 500ms;      /* 0.5 second fade out */
+}
+```
+
+### Overlay/Z-Index Properties
+
+**Syntax:**
+- `-overlay-start-z-index: <number>`
+- `-overlay-end-z-index: <number>`
+
+Controls fragment layering. Positive values place fragment on top, negative values place it below.
+
+**Examples:**
+
+```css
+.background {
+  -overlay-start-z-index: 0;
+}
+
+.overlay_text {
+  -overlay-start-z-index: 1;  /* Appears on top */
+}
+```
+
+### Trim Properties
+
+**Syntax:**
+- `-trim-start: <time>` - Skip first N milliseconds of asset
+- `-trim-end: <time>` - Skip last N milliseconds of asset
+
+**Examples:**
+
+```css
+.clip {
+  -trim-start: 3000ms;  /* Skip first 3 seconds */
+  -trim-end: 2000ms;    /* Skip last 2 seconds */
+  -duration: auto;      /* Use remaining duration */
+}
+```
+
+## CSS Class Merging Rules
+
+When a fragment has multiple CSS classes, properties are merged with later classes taking precedence.
 
 **Example:**
 
+```css
+.base {
+  -duration: 5000ms;
+  -transition-start: fade-in 500ms;
+}
+
+.custom {
+  -duration: 3000ms;  /* Overrides .base duration */
+}
 ```
-Files found:
-  input/zebra.mp4
-  input/alpha.mp4
-  audio/song.mp3
-
-Generated assets:
-  <asset data-name="clip_1" data-path="./input/alpha.mp4" />
-  <asset data-name="clip_2" data-path="./input/zebra.mp4" />
-  <asset data-name="track_1" data-path="./audio/song.mp3" />
-```
-
-### Container System Technical Details
-
-**Purpose:** Render arbitrary HTML/CSS as PNG overlays in the video.
-
-**Definition:**
 
 ```html
-<container id="title_overlay">
-  <div style="font-size: 72px; color: white; padding: 50px;">My Title</div>
-</container>
+<fragment class="base custom" />
+<!-- Result: duration=3000ms, transition-start=fade-in 500ms -->
 ```
 
-**Usage in fragments:**
+## Calc() Expression Reference
 
-```html
-<fragment class="overlay" style="-offset-start: 0s; -offset-end: 3s;">
-  <container id="title_overlay">
-    <div style="font-size: 72px; color: white; padding: 50px;">My Title</div>
-  </container>
-</fragment>
-```
+The `calc()` function allows referencing other fragments' timing properties.
 
-**Rendering process:**
+**Syntax:** `calc(url(#fragment_id.time.property))`
 
-1. HTML/CSS inside `<container>` is rendered in a headless browser
-2. Result is captured as a PNG image
-3. PNG is cached in `cache/` directory
-4. PNG is overlaid on video using FFmpeg
+**Available properties:**
+- `start` - Fragment's absolute start time in milliseconds
+- `end` - Fragment's absolute end time in milliseconds
+- `duration` - Fragment's duration in milliseconds
 
-**When to use:**
-
-- Text overlays
-- Graphics/logos
-- Complex layouts that would be difficult with video editing
-
-**Limitations:**
-
-- No JavaScript execution (pure HTML/CSS only)
-- Rendered at output resolution
-- Each container generates a separate PNG file
-
----
-
-### Application System Technical Details
-
-**Purpose:** Render full-featured web applications (React, Vue, vanilla JS, etc.) as PNG overlays using Puppeteer.
-
-Unlike `<container>` elements which only support static HTML/CSS, `<app>` elements allow you to:
-- Execute JavaScript
-- Use React/Vue/Svelte components
-- Render dynamic content based on video metadata
-- Create complex interactive previews during development
-- Access video metadata (title, date, tags) automatically
-
-#### App Structure
-
-An app is a standalone web application with this required structure:
-
-```
-my-app/
-├── src/                  # Source files (React, Vue, etc.)
-│   ├── main.tsx         # Entry point
-│   └── App.tsx          # Main component
-├── dst/                  # Build output (REQUIRED for rendering)
-│   ├── index.html       # Built HTML file
-│   └── assets/          # Bundled JS/CSS
-├── package.json         # Dependencies
-├── vite.config.ts       # Build configuration
-└── Makefile (optional)  # Build commands
-```
-
-**Automatic App Building:**
-
-StaticStripes automatically builds apps when needed:
-- When generating video, if a fragment contains an app, the system checks if the app's `dst/` or `dist/` directory exists
-- If the build output doesn't exist, StaticStripes automatically runs `npm install && npm run build` in the app directory
-- Use `--app-build` flag to force rebuild apps even when output already exists
-- This ensures apps are always up-to-date without manual build steps
-
-#### Using Apps in Fragments
-
-```html
-<fragment class="title_overlay" style="-offset-start: 0s; -duration: 5000ms;">
-  <app
-    src="../apps/central_text/dst"
-    data-parameters='{"extra": "❄️🏔️🌨️"}'
-  />
-</fragment>
-```
-
-**`<app>` Attributes:**
-
-| Attribute | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `src` | `string` | Yes | Path to app's **dst/** directory (relative to project.html or absolute) |
-| `data-parameters` | `JSON string` | No | Custom JSON parameters passed to app via URL query string |
-
-#### How Apps Work
-
-**1. Build Phase:**
-```bash
-cd apps/central_text
-npm install
-npm run build  # Builds to dst/ directory
-```
-
-**2. Rendering Phase:**
-
-When StaticStripes encounters an `<app>` element:
-
-1. **Launches Puppeteer** (headless Chrome)
-2. **Constructs URL** with automatic metadata injection:
-   ```
-   file:///path/to/app/dst/index.html?rendering&title=Video+Title&date=2025-01-15T12:00:00Z&tags=travel,vlog&extra=❄️🏔️🌨️
-   ```
-3. **Loads the app** in a virtual viewport (output resolution)
-4. **Waits for render signal** - App must set `window.__stsRenderComplete = true`
-5. **Captures screenshot** with transparent background
-6. **Caches result** in `cache/apps/<hash>.png`
-7. **Overlays PNG** on video using FFmpeg
-
-**Automatic Parameters Injected:**
-
-All apps automatically receive these URL parameters:
-
-- `rendering` - Flag indicating render mode (no value, just presence)
-- `title` - Video title from `<title>` tag
-- `date` - Video date from `<date>` tag (ISO 8601 format)
-- `tags` - Comma-separated tags from `<tag>` elements
-
-Custom parameters from `data-parameters` are merged and can override defaults.
-
-#### App Parameter Schema System
-
-All StaticStripes apps should use the `@gannochenko/viewer-tools` package's parameter schema system for declarative parameter management. This provides:
-
-- **Type-safe parameter definitions** with TypeScript
-- **Auto-generated preview UI** during development
-- **LocalStorage persistence** for development workflow
-- **Consistent parameter handling** across all apps
-
-**Parameter Schema Example:**
-```tsx
-// Define schema
-export const PARAMETER_SCHEMA: ParameterSchema = {
-  fields: [
-    { name: "title", label: "Title", defaultValue: "" },
-    { name: "date", label: "Date", defaultValue: "" },
-    { name: "tags", label: "Tags", defaultValue: "" },
-  ],
-};
-
-// Use with VideoFrame component
-<VideoFrame<AppParams>
-  schema={PARAMETER_SCHEMA}
-  initialContent={params}
->
-  {(content) => <YourContent {...content} />}
-</VideoFrame>
-```
-
-See the "Viewer Tools Package" section below for complete documentation on the parameter schema system.
-
-#### Creating a React App
-
-React apps for StaticStripes use the `@gannochenko/viewer-tools` package which provides:
-- Parameter schema system with auto-generated UI
-- Format preview (YouTube, YT Shorts, etc.)
-- LocalStorage persistence
-- Type-safe parameters
-
-See the "Viewer Tools Package" section below for complete examples and documentation.
-
-**File: `apps/title-card/src/App.css`**
+**Examples:**
 
 ```css
-.container {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  width: 100vw;
-  height: 100vh;
-  font-family: 'Arial', sans-serif;
+.intro {
+  -duration: 5000ms;
 }
 
-.title {
-  display: flex;
-  flex-direction: row;
-  gap: 1rem;
-  font-size: 6rem;
-  font-weight: bold;
+.background_music {
+  /* Start music when intro starts */
+  -offset-start: calc(url(#intro.time.start));
+
+  /* End music when intro ends */
+  -duration: calc(url(#intro.time.duration));
 }
 
-.word {
-  background: white;
-  color: black;
-  padding: 0.5rem 1.5rem;
-  border-radius: 3rem;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
-}
-
-.date {
-  margin-top: 2rem;
-  font-size: 3rem;
-  color: white;
-  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.8);
-}
-
-.extra {
-  margin-top: 1rem;
-  font-size: 4rem;
+.delayed {
+  /* Start 2 seconds after intro ends */
+  -offset-start: calc(url(#intro.time.end) + 2000);
 }
 ```
 
-**File: `apps/title-card/package.json`**
+**Important:** The referenced fragment must be processed before the fragment using `calc()`. Fragments are processed in order within sequences.
 
-```json
-{
-  "name": "title-card",
-  "version": "0.0.0",
-  "private": true,
-  "type": "module",
-  "scripts": {
-    "dev": "vite",
-    "build": "tsc -b && vite build",
-    "preview": "vite preview"
-  },
-  "dependencies": {
-    "react": "^19.0.0",
-    "react-dom": "^19.0.0"
-  },
-  "devDependencies": {
-    "@types/react": "^19.0.0",
-    "@types/react-dom": "^19.0.0",
-    "@vitejs/plugin-react": "^4.3.4",
-    "typescript": "~5.7.2",
-    "vite": "^6.2.0"
-  }
-}
-```
+## Asset Naming Conventions
 
-**File: `apps/title-card/vite.config.ts`**
+**Best practices:**
 
-```ts
-import { defineConfig } from 'vite';
-import react from '@vitejs/plugin-react';
+- Use lowercase with underscores: `my_video_clip`
+- Be descriptive: `intro_music`, `sunset_timelapse`
+- Avoid spaces and special characters
+- Use consistent prefixes for organization:
+  - `clip_01`, `clip_02` - Video clips
+  - `img_intro`, `img_outro` - Images
+  - `music_background`, `sfx_explosion` - Audio
 
-export default defineConfig({
-  plugins: [react()],
-  build: {
-    outDir: 'dst',  // CRITICAL: Must output to dst/
-  },
-});
-```
-
-**File: `apps/title-card/Makefile`**
-
-```makefile
-run:
-	npm run dev
-
-build:
-	npm run build
-```
-
-#### Using the App in project.html
+**Asset attributes:**
 
 ```html
-<project>
-  <sequence>
-    <!-- Video sequence -->
-    <fragment class="intro_clip" />
-  </sequence>
+<asset name="clip_01" path="./input/video.mp4" author="John Doe" />
+```
 
-  <sequence>
-    <!-- Title overlay sequence -->
-    <fragment class="title_overlay">
-      <app
-        src="../apps/title-card/dst"
-        data-parameters='{"extra": "🗼 🍜 🌸"}'
-      />
-    </fragment>
-  </sequence>
-</project>
+- `name` (required) - Unique identifier
+- `path` (required) - Relative path from project.html
+- `author` (optional) - Attribution
+
+**Alternative syntax (inside node.project):**
+
+```html
+<assets>
+  <asset name="generated_text" input="$node_name.output.video" />
+</assets>
+```
+
+Use `input` attribute to reference outputs from other nodes instead of `path` for file paths.
+
+## Container System
+
+Containers allow you to embed HTML/CSS content directly into fragments using Puppeteer rendering.
+
+**How it works:**
+1. HTML content inside `<container>` tags is extracted
+2. Content is rendered to PNG using Puppeteer
+3. PNG is cached based on content hash
+4. Image is overlaid on the fragment
+
+**Example:**
+
+```html
+<sequence>
+  <fragment class="video_clip">
+    <container>
+      <div class="text-overlay">
+        <h1>Welcome</h1>
+        <p>This text appears on top of the video</p>
+      </div>
+    </container>
+  </fragment>
+</sequence>
 
 <style>
-  .intro_clip {
-    -asset: intro_video;
-    -duration: 8000ms;
+  .video_clip {
+    -asset: main_clip;
+    -duration: 5000ms;
   }
 
-  .title_overlay {
-    -offset-start: 0s;
-    -duration: 8000ms;
-    -transition-start: fade-in 1000ms;
-    -transition-end: fade-out 1000ms;
+  .text-overlay {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    color: white;
+    font-size: 48px;
+    text-align: center;
+    font-family: Arial, sans-serif;
   }
 </style>
 ```
 
-#### App Development Workflow
+**Key points:**
+- Containers are rendered with transparent backgrounds
+- Use absolute positioning for layout control
+- All CSS from `<style>` tags applies to containers
+- Containers are cached (re-rendering only when content changes)
 
-**1. Create app:**
-```bash
-cd apps
-npm create vite@latest title-card -- --template react-ts
-cd title-card
-npm install @gannochenko/viewer-tools react react-dom
+## Application System
+
+Apps are standalone HTML/CSS/JS applications that can be rendered with parameters and attached to fragments or used via `<node.app>`.
+
+### App Structure
+
+```
+apps/my_app/
+├── index.html          # Main HTML file
+├── package.json        # Dependencies
+├── tsconfig.json       # TypeScript config
+├── vite.config.ts      # Vite build config
+└── dst/                # Built output (created by staticstripes)
+    ├── index.html
+    └── assets/
 ```
 
-**2. Update vite.config.ts to output to `dst/`:**
-```ts
-export default defineConfig({
-  plugins: [react()],
-  build: {
-    outDir: 'dst',
-  },
-});
-```
-
-**3. Define parameter schema:**
-```tsx
-// src/schema.ts
-export const PARAMETER_SCHEMA: ParameterSchema = {
-  fields: [
-    { name: "title", label: "Title", defaultValue: "" },
-    { name: "date", label: "Date", defaultValue: "" },
-    { name: "tags", label: "Tags", defaultValue: "" },
-  ],
-};
-```
-
-**4. Implement dual-mode app:**
-```tsx
-// src/App.tsx
-import { VideoFrame, RenderingView } from "@gannochenko/viewer-tools";
-import "@gannochenko/viewer-tools/styles.css";
-
-function App() {
-  const { rendering, ...params } = useAppParams();
-
-  if (rendering) {
-    return <RenderingView><YourContent {...params} /></RenderingView>;
-  }
-
-  return (
-    <VideoFrame schema={PARAMETER_SCHEMA} initialContent={params}>
-      {(content) => <YourContent {...content} />}
-    </VideoFrame>
-  );
-}
-```
-
-**5. Develop with interactive preview:**
-```bash
-npm run dev
-# Visit: http://localhost:5173
-# Use interactive panels to edit content and switch formats
-```
-
-**6. Build for production:**
-```bash
-npm run build  # Outputs to dst/
-```
-
-**7. Use in project.html:**
-```html
-<app src="../apps/title-card/dst" data-parameters='{"extra": "🎬"}' />
-```
-
-**8. Generate video:**
-```bash
-staticstripes generate -p . -o youtube -d
-```
-
-#### Critical App Requirements
-
-✅ **MUST set render complete flag:**
-
-When using `@gannochenko/viewer-tools`, the `RenderingView` component handles this automatically.
-
-Without viewer-tools:
-```ts
-(window as any).__stsRenderComplete = true;
-```
-
-✅ **MUST set transparent background:**
-
-The `RenderingView` component handles this automatically.
-
-Without viewer-tools:
-```ts
-document.body.style.background = 'transparent';
-```
-
-✅ **MUST build to `dst/` directory**
-
-✅ **MUST complete rendering within 5 seconds** (configurable via `RENDER_TIMEOUT_MS`)
-
-❌ **DO NOT** use `navigator.geolocation`, `navigator.mediaDevices`, or other browser APIs requiring permissions
-
-❌ **DO NOT** make external network requests during rendering (pre-fetch data during build)
-
-#### App vs Container Comparison
-
-| Feature | `<container>` | `<app>` |
-|---------|---------------|---------|
-| **JavaScript** | ❌ No | ✅ Yes |
-| **React/Vue** | ❌ No | ✅ Yes |
-| **Setup** | None | Build step required |
-| **Rendering** | Static HTML/CSS | Puppeteer (headless browser) |
-| **Metadata access** | ❌ No | ✅ Auto-injected |
-| **Performance** | Fast | Slower (browser launch) |
-| **Caching** | Per-container hash | Per-app + parameters hash |
-| **Use case** | Simple text/graphics | Complex dynamic overlays |
-
-#### Advanced App Examples
-
-**Example: Dynamic Tag Cloud**
-
-```tsx
-function TagCloud({ tags }: { tags?: string }) {
-  const tagList = tags?.split(',') || [];
-
-  return (
-    <div className="tag-cloud">
-      {tagList.map((tag, i) => (
-        <span
-          key={i}
-          className="tag"
-          style={{
-            fontSize: `${2 + Math.random() * 2}rem`,
-            opacity: 0.7 + Math.random() * 0.3,
-          }}
-        >
-          #{tag.trim()}
-        </span>
-      ))}
-    </div>
-  );
-}
-```
-
-**Example: Conditional Rendering**
-
-```tsx
-function AppContent({ outro, title }: { outro?: boolean; title?: string }) {
-  if (outro) {
-    return (
-      <div className="outro">
-        <h1>Thanks for watching!</h1>
-        <p>Subscribe for more!</p>
-        <span className="emoji">🫶</span>
-      </div>
-    );
-  }
-
-  return (
-    <div className="intro">
-      <h1>{title}</h1>
-    </div>
-  );
-}
-
-// Usage in project.html:
-// <app src="../apps/card/dst" data-parameters='{"outro": true}' />
-```
-
-**Example: Date Formatting**
-
-```tsx
-function formatDate(isoString: string): string {
-  const date = new Date(isoString);
-  return date.toLocaleDateString('en-US', {
-    month: 'long',
-    day: 'numeric',
-    year: 'numeric'
-  });
-}
-
-function DateDisplay({ date }: { date?: string }) {
-  if (!date) return null;
-
-  return (
-    <div className="date">
-      {formatDate(date)}
-    </div>
-  );
-}
-```
-
-#### Troubleshooting Apps
-
-**App not rendering:**
-- ✓ Check that `dst/` directory exists and contains built files
-- ✓ Verify `dst/index.html` exists
-- ✓ Check browser console output for errors (visible with `--debug`)
-- ✓ Ensure `window.__stsRenderComplete = true` is set
-- ✓ Verify transparent background is set
-
-**Timeout errors:**
-- ✓ Reduce rendering complexity
-- ✓ Remove network requests
-- ✓ Check that render complete flag is set in `useEffect`
-
-**Wrong parameters:**
-- ✓ Validate JSON syntax in `data-parameters`
-- ✓ Check URL parameters in browser dev mode
-- ✓ Verify `useAppParams` hook implementation
-
-**Caching issues:**
-- ✓ Delete `cache/apps/` directory to force re-render
-- ✓ Check that parameters affecting output are included in cache key
-- ✓ Rebuild app after code changes
-
-#### Best Practices
-
-1. **Use @gannochenko/viewer-tools:**
-   - Provides parameter schema for type safety
-   - Auto-generated preview UI during development
-   - LocalStorage persistence for development workflow
-   - RenderingView component handles setup automatically
-
-2. **Separate rendering and preview modes:**
-   ```tsx
-   if (rendering) return <RenderingView><YourContent /></RenderingView>;
-   return <VideoFrame schema={PARAMETER_SCHEMA}>...</VideoFrame>;
-   ```
-
-3. **Define parameter schema early:**
-   ```tsx
-   export const PARAMETER_SCHEMA: ParameterSchema = {
-     fields: [
-       { name: "title", label: "Title", defaultValue: "" },
-       { name: "date", label: "Date", defaultValue: "" },
-       { name: "tags", label: "Tags", defaultValue: "" },
-       // Add custom parameters as needed
-     ],
-   };
-   ```
-
-4. **Test in development server with interactive preview:**
-   ```bash
-   npm run dev
-   # Visit: http://localhost:5173
-   # Use interactive panels to test different content
-   ```
-
-5. **Keep rendering fast:**
-   - Avoid heavy computations
-   - Pre-process data during build
-   - Use simple CSS animations (if any)
-
-6. **Build before generating video:**
-   ```bash
-   cd apps/my-app
-   npm run build
-   cd ../..
-   staticstripes generate -p . -o youtube
-   ```
-
-### Fragment Attributes Reference
-
-**`<fragment>` element attributes:**
-
-| Attribute       | Type     | Required | Description                             |
-| --------------- | -------- | -------- | --------------------------------------- |
-| `id`            | `string` | No       | Unique identifier for calc() references |
-| `data-asset`    | `string` | No\*     | Asset name to use for this fragment     |
-| `data-timing`   | `string` | No       | Short syntax for timing (ts,te,d,os,oe) |
-| `class`         | `string` | No       | CSS class names (space-separated)       |
-| `style`         | `string` | No       | Inline CSS (try to use classes though)  |
-| `data-timecode` | `string` | No       | Generates a timecode for this fragment  |
-
-`data-asset` can be specified to reuse a css class, otherwise can also be specified via CSS using `-asset: <name>`.
-
-`data-timing` provides short syntax alternative to CSS timing properties. Values default to milliseconds if no unit specified.
-
-Example with CSS:
+### Using Apps in project.html (Inline)
 
 ```html
-<fragment class="clip" data-asset="video_1" data-timecode="Our first dance" />
+<sequence>
+  <fragment class="title_card">
+    <app
+      src="../apps/central_text/dst"
+      data-parameters='{"text": "Welcome!", "fontSize": "72"}' />
+  </fragment>
+</sequence>
 ```
 
-Example with data-timing short syntax:
+**Attributes:**
+- `src` - Path to app's `dst` directory (relative to project.html)
+- `data-parameters` - JSON object passed to app
+
+### Using Apps as Nodes
 
 ```html
-<fragment
-  data-asset="video_1"
-  data-timing="ts=3000,te=5000,d=2000,os=1000"
-  data-timecode="Our first dance"
-/>
+<node.app
+  name="karaoke"
+  src="../apps/karaoke_text/dst"
+  words="$speech.wordTiming"
+  windowSize="5"
+  fontSize="70" />
+
+<node.project>
+  <assets>
+    <asset name="lyrics_video" input="$karaoke.output.video" />
+  </assets>
+
+  <sequences>
+    <sequence>
+      <fragment class="lyrics" />
+    </sequence>
+  </sequences>
+
+  <style>
+    .lyrics {
+      -asset: lyrics_video;
+      -duration: auto;
+    }
+  </style>
+</node.project>
 ```
 
-### Output Configuration Reference
+### App Rendering Modes
 
-**`<output>` element attributes:**
+Apps can render in two modes:
 
-| Attribute         | Type     | Required | Description              | Example                |
-| ----------------- | -------- | -------- | ------------------------ | ---------------------- |
-| `data-name`       | `string` | Yes      | Unique output identifier | `"youtube"`            |
-| `data-path`       | `string` | Yes      | Output file path         | `"./output/video.mp4"` |
-| `data-fps`        | `number` | Yes      | Frames per second        | `30`                   |
-| `data-resolution` | `string` | Yes      | Video resolution         | `"1920x1080"`          |
+1. **Static** - Single PNG image
+   - Used when app has no animations
+   - Faster rendering
 
-**Common resolutions:**
+2. **Animated** - APNG (Animated PNG)
+   - Used when app includes animations
+   - Preserves alpha channel
+   - Frame-by-frame capture
 
-- YouTube: `1920x1080` (16:9)
-- Instagram/TikTok: `1080x1920` (9:16)
-- Square: `1080x1080` (1:1)
+### App Parameters
 
-### Asset Configuration Reference
+Apps receive parameters through the `parameters` global variable:
 
-**`<asset>` element attributes:**
-
-| Attribute   | Type     | Required | Description             |
-| ----------- | -------- | -------- | ----------------------- |
-| `data-name` | `string` | Yes      | Unique asset identifier |
-| `data-path` | `string` | Yes      | Path to media file      |
-
-**Child elements:**
-
-**`<ai>` element (optional):**
-
-```html
-<ai data-integration-name="music_api">
-  <prompt>Music generation prompt</prompt>
-  <duration value="30" />
-</ai>
+```javascript
+// In your app's JavaScript
+const params = window.parameters || {};
+const text = params.text || 'Default Text';
+const fontSize = params.fontSize || 48;
 ```
 
-Attributes:
+### App Building
 
-- `data-integration-name`: References AI provider from `<ai>` section
+StaticStripes automatically builds apps before rendering:
 
-Child elements:
+```bash
+# Automatic build during generation
+staticstripes generate -p .
 
-- `<prompt>`: Text prompt for generation (required)
-- `<duration>`: Generation duration with `value` attribute in seconds (optional)
-
----
+# Force rebuild all apps
+staticstripes generate -p . --app-build
+```
 
 ## AI Asset Generation
 
-### Configuring AI Providers
-
-Define AI providers in your project file:
-
-```html
-<ai>
-  <ai-music-api-ai name="music_api">
-    <model name="sonic-v4-5" />
-  </ai-music-api-ai>
-</ai>
-```
-
-### Configuring Assets for AI Generation
-
-Assets can be configured to auto-generate content if they don't exist:
-
-```html
-<asset data-name="background_music" data-path="./audio/background_music.mp3">
-  <ai data-integration-name="music_api">
-    <prompt>Generate upbeat electronic music with a positive vibe</prompt>
-    <duration value="30" />
-  </ai>
-</asset>
-```
-
-### How It Works
-
-1. If the `data-path` file doesn't exist, it gets generated using the AI integration
-2. If the file exists, it's reused (no regeneration)
-3. Generation happens automatically before rendering when running `generate` command
-
-### Authentication for AI Providers
-
-Create a credentials file in `.auth/<ai-provider-name>.json`:
-
-```json
-{
-  "apiKey": "your-api-key-here"
-}
-```
-
-**Example for AIMusicAPI.ai:**
-Create `.auth/music-api.json` in your project directory.
+Generate assets using AI services before video rendering.
 
 ### Supported AI Providers
 
-#### AIMusicAPI.ai (`<ai-music-api-ai>`)
+#### AIMusicAPI.ai
 
-Generates music using AIMusicAPI.ai's API (https://aimusicapi.ai).
+Generate background music using AI.
 
 **Configuration:**
 
-- `<model name="sonic-v4-5" />` - Optional model selection (default: sonic-v4-5)
+```html
+<node.project>
+  <ai>
+    <provider name="music_gen" tag="music-api-ai">
+      <model>sonic-v3-5</model>
+    </provider>
+  </ai>
 
-**Asset options:**
+  <assets>
+    <asset
+      name="bg_music"
+      path="./audio/generated_music.mp3"
+      data-ai-integration="music_gen"
+      data-ai-prompt="Upbeat electronic music with a positive vibe"
+      data-ai-duration="30" />
+  </assets>
+</node.project>
+```
 
-- `<prompt>` - Description of the music to generate (required)
+**Asset attributes for AI generation:**
+- `data-ai-integration` - References provider name from `<ai>` section
+- `data-ai-prompt` - Generation prompt
+- `data-ai-duration` - Duration in seconds (optional)
 
-**Get API key:** https://aimusicapi.ai → Dashboard → API Keys
+**Authentication:**
+
+```bash
+# Set up API key
+export MUSIC_API_AI_KEY=your_api_key_here
+
+# Or use .auth file
+# Create .auth/music-api-ai.json with: {"apiKey": "your_key"}
+```
+
+**Workflow:**
+
+1. Define AI provider in `<ai>` section
+2. Add asset with `data-ai-*` attributes
+3. Run `staticstripes generate -p .`
+4. If asset file doesn't exist, StaticStripes generates it
+5. Generated file is cached and reused
+
+### OpenAI Text Generation
+
+Generate text content dynamically:
+
+```html
+<node.openai name="joke_generator">
+  <prompt>Generate a funny dad joke about science.</prompt>
+  <model name="gpt-4o-mini" />
+</node.openai>
+
+<!-- Use generated text elsewhere -->
+<node.elevenlabs
+  name="speech"
+  text="$joke_generator.text"
+  stability="0.7"
+  similarityBoost="0.8">
+  <voice name="IKne3meq5aSn9XLyUdCD" />
+  <model name="eleven_multilingual_v2" />
+</node.elevenlabs>
+```
+
+### ElevenLabs Text-to-Speech
+
+Convert text to speech with word timing:
+
+```html
+<node.elevenlabs
+  name="narrator"
+  text="Your narration text here"
+  stability="0.7"
+  similarityBoost="0.8"
+  style="0.3">
+  <voice name="IKne3meq5aSn9XLyUdCD" />
+  <model name="eleven_multilingual_v2" />
+</node.elevenlabs>
+```
+
+**Outputs:**
+- `$narrator.audio` - Generated MP3 file path
+- `$narrator.wordTiming` - Array of word timing data for karaoke/subtitles
 
 ## Upload Configuration
 
 ### YouTube Upload
 
-Define upload channels in your project file:
+Upload rendered videos to YouTube with metadata.
+
+**Configuration:**
 
 ```html
-<uploads>
-  <youtube name="yt_primary" data-output-name="youtube" id="">
-    <unlisted />
-    <made-for-kids />
-    <tag name="travel" />
-    <tag name="blog" />
-    <category name="entertainment" />
-    <language name="en" />
-    <title>My Awesome Video</title>
-    <thumbnail data-timecode="1000ms" />
-    <pre>
-${title}.
-
-Links:
-- Website: https://example.com
-- GitHub: https://github.com/user/repo
-    </pre>
-  </youtube>
-</uploads>
+<node.project>
+  <upload name="yt_primary" tag="youtube" output="youtube">
+    <title>My Video Title</title>
+    <privacy>public</privacy>
+    <madeForKids>false</madeForKids>
+    <category>22</category>
+    <language>en</language>
+    <tag>travel</tag>
+    <tag>vlog</tag>
+    <description>
+      Video description here.
+      Can be multiple lines.
+    </description>
+  </upload>
+</node.project>
 ```
 
-**Available tags:**
+**Upload configuration:**
+- `name` - Unique upload identifier
+- `tag` - Platform type (`youtube`)
+- `output` - References output name
 
-- `<youtube>` - Defines YouTube upload channel with `name` and `data-output-name`
-- `<private />` / `<unlisted />` / `<public />` - Privacy setting (default: private)
-- `<made-for-kids />` - Mark video as made for kids
-- `<tag name="..." />` - Add video tags (multiple allowed)
-- `<category name="..." />` - Video category (only one)
-- `<language name="..." />` - Video language
-- `<title>` - Video title (optional, uses project global title if not specified)
-- `<pre>` - Video description (supports EJS templating, processes "${title}", "${tags}", "${timecodes}")
-- `<thumbnail data-timecode="..." />` - Extract thumbnail frame from video at specified time
+**Children elements:**
+- `<title>` - Video title (uses project title if omitted)
+- `<privacy>` - `public`, `unlisted`, or `private`
+- `<madeForKids>` - `true` or `false`
+- `<category>` - YouTube category ID (22 = People & Blogs)
+- `<language>` - Language code (e.g., `en`)
+- `<tag>` - Video tags (multiple allowed)
+- `<description>` - Video description
 
-**Workflow:**
+**Authentication:**
 
-1. Configure upload in `project.html`
-2. Authenticate: `staticstripes auth --upload-name yt_primary`
-3. Upload: `staticstripes upload --upload-name yt_primary`
+```bash
+# Start auth flow
+staticstripes auth --upload-name yt_primary
+
+# Follow browser prompts to authenticate
+# Credentials saved to .auth/youtube_yt_primary.json
+```
+
+**Upload workflow:**
+
+```bash
+# 1. Generate video
+staticstripes generate -p . -o youtube
+
+# 2. Authenticate (first time only)
+staticstripes auth --upload-name yt_primary
+
+# 3. Upload
+staticstripes upload --upload-name yt_primary
+```
+
+### Instagram Upload
+
+Upload to Instagram Reels:
+
+```html
+<node.instagram name="insta" url="$s3_upload.output.url">
+  <thumbnail timecode="1000ms" />
+  <location city="New York" country="USA" />
+  <caption>
+    Your caption here with #hashtags
+  </caption>
+</node.instagram>
+```
+
+### S3 Upload
+
+Upload to S3-compatible storage:
+
+```html
+<node.s3 name="s3" path="$project.output.youtube">
+  <endpoint name="digitaloceanspaces.com" />
+  <region name="ams3" />
+  <bucket name="my-bucket" />
+  <path name="file">videos/${slug}/${output}.mp4</path>
+  <acl name="public-read" />
+</node.s3>
+```
 
 ## Common Workflows
 
-### Workflow 1: Create New Video Project
+### Workflow 1: Create a Simple Video Project
 
 ```bash
 # 1. Create project
+staticstripes bootstrap -n my-video
+cd my-video
 
-# there is a boostrapping command, but it would be better if you try generating the project.html file on your own.
-staticstripes bootstrap -n holiday-video
-cd holiday-video
+# 2. Add your media files to input/, audio/, images/ folders
 
-# 2. Add your media files to input/, audio/, images/
-
-# 3. Scan and add assets
-
-# there is a command to add assets, but it would be better if you read the files and add assets on your own.
+# 3. Scan and catalog assets
 staticstripes add-assets -p .
 
-# 4. Edit project.html to arrange clips
+# 4. Edit project.html to define your video
 
-# 5. Preview in dev mode (fast)
+# 5. Generate video (dev mode for fast preview)
 staticstripes generate -p . -o youtube -d
 
-# 6. Final render (high quality)
+# 6. Generate final video (production quality)
 staticstripes generate -p . -o youtube
 ```
 
 ### Workflow 2: Using AI-Generated Music
 
 ```bash
-# 1. Edit project.html to add AI music asset (see AI Asset Generation section)
+# 1. Set up API key
+export MUSIC_API_AI_KEY=your_api_key
 
-# 2. Create .auth/music-api.json with your API key
+# 2. Configure in project.html
+```
 
-# 3. Generate video (AI assets will be created automatically)
-staticstripes generate -p . -o youtube -d
+```html
+<node.project>
+  <ai>
+    <provider name="music_gen" tag="music-api-ai">
+      <model>sonic-v3-5</model>
+    </provider>
+  </ai>
+
+  <assets>
+    <asset
+      name="bg_music"
+      path="./audio/music.mp3"
+      data-ai-integration="music_gen"
+      data-ai-prompt="Upbeat electronic music"
+      data-ai-duration="30" />
+  </assets>
+
+  <sequences>
+    <sequence>
+      <fragment class="music" />
+    </sequence>
+  </sequences>
+
+  <style>
+    .music {
+      -asset: bg_music;
+      -duration: 30000ms;
+    }
+  </style>
+</node.project>
+```
+
+```bash
+# 3. Generate (will auto-generate music if not exists)
+staticstripes generate -p . -o youtube
 ```
 
 ### Workflow 3: Upload to YouTube
 
 ```bash
-# 1. Add upload configuration to project.html
-
-# 2. Authenticate with YouTube
-staticstripes auth --upload-name yt_primary
-
-# 3. Generate video
-staticstripes generate -p . -o youtube
-
-# 4. Upload to YouTube
-staticstripes upload --upload-name yt_primary
+# 1. Add upload config to project.html
 ```
 
-### Workflow 4: Debug Issues
+```html
+<upload name="yt_main" tag="youtube" output="youtube">
+  <title>My Video</title>
+  <privacy>public</privacy>
+  <madeForKids>false</madeForKids>
+  <description>Video description</description>
+</upload>
+```
 
 ```bash
-# Run with debug flag to see:
-# - Full FFmpeg command
-# - Stack traces
-# - Error details
-# - Detailed timeline with fragment timing information
+# 2. Generate video
+staticstripes generate -p . -o youtube
+
+# 3. Authenticate (first time only)
+staticstripes auth --upload-name yt_main
+
+# 4. Upload
+staticstripes upload --upload-name yt_main
+```
+
+### Workflow 4: Debug Rendering Issues
+
+```bash
+# Enable debug mode for detailed output
 staticstripes generate -p . -o youtube --debug
+
+# This shows:
+# - Full FFmpeg command
+# - Stack traces for errors
+# - Timeline details for each fragment
+# - Asset information
 ```
-
-**Debug Timeline Output:**
-
-When using `--debug`, you'll see a detailed timeline before FFmpeg execution:
-
-```
-=== Debug: Sequences & Fragments Timeline ===
-
-📹 Sequence 0
-   Total Duration: 16330ms
-   Fragments: 3
-
-   ✓ [1]
-      Asset:      intro_image
-      Start:      0ms
-      End:        8000ms
-      Duration:   8000ms
-
-   ✓ [2]
-      Asset:      clip_01
-      Start:      8000ms
-      End:        16330ms
-      Duration:   8330ms
-      Trim Left:  3000ms
-
-   ✓ [3] id="ending_screen"
-      Asset:      intro_image
-      Start:      19830ms
-      End:        24830ms
-      Duration:   5000ms
-      Overlay:    3500ms
-
-===========================================
-```
-
-Features:
-- Shows all sequences and fragments in order
-- Displays timing in milliseconds (no decimals)
-- Shows user-defined IDs (auto-generated IDs are hidden)
-- Hides zero values (trim/overlay only shown when non-zero)
-- Helps debug timing issues and overlaps
 
 ### Workflow 5: Multiple Output Formats
 
 ```html
 <outputs>
-  <output
-    data-name="youtube"
-    data-path="./output/youtube.mp4"
-    data-fps="30"
-    data-resolution="1920x1080"
-  />
-  <output
-    data-name="instagram"
-    data-path="./output/instagram.mp4"
-    data-fps="30"
-    data-resolution="1080x1920"
-  />
-  <output
-    data-name="tiktok"
-    data-path="./output/tiktok.mp4"
-    data-fps="30"
-    data-resolution="1080x1920"
-  />
+  <!-- YouTube landscape -->
+  <output name="youtube" resolution="1920x1080" fps="30" />
+
+  <!-- YouTube Shorts -->
+  <output name="shorts" resolution="1080x1920" fps="30" />
+
+  <!-- Instagram Reels -->
+  <output name="reels" resolution="1080x1920" fps="30" />
 </outputs>
 ```
 
 ```bash
-# Render all formats
+# Render all outputs
 staticstripes generate -p .
 
-# Or render specific format
-staticstripes generate -p . -o instagram
+# Render specific output
+staticstripes generate -p . -o shorts
 ```
 
 ## Advanced Features
 
-### Calc() Expressions
+### Feature 1: Calc() Expressions for Synchronization
 
-Reference other fragments or elements in timing calculations:
-
-```css
-.second-clip {
-  -offset-start: calc(url(#first_clip.time.end) + 500ms);
-  -offset-end: calc(url(#first_clip.time.end) + 5500ms);
-}
-```
-
-### Container Overlays
-
-Render HTML/CSS as PNG overlays:
+Synchronize fragments across different sequences:
 
 ```html
-<fragment style="-offset-start: 0s; -offset-end: 3s;">
-  <container id="title_card">
-    <div style="font-size: 72px; color: white;">My Video Title</div>
+<node.project>
+  <sequences>
+    <!-- Video sequence -->
+    <sequence>
+      <fragment class="intro" id="intro_video" />
+      <fragment class="main" />
+    </sequence>
+
+    <!-- Audio sequence -->
+    <sequence>
+      <fragment class="intro_music" />
+    </sequence>
+  </sequences>
+
+  <style>
+    .intro {
+      -asset: intro_clip;
+      -duration: 5000ms;
+    }
+
+    .intro_music {
+      -asset: music;
+      /* Start and end with intro video */
+      -offset-start: calc(url(#intro_video.time.start));
+      -duration: calc(url(#intro_video.time.duration));
+      -transition-end: fade-out 500ms;
+    }
+  </style>
+</node.project>
+```
+
+### Feature 2: Container Overlays
+
+Add HTML overlays to video fragments:
+
+```html
+<fragment class="video_with_title">
+  <container>
+    <div class="title-card">
+      <h1>Chapter 1: The Beginning</h1>
+      <p>An adventure starts here</p>
+    </div>
   </container>
 </fragment>
+
+<style>
+  .video_with_title {
+    -asset: main_clip;
+    -duration: 5000ms;
+  }
+
+  .title-card {
+    position: absolute;
+    top: 100px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(0, 0, 0, 0.7);
+    padding: 20px 40px;
+    border-radius: 10px;
+    color: white;
+    text-align: center;
+  }
+
+  .title-card h1 {
+    font-size: 48px;
+    margin: 0 0 10px 0;
+    font-family: 'Arial Black', sans-serif;
+  }
+
+  .title-card p {
+    font-size: 24px;
+    margin: 0;
+    opacity: 0.8;
+  }
+</style>
 ```
 
-### Chromakey (Green Screen)
+### Feature 3: Chromakey (Green Screen)
 
-```css
-.greenscreen {
-  -chromakey: smooth good #00ff00;
-}
-```
-
-### Fragment IDs
-
-Fragments can have IDs for reference:
+Remove green screen backgrounds:
 
 ```html
-<fragment id="intro_clip" data-asset="intro" />
-<fragment
-  id="main_clip"
-  data-asset="main"
-  style="-offset-start: calc(url(#intro_clip.time.end) + 1s)"
-/>
+<style>
+  .greenscreen_clip {
+    -asset: person_greenscreen;
+    -duration: 5000ms;
+    -chromakey: smooth good #00ff00;
+  }
+</style>
 ```
+
+### Feature 4: Fragment IDs and Timecode Labels
+
+Add labels for debugging and reference:
+
+```html
+<fragment
+  class="intro"
+  id="intro_scene"
+  data-timecode="Introduction" />
+
+<style>
+  .intro {
+    -asset: intro_clip;
+    -duration: 5000ms;
+  }
+</style>
+```
+
+When rendering with `--debug`, timecode labels appear in the output.
 
 ## Error Handling
 
-StaticStripes provides clear error messages:
+### Normal Mode
 
-**Normal mode:**
-
-```
-❌ Video generation failed
-
-Error: Asset file(s) not found:
-  - /path/to/missing/video.mp4
-
-Please check that all asset paths in project.html are correct.
-
-💡 Tip: Run with --debug flag for detailed error information
-```
-
-**Debug mode:**
+In normal mode, errors show user-friendly messages:
 
 ```
-🐛 Debug mode enabled
-
-❌ Video generation failed
-
-Error: Asset file(s) not found:
-  - /path/to/missing/video.mp4
-
-=== Debug Information ===
-
-Full error object: Error: Asset file(s) not found...
-Stack trace:
-Error: Asset file(s) not found...
-    at HTMLProjectParser.validateAssetFiles (...)
-    [full stack trace]
-
-=== FFmpeg Command ===
-ffmpeg -y -i "/path/to/input.mp4" -filter_complex "..." -map "[outv]" ...
+Error: Asset file not found: ./input/video.mp4
+Please check that the file exists and the path is correct.
 ```
 
-## Example: Complete Video Project
+### Debug Mode
+
+Enable debug mode for detailed information:
+
+```bash
+staticstripes generate -p . -o youtube --debug
+```
+
+**Debug output includes:**
+- Full FFmpeg command
+- Stack traces
+- Timeline details
+- Asset metadata
+- Fragment timing calculations
+
+**Example debug output:**
+
+```
+=== DEBUG: Timeline ===
+Sequence 0:
+  Fragment 0 (intro_image):
+    Asset: intro
+    Start: 0.000s
+    End: 3.000s
+    Duration: 3.000s
+    Trim: 0.000s
+    Overlay: 0.000s
+
+=== DEBUG: FFmpeg Command ===
+ffmpeg -i ./images/intro.jpg -i ./input/video.mp4 ...
+```
+
+## Comprehensive Example: AI-Generated Video
+
+This example demonstrates the full power of the node-based system by creating an AI-generated dad joke video with automated speech, karaoke text, and Instagram upload.
+
+**Project structure:**
+
+```
+dad-joke-video/
+├── project.html
+├── apps/
+│   └── karaoke_text/
+│       └── dst/
+└── output/
+```
+
+**project.html:**
 
 ```html
-<title>Our honeymoon<title>
-<tag>sex</tag>
-<tag>drugs</tag>
-<tag>rock-n-roll</tag>
-
-<project>
-  <sequence id="main">
-    <fragment id="intro" data-asset="intro_clip" class="clip intro" />
-    <fragment id="main" data-asset="main_clip" class="clip main" />
-    <fragment id="outro" data-asset="outro_clip" class="clip outro" />
-    <fragment data-asset="music" class="background-music" />
-  </sequence>
-</project>
-
-<style>
-  .clip {
-    -offset-start: 0s;
-    -offset-end: 5s;
-    -transition-start: fade-in 1s;
-    -transition-end: fade-out 1s;
-    -object-fit: cover;
-  }
-
-  .intro {
-    -duration: 3s;
-  }
-
-  .main {
-    -offset-start: calc(url(#intro.time.end) + 500ms);
-    -duration: 10s;
-  }
-
-  .outro {
-    -offset-start: calc(url(#main.time.end) + 500ms);
-    -duration: 3s;
-  }
-
-  .background-music {
-    /* Audio track plays throughout */
-  }
-</style>
-
+<!-- STEP 1: Define output format -->
 <outputs>
-  <output
-    data-name="youtube"
-    data-path="./output/final.mp4"
-    data-fps="30"
-    data-resolution="1920x1080"
-  />
+  <output name="instagram" resolution="1080x1920" fps="30" />
 </outputs>
 
-<ai>
-  <ai-music-api-ai name="music_api">
-    <model name="sonic-v4-5" />
-  </ai-music-api-ai>
-</ai>
+<!-- STEP 2: Generate joke text using OpenAI -->
+<node.openai name="joke_generator">
+  <prompt>
+    You are a hilarious comedian. Generate a funny dad joke about science or
+    technology. The joke should be short (2-3 sentences max), family-friendly,
+    and include a pun. Format it as a Question and Answer, or as a short story
+    with a punchline.
+  </prompt>
+  <model name="gpt-4o-mini" />
+</node.openai>
 
-<assets>
-  <asset data-name="intro_clip" data-path="./input/intro.mp4" />
-  <asset data-name="main_clip" data-path="./input/main.mp4" />
-  <asset data-name="outro_clip" data-path="./input/outro.mp4" />
+<!-- STEP 3: Convert joke to speech with word timing -->
+<node.elevenlabs
+  name="joke_speech"
+  text="$joke_generator.text"
+  stability="0.7"
+  similarityBoost="0.8"
+  style="0.3">
+  <voice name="IKne3meq5aSn9XLyUdCD" />
+  <model name="eleven_multilingual_v2" />
+</node.elevenlabs>
 
-  <!-- AI-generated music -->
-  <asset data-name="music" data-path="./audio/background.mp3">
-    <ai data-integration-name="music_api">
-      <prompt>Upbeat travel vlog music with positive vibes</prompt>
-      <duration value="30" />
-    </ai>
-  </asset>
-</assets>
+<!-- STEP 4: Render joke as animated karaoke text -->
+<node.app
+  name="joke_text_app"
+  src="../apps/karaoke_text/dst"
+  words="$joke_speech.wordTiming"
+  windowSize="5"
+  fontSize="70"
+  textColor="#ffffff"
+  highlightColor="#ffff00" />
 
-<uploads>
-  <youtube name="yt_primary" data-output-name="youtube">
-    <public />
-    <tag name="travel" />
-    <tag name="vlog" />
-    <category name="entertainment" />
-    <language name="en" />
-    <title>My Amazing Travel Video</title>
-    <thumbnail data-timecode="5000ms" />
-    <pre>
-Amazing travel adventure!
+<!-- STEP 5: Compose video with text and audio -->
+<node.project>
+  <title>AI-Generated Dad Joke</title>
+  <tag>comedy</tag>
+  <tag>ai</tag>
+  <tag>dad-joke</tag>
 
-Links:
-- Website: https://example.com
-    </pre>
-  </youtube>
-</uploads>
+  <assets>
+    <!-- Use outputs from previous nodes as assets -->
+    <asset name="text_video" input="$joke_text_app.output.video" />
+    <asset name="joke_audio" input="$joke_speech.audio" />
+
+    <!-- Background music (optional) -->
+    <asset name="bg_music" path="./audio/background.mp3" />
+  </assets>
+
+  <outputs>
+    <output name="instagram" resolution="1080x1920" fps="30" />
+  </outputs>
+
+  <sequences>
+    <!-- Text overlay sequence -->
+    <sequence>
+      <fragment class="karaoke_text" />
+    </sequence>
+
+    <!-- Audio sequence -->
+    <sequence>
+      <fragment class="speech" />
+    </sequence>
+
+    <!-- Background music sequence (quiet) -->
+    <sequence>
+      <fragment class="music" />
+    </sequence>
+  </sequences>
+
+  <style>
+    .karaoke_text {
+      -asset: text_video;
+      -duration: auto;
+    }
+
+    .speech {
+      -asset: joke_audio;
+      -duration: auto;
+    }
+
+    .music {
+      -asset: bg_music;
+      -duration: auto;
+      -sound: off;  /* Will be mixed at lower volume */
+    }
+  </style>
+</node.project>
+
+<!-- STEP 6: Upload to S3 -->
+<node.s3 name="s3_upload" path="$project.output.instagram">
+  <endpoint name="digitaloceanspaces.com" />
+  <region name="ams3" />
+  <bucket name="my-videos" />
+  <path name="file">jokes/${slug}/${output}.mp4</path>
+  <path name="metadata">jokes/${slug}/metadata.json</path>
+  <path name="thumbnail">jokes/${slug}/thumbnail.jpeg</path>
+  <acl name="public-read" />
+  <thumbnail timecode="500ms" />
+</node.s3>
+
+<!-- STEP 7: Publish to Instagram -->
+<node.instagram name="instagram_post" url="$s3_upload.output.url">
+  <thumbnail timecode="500ms" />
+  <caption>
+    🤣 Today's AI-generated dad joke!
+
+    #dadjokes #comedy #ai #funny #humor #jokes #puns #laugh
+  </caption>
+</node.instagram>
+```
+
+**Generate and publish:**
+
+```bash
+# Set up API keys
+export OPENAI_API_KEY=your_openai_key
+export ELEVENLABS_API_KEY=your_elevenlabs_key
+
+# Generate video (will run all nodes in sequence)
+staticstripes generate -p . -o instagram
+
+# Video is automatically:
+# 1. Generated with AI text
+# 2. Converted to speech
+# 3. Rendered with karaoke text
+# 4. Composed into final video
+# 5. Uploaded to S3
+# 6. Published to Instagram
+```
+
+**This example demonstrates:**
+- ✅ Node-based pipeline composition
+- ✅ AI text generation (OpenAI)
+- ✅ Text-to-speech with timing (ElevenLabs)
+- ✅ Dynamic app rendering (karaoke text)
+- ✅ Multi-sequence video composition
+- ✅ Cloud storage (S3)
+- ✅ Social media publishing (Instagram)
+
+## Complete Project Example: Travel Vlog
+
+```html
+<node.project>
+  <title>Christmas Morning in Liberec</title>
+  <date>2024-12-24T18:00:00Z</date>
+  <tag>travel</tag>
+  <tag>vlog</tag>
+  <tag>czechrepublic</tag>
+
+  <sequences>
+    <!-- Main video sequence -->
+    <sequence>
+      <fragment class="intro" id="intro" data-timecode="Introduction" />
+      <fragment class="main_clip ambient" data-timecode="Main Scene" />
+      <fragment class="transition_effect" />
+      <fragment class="outro" id="outro" data-timecode="Conclusion">
+        <app
+          src="../apps/central_text/dst"
+          data-parameters='{"text": "Thanks for watching!", "fontSize": "64"}' />
+      </fragment>
+    </sequence>
+
+    <!-- Audio/music sequence -->
+    <sequence>
+      <fragment class="intro_music" />
+      <fragment class="outro_music" />
+    </sequence>
+
+    <!-- Overlay text sequence -->
+    <sequence>
+      <fragment class="title_overlay">
+        <container>
+          <div class="title-card">
+            <h1>Christmas in Liberec</h1>
+            <p>Czech Republic • December 2024</p>
+          </div>
+        </container>
+      </fragment>
+    </sequence>
+  </sequences>
+
+  <style>
+    /* Common styles */
+    .ambient {
+      -object-fit: contain ambient 25 -0.1 0.7;
+    }
+
+    /* Intro section */
+    .intro {
+      -asset: intro_image;
+      -duration: 5000ms;
+      -transition-end: fade-out 1000ms;
+      filter: instagram-lark;
+    }
+
+    .intro_music {
+      -asset: background_music;
+      -duration: 5000ms;
+      -transition-end: fade-out 500ms;
+    }
+
+    /* Main content */
+    .main_clip {
+      -asset: main_video;
+      -trim-start: 2000ms;
+      -duration: 15000ms;
+      -transition-start: fade-in 1000ms;
+    }
+
+    .transition_effect {
+      -asset: static_effect;
+      -duration: 500ms;
+    }
+
+    /* Outro section */
+    .outro {
+      -asset: intro_image;
+      -duration: 5000ms;
+      -transition-start: fade-in 1000ms;
+      -transition-end: fade-out 500ms;
+    }
+
+    .outro_music {
+      -asset: background_music;
+      -offset-start: calc(url(#outro.time.start));
+      -duration: calc(url(#outro.time.duration));
+      -transition-end: fade-out 1000ms;
+    }
+
+    /* Title overlay */
+    .title_overlay {
+      -offset-start: calc(url(#intro.time.start));
+      -duration: 5000ms;
+      -overlay-start-z-index: 1;
+    }
+
+    .title-card {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      text-align: center;
+      color: white;
+      text-shadow: 2px 2px 8px rgba(0,0,0,0.8);
+    }
+
+    .title-card h1 {
+      font-size: 72px;
+      margin: 0 0 20px 0;
+      font-family: 'Arial Black', sans-serif;
+      letter-spacing: 2px;
+    }
+
+    .title-card p {
+      font-size: 36px;
+      margin: 0;
+      font-family: Arial, sans-serif;
+      opacity: 0.9;
+    }
+  </style>
+
+  <assets>
+    <asset name="intro_image" path="./images/intro.jpg" />
+    <asset name="main_video" path="./input/liberec_morning.mp4" />
+    <asset name="static_effect" path="./effects/analog_static.mp4" />
+    <asset name="background_music" path="./audio/acoustic_guitar.mp3" />
+  </assets>
+
+  <outputs>
+    <output name="youtube" resolution="1920x1080" fps="30" />
+    <output name="instagram" resolution="1080x1920" fps="30" />
+  </outputs>
+
+  <ffmpeg>
+    <option name="preview">
+      -c:v libx264 -preset fast -crf 23 -c:a aac -b:a 192k
+    </option>
+    <option name="production">
+      -c:v libx264 -preset slow -crf 18 -c:a aac -b:a 320k
+    </option>
+  </ffmpeg>
+
+  <upload name="yt_main" tag="youtube" output="youtube">
+    <title>Christmas Morning in Liberec | Czech Republic Travel Vlog</title>
+    <privacy>public</privacy>
+    <madeForKids>false</madeForKids>
+    <category>22</category>
+    <language>en</language>
+    <tag>travel</tag>
+    <tag>vlog</tag>
+    <tag>czechrepublic</tag>
+    <tag>liberec</tag>
+    <tag>christmas</tag>
+    <description>
+      Join me for a magical Christmas morning in Liberec, Czech Republic!
+
+      Walking through snowy streets and experiencing the holiday atmosphere
+      in this beautiful city nestled in the mountains.
+
+      📍 Location: Liberec, Czech Republic
+      📅 Date: December 24, 2024
+      🎵 Music: Acoustic Guitar Background
+
+      #travel #czechrepublic #liberec #christmas #travelvlog
+    </description>
+  </upload>
+</node.project>
+
+<!-- Save to local filesystem -->
+<node.filesystem name="local_youtube" path="$project.output.youtube">
+  <path>output/youtube.mp4</path>
+</node.filesystem>
+
+<node.filesystem name="local_instagram" path="$project.output.instagram">
+  <path>output/instagram.mp4</path>
+</node.filesystem>
+```
+
+**Generate the video:**
+
+```bash
+# Preview mode (fast)
+staticstripes generate -p . -o youtube -d
+
+# Production mode (high quality)
+staticstripes generate -p . -o youtube
+
+# Generate both outputs
+staticstripes generate -p .
+
+# Debug mode
+staticstripes generate -p . -o youtube --debug
+```
+
+**Upload to YouTube:**
+
+```bash
+# Authenticate (first time only)
+staticstripes auth --upload-name yt_main
+
+# Upload
+staticstripes upload --upload-name yt_main
 ```
 
 ## Troubleshooting
 
-### FFmpeg Not Found
+### FFmpeg not found
 
+**Error:**
 ```
-❌ Getting dimensions failed
-
-Error: FFmpeg not found in system PATH.
-```
-
-**Solution:** Install FFmpeg:
-
-- **macOS:** `brew install ffmpeg`
-- **Ubuntu/Debian:** `sudo apt-get install ffmpeg`
-- **Windows:** Download from https://ffmpeg.org/download.html
-
-### Node Version Too Old
-
-```
-npm error engine Not compatible with your version of node/npm
-npm error notsup Required: {"node":">=22.0.0"}
-```
-
-**Solution:** Upgrade to Node.js 22+
-
-### Assets Not Found
-
-```
-❌ Video generation failed
-
-Error: Asset file(s) not found:
-  - /path/to/video.mp4
+FFmpeg is not installed or not in PATH
 ```
 
 **Solution:**
 
-1. Check file paths in `project.html`
-2. Verify files exist in specified locations
-3. Use relative paths from project root
-
-### AI Generation Fails
-
-**Solution:**
-
-1. Check API key in `.auth/<provider-name>.json`
-2. Verify internet connection
-3. Check API quota/credits
-4. Run with `--debug` flag for details
-
-## Best Practices
-
-1. **Use dev mode for iteration**
-
+1. **macOS:**
    ```bash
-   staticstripes generate -p . -o youtube -d
+   brew install ffmpeg
    ```
 
-   Much faster, great for testing layouts
+2. **Ubuntu/Debian:**
+   ```bash
+   sudo apt-get install ffmpeg
+   ```
 
-2. **Always validate assets first**
+3. **Windows:**
+   - Download from [ffmpeg.org](https://ffmpeg.org/download.html)
+   - Add to system PATH
 
+4. **Verify:**
+   ```bash
+   ffmpeg -version
+   ```
+
+### Node.js version too old
+
+**Error:**
+```
+Node.js 22+ is required
+```
+
+**Solution:**
+
+Update Node.js to version 22 or higher:
+
+```bash
+# Using nvm (recommended)
+nvm install 22
+nvm use 22
+
+# Or download from nodejs.org
+# https://nodejs.org/
+```
+
+### Asset file not found
+
+**Error:**
+```
+Asset file not found: ./input/video.mp4
+```
+
+**Solutions:**
+
+1. Check file path is correct relative to project.html
+2. Verify file exists:
+   ```bash
+   ls -la input/
+   ```
+3. Re-scan assets:
    ```bash
    staticstripes add-assets -p .
    ```
 
-3. **Use debug mode for troubleshooting**
+### AI generation fails
 
+**Error:**
+```
+AI generation failed: API key not found
+```
+
+**Solutions:**
+
+1. **Set environment variable:**
    ```bash
-   staticstripes generate -p . --debug
+   export MUSIC_API_AI_KEY=your_api_key
+   export OPENAI_API_KEY=your_openai_key
+   export ELEVENLABS_API_KEY=your_elevenlabs_key
    ```
 
-4. **Organize assets by type**
-   - Keep videos in `input/`
-   - Keep audio in `audio/`
-   - Keep images in `images/`
-
-5. **Use calc() for dynamic timing**
-
-   ```css
-   -offset-start: calc(url(#prev.time.end) + 500ms);
+2. **Or create .auth file:**
+   ```bash
+   mkdir -p .auth
+   echo '{"apiKey": "your_key"}' > .auth/music-api-ai.json
    ```
 
-6. **Use IDs for fragment references**
+3. **Verify API key is valid**
 
+### App build fails
+
+**Error:**
+```
+App build failed: npm install error
+```
+
+**Solutions:**
+
+1. Check app has package.json
+2. Manually install dependencies:
+   ```bash
+   cd apps/my_app
+   npm install
+   npm run build
+   ```
+3. Force rebuild:
+   ```bash
+   staticstripes generate -p . --app-build
+   ```
+
+### Rendering is slow
+
+**Solutions:**
+
+1. **Use dev mode for previews:**
+   ```bash
+   staticstripes generate -p . -o youtube -d
+   ```
+
+2. **Enable hardware acceleration:**
    ```html
-   <fragment id="my_clip" ... />
+   <ffmpeg>
+     <option name="preview">
+       -c:v h264_videotoolbox -preset fast -crf 23
+     </option>
+   </ffmpeg>
    ```
 
-7. **Test AI generation separately**
-   - First test with regular assets
-   - Then add AI generation once workflow is working
+   Available hardware encoders:
+   - macOS: `h264_videotoolbox`
+   - NVIDIA: `h264_nvenc`
+   - AMD: `h264_amf`
+   - Intel: `h264_qsv`
 
-8. **Keep credentials secure**
-   - Never commit `.auth/` directory to git
-   - Use `.gitignore` to exclude it
+3. **Reduce output resolution temporarily**
 
-## Platform Support
+4. **Clear cache:**
+   ```bash
+   rm -rf cache/
+   ```
 
-- ✅ **Windows** 10/11 (use npm scripts, not Makefile)
-- ✅ **macOS** 10.15+
-- ✅ **Linux** (Ubuntu, Debian, Fedora, etc.)
+## Best Practices
 
-## When to Use StaticStripes
+### 1. Use Dev Mode for Iterations
 
-**Good for:**
-
-- Automated video generation from templates
-- Batch processing multiple videos
-- Programmatic video creation
-- CI/CD video generation
-- Social media content creation at scale
-- AI-powered content creation
-
-**Not ideal for:**
-
-- Complex animations (use motion graphics tools)
-- Real-time video editing (use video editors)
-- Interactive video (use video players with JS)
-
-## Viewer Tools Package
-
-StaticStripes includes a companion React component library **@gannochenko/viewer-tools** that provides ready-to-use components for building video preview and rendering applications.
-
-### Installation
+Always use `-d` flag when testing:
 
 ```bash
-npm install @gannochenko/viewer-tools react react-dom
+staticstripes generate -p . -o youtube -d
 ```
 
-### Available Components
+Only render in production mode for final output.
 
-#### 1. VideoFrame
+### 2. Organize Assets with Prefixes
 
-A scalable video frame container with interactive format selection and content preview controls. Perfect for development environments where you need to preview content at different aspect ratios.
+```
+input/
+├── clip_01_intro.mp4
+├── clip_02_main.mp4
+└── clip_03_outro.mp4
 
-**Features:**
-- Auto-scaling viewport with checkered transparency background
-- Format switcher (YouTube 16:9, YT Shorts 9:16, customizable)
-- Built-in preview panel for content editing
-- LocalStorage persistence of content
+audio/
+├── music_background.mp3
+└── sfx_transition.mp3
 
-**Props:**
-- `initialContent` - Partial content to initialize with
-- `children` - Render function that receives current content state
-
-#### 2. RenderingView
-
-A wrapper component that signals rendering completion for StaticStripes' Puppeteer screenshot system.
-
-**Features:**
-- Automatically sets `window.__stsRenderComplete = true`
-- Sets transparent body background
-- Minimal wrapper for your rendering content
-
-**Props:**
-- `children` - Content to render
-
-#### 3. FormatPanel
-
-Standalone format selector UI component.
-
-**Props:**
-- `selected` - Currently selected format object
-- `onSelect` - Callback when format is selected
-
-#### 4. PreviewPanel
-
-Editable content preview panel.
-
-**Props:**
-- `value` - Current content values
-- `onChange` - Callback when content changes
-
-#### 5. useLocalStorage
-
-Hook for persisting state to localStorage.
-
-**Returns:** `[state, setState]` tuple similar to `useState`
-
-### Parameter Schema System
-
-The `@gannochenko/viewer-tools` package includes a powerful parameter schema system that allows apps to define their content fields declaratively.
-
-#### Overview
-
-Applications can define parameters using a schema structure. There are **3 standard parameters** automatically injected by StaticStripes:
-- `title` - Video title from `<title>` tag
-- `date` - Video date (ISO 8601 format)
-- `tags` - Comma-separated tags from `<tag>` elements
-
-Apps can define **additional custom parameters** beyond these standard ones.
-
-#### How It Works
-
-1. **Schema Definition** - Define parameters in a schema structure
-2. **Auto-generated UI** - PreviewPanel automatically renders input fields
-3. **URL Parameters** - Values come from query strings in rendering mode
-4. **LocalStorage** - Values persist during preview development
-
-#### Defining a Schema
-
-**File: `src/schema.ts`**
-
-```typescript
-import type { ParameterSchema } from "@gannochenko/viewer-tools";
-
-export const PARAMETER_SCHEMA: ParameterSchema = {
-  fields: [
-    {
-      name: "title",
-      label: "Title",
-      placeholder: "My Video Title",
-      defaultValue: "Central Text",
-    },
-    {
-      name: "date",
-      label: "Date",
-      placeholder: "2025-01-15",
-      defaultValue: "",
-    },
-    {
-      name: "tags",
-      label: "Tags",
-      placeholder: "travel,vlog",
-      defaultValue: "",
-    },
-    {
-      name: "extra",
-      label: "Extra text",
-      placeholder: "Thanks for watching!",
-      defaultValue: "",
-    },
-  ],
-};
-
-// Define typed interface matching your schema
-export interface AppParams {
-  title: string;
-  date: string;
-  tags: string;
-  extra: string;
-  [key: string]: string; // Index signature required
-}
+images/
+├── img_title.jpg
+└── img_logo.png
 ```
 
-#### Using the Schema
-
-```tsx
-import { VideoFrame } from "@gannochenko/viewer-tools";
-import { PARAMETER_SCHEMA, type AppParams } from "./schema";
-
-function App() {
-  const params = useAppParams();
-
-  return (
-    <VideoFrame<AppParams>
-      storageKey="my-app:content"
-      initialContent={params}
-      schema={PARAMETER_SCHEMA}
-    >
-      {(content) => <YourContent {...content} />}
-    </VideoFrame>
-  );
-}
-```
-
-#### Custom Parameters in project.html
-
-```html
-<fragment class="title_overlay">
-  <app
-    src="../apps/my-app/dst"
-    data-parameters='{"extra": "🎬", "author": "John Doe"}'
-  />
-</fragment>
-```
-
-#### Benefits
-
-✅ **Type-safe** - Define typed interfaces matching your schema
-✅ **Auto-generated UI** - No manual input field creation
-✅ **Persistent** - Values saved during development
-✅ **Flexible** - Unlimited custom parameters
-✅ **Consistent** - Standard parameters work across all apps
-
-### Complete Example Application
-
-Here's a full example of a title card application built with `@gannochenko/viewer-tools`:
-
-**File: `apps/title-card/package.json`**
-
-```json
-{
-  "name": "title-card",
-  "version": "0.0.0",
-  "private": true,
-  "type": "module",
-  "scripts": {
-    "dev": "vite",
-    "build": "tsc -b && vite build",
-    "preview": "vite preview"
-  },
-  "dependencies": {
-    "@gannochenko/viewer-tools": "^0.1.0",
-    "react": "^19.0.0",
-    "react-dom": "^19.0.0"
-  },
-  "devDependencies": {
-    "@types/react": "^19.0.0",
-    "@types/react-dom": "^19.0.0",
-    "@vitejs/plugin-react": "^4.3.4",
-    "typescript": "~5.7.2",
-    "vite": "^6.2.0"
-  }
-}
-```
-
-**File: `apps/title-card/vite.config.ts`**
-
-```ts
-import { defineConfig } from 'vite';
-import react from '@vitejs/plugin-react';
-
-export default defineConfig({
-  plugins: [react()],
-  build: {
-    outDir: 'dst',  // CRITICAL: Must output to dst/
-  },
-});
-```
-
-**File: `apps/title-card/src/schema.ts`**
-
-```typescript
-import type { ParameterSchema } from "@gannochenko/viewer-tools";
-
-export const PARAMETER_SCHEMA: ParameterSchema = {
-  fields: [
-    {
-      name: "title",
-      label: "Title",
-      placeholder: "Central Text",
-      defaultValue: "Central Text",
-    },
-    {
-      name: "date",
-      label: "Date",
-      placeholder: "2025-01-15",
-      defaultValue: "",
-    },
-    {
-      name: "tags",
-      label: "Tags",
-      placeholder: "travel,vlog",
-      defaultValue: "",
-    },
-    {
-      name: "extra",
-      label: "Extra text",
-      placeholder: "Thanks for watching!",
-      defaultValue: "",
-    },
-  ],
-};
-
-export interface AppParams {
-  title: string;
-  date: string;
-  tags: string;
-  extra: string;
-  [key: string]: string;
-}
-```
-
-**File: `apps/title-card/src/App.tsx`**
-
-```tsx
-import "./App.css";
-import "@gannochenko/viewer-tools/styles.css";
-import { VideoFrame, RenderingView } from "@gannochenko/viewer-tools";
-import { useAppParams } from "./hooks/useAppParams";
-import { PARAMETER_SCHEMA, type AppParams } from "./schema";
-
-function formatDate(isoString: string): string {
-  const date = new Date(isoString);
-  const months = [
-    "Jan", "Feb", "Mar", "Apr", "May", "Jun",
-    "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
-  ];
-  const month = months[date.getMonth()];
-  const day = date.getDate();
-  const year = date.getFullYear();
-  return `${month} ${day} ${year}`;
-}
-
-function Content({
-  title = "Central Text",
-  date,
-  tags,
-  extra,
-  outro,
-}: {
-  title?: string;
-  date?: string;
-  tags?: string;
-  extra?: string;
-  outro?: boolean;
-}) {
-  let formattedDate = date ? formatDate(date) : undefined;
-
-  if (outro) {
-    title = "Thanks for watching!";
-    formattedDate = "";
-    extra = "🫶";
-    tags = "";
-  }
-
-  return (
-    <div className="text_alignment">
-      <div className="text_outline">
-        {title.split(" ").map((word, i) => (
-          <span key={i}>{word}</span>
-        ))}
-      </div>
-      {formattedDate && (
-        <div className="text_outline text_outline__small">
-          {formattedDate.split(" ").map((part, i) => (
-            <span key={i}>{part}</span>
-          ))}
-        </div>
-      )}
-      {extra && (
-        <div className="text_outline text_outline__small">
-          <span>{extra}</span>
-        </div>
-      )}
-      {tags && (
-        <div className="text_outline text_outline__small">
-          {tags.split(",").map((part, i) => (
-            <span key={i}>#{part.trim()}</span>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
-function App() {
-  const { title, date, tags, extra, rendering, outro } = useAppParams();
-
-  if (rendering) {
-    return (
-      <RenderingView>
-        <Content
-          title={title}
-          date={date}
-          tags={tags}
-          extra={extra}
-          outro={outro}
-        />
-      </RenderingView>
-    );
-  }
-
-  return (
-    <VideoFrame<AppParams>
-      storageKey="central_text:content"
-      initialContent={{ title, date, tags, extra }}
-      schema={PARAMETER_SCHEMA}
-    >
-      {(content) => <Content {...content} />}
-    </VideoFrame>
-  );
-}
-
-export default App;
-```
-
-**File: `apps/title-card/src/hooks/useAppParams.ts`**
-
-```ts
-interface AppParams {
-  title?: string;
-  date?: string;
-  tags?: string;
-  extra?: string;
-  rendering: boolean;
-  outro?: boolean;
-}
-
-export function useAppParams(): AppParams {
-  const params = new URLSearchParams(window.location.search);
-  return {
-    title: params.get('title') ?? undefined,
-    date: params.get('date') ?? undefined,
-    tags: params.get('tags') ?? undefined,
-    extra: params.get('extra') ?? undefined,
-    rendering: params.has('rendering'),
-    outro: params.get('outro') === 'true',
-  };
-}
-```
-
-**File: `apps/title-card/src/App.css`**
+### 3. Use CSS Classes for Reusability
 
 ```css
-body {
-  margin: 0;
-  padding: 0;
+/* Define reusable styles */
+.standard_duration {
+  -duration: 5000ms;
 }
 
-.text_alignment {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding-top: 15rem;
-  width: 100%;
-  height: 100%;
+.fade_both {
+  -transition-start: fade-in 500ms;
+  -transition-end: fade-out 500ms;
 }
 
-.text_outline {
-  display: flex;
-  flex-direction: row;
-  flex-wrap: nowrap;
-  color: black;
-  font-weight: 700;
-  font-size: 6rem;
-  font-family: 'Arial', sans-serif;
-}
-
-.text_outline span {
-  background-color: white;
-  padding: 0.5rem 1.5rem;
-  margin: 0 -0.5rem;
-  border-radius: 3rem;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
-}
-
-.text_outline__small {
-  font-size: 3rem;
-  padding-top: 2rem;
-  font-weight: 400;
+.ambient_bg {
+  -object-fit: contain ambient 20 -0.2 0.8;
 }
 ```
-
-### Development Workflow with Viewer Tools
-
-**1. Create new app:**
-```bash
-cd apps
-npm create vite@latest my-app -- --template react-ts
-cd my-app
-npm install @gannochenko/viewer-tools react react-dom
-```
-
-**2. Update vite.config.ts:**
-```ts
-export default defineConfig({
-  plugins: [react()],
-  build: {
-    outDir: 'dst',
-  },
-});
-```
-
-**3. Implement dual-mode app:**
-```tsx
-import { VideoFrame, RenderingView } from "@gannochenko/viewer-tools";
-import "@gannochenko/viewer-tools/styles.css";
-
-function App() {
-  const { rendering, ...params } = useAppParams();
-
-  if (rendering) {
-    return <RenderingView><YourContent {...params} /></RenderingView>;
-  }
-
-  return (
-    <VideoFrame initialContent={params}>
-      {(content) => <YourContent {...content} />}
-    </VideoFrame>
-  );
-}
-```
-
-**4. Develop with live preview:**
-```bash
-npm run dev
-# Visit: http://localhost:5173
-# Edit content with interactive panels
-# Switch between YouTube and Shorts formats
-```
-
-**5. Build for production:**
-```bash
-npm run build  # Outputs to dst/
-```
-
-**6. Use in project.html:**
-```html
-<fragment class="title_overlay">
-  <app
-    src="../apps/my-app/dst"
-    data-parameters='{"extra": "🎬"}'
-  />
-</fragment>
-```
-
-### Benefits of Using Viewer Tools
-
-✅ **Rapid prototyping** - Interactive preview without rendering
-✅ **Format testing** - Instantly switch between aspect ratios
-✅ **Content editing** - Built-in UI for tweaking parameters
-✅ **State persistence** - LocalStorage keeps your edits
-✅ **Zero setup** - Works out of the box with StaticStripes
-✅ **Type safety** - Full TypeScript support
-✅ **Customizable** - Use components individually or together
-
-### Component Customization
-
-You can use individual components for custom workflows:
-
-```tsx
-import { FormatPanel, FORMATS } from "@gannochenko/viewer-tools";
-
-function MyCustomPreview() {
-  const [format, setFormat] = useState(FORMATS[0]);
-
-  return (
-    <div>
-      <div style={{ width: format.width, height: format.height }}>
-        {/* Your content */}
-      </div>
-      <FormatPanel selected={format} onSelect={setFormat} />
-    </div>
-  );
-}
-```
-
-## Resources
-
-- GitHub: https://github.com/gannochenko/mkvideo
-- NPM Package (CLI): https://www.npmjs.com/package/@gannochenko/staticstripes
-- NPM Package (Viewer Tools): https://www.npmjs.com/package/@gannochenko/viewer-tools
-- Documentation: See README.md and docs/ folder in project root
-- Report issues: GitHub Issues
-
----
-
-When helping users with StaticStripes:
-
-1. Always check FFmpeg is installed first
-2. Verify Node.js version is 22+
-3. Use `--debug` flag to diagnose issues
-4. Validate project.html syntax
-5. Check asset file paths are correct
-6. Start with dev mode (`-d`) for faster iteration
-7. For AI features, verify credentials are set up correctly
-8. For uploads, ensure authentication is completed first
-
----
-
-## Complete Project Example
-
-Below is a comprehensive example of a `project.html` file demonstrating all major features of StaticStripes:
 
 ```html
-<!-- ================================================== -->
-<!-- METADATA (Optional)                                -->
-<!-- ================================================== -->
-
-<title>Travel Vlog: Tokyo Adventure</title>
-<date>2025-01-15T12:00:00Z</date>
-
-<!-- Tags for video metadata (used in uploads) -->
-<tag name="travel" />
-<tag name="vlog" />
-<tag name="tokyo" />
-<tag name="japan" />
-<tag name="adventure" />
-
-<!-- ================================================== -->
-<!-- PROJECT STRUCTURE (Timeline Sequences)             -->
-<!-- ================================================== -->
-
-<project>
-  <!-- Main video sequence (video track) -->
-  <sequence id="main">
-    <!-- Opening still image with title overlay -->
-    <fragment
-      id="intro_screen"
-      class="intro_image"
-      data-timecode="Introduction"
-    />
-
-    <!-- First video clip with ambient background -->
-    <fragment id="clip1" class="main_clip ambient" data-timecode="Shibuya Crossing" />
-
-    <!-- Transition effect (glitch/static) -->
-    <fragment class="glitch_effect" />
-
-    <!-- Second video clip -->
-    <fragment id="clip2" class="main_clip pillarbox" data-timecode="Tokyo Tower" />
-
-    <!-- Third video clip with chromakey -->
-    <fragment id="clip3" class="main_clip greenscreen" data-timecode="Studio Shot" />
-
-    <!-- Fourth video clip -->
-    <fragment id="clip4" class="main_clip ambient" data-timecode="Night Scene" />
-
-    <!-- Closing still image -->
-    <fragment id="outro_screen" class="outro_image" data-timecode="Thanks for Watching" />
-  </sequence>
-
-  <!-- Background music sequence (audio track) -->
-  <sequence>
-    <!-- Intro music (8 seconds) -->
-    <fragment class="intro_music" />
-  </sequence>
-
-  <!-- Main background music (parallel audio) -->
-  <sequence>
-    <!-- Main soundtrack throughout video -->
-    <fragment class="bg_music" />
-  </sequence>
-
-  <!-- Title overlay sequence (using React app for dynamic rendering) -->
-  <sequence>
-    <!-- Title card using custom React app -->
-    <fragment class="intro_overlay">
-      <app
-        src="../apps/title-card/dst"
-        data-parameters='{"extra": "🗼 🍜 🌸"}'
-      />
-    </fragment>
-  </sequence>
-
-  <!-- Outro overlay sequence (using same app with different parameters) -->
-  <sequence>
-    <!-- Outro text synchronized with outro_screen -->
-    <fragment class="outro_overlay">
-      <app
-        src="../apps/title-card/dst"
-        data-parameters='{"outro": true}'
-      />
-    </fragment>
-  </sequence>
-</project>
-
-<!-- ================================================== -->
-<!-- STYLES (CSS with Custom Properties)                -->
-<!-- ================================================== -->
-
-<style>
-  /* Import Google Fonts for container text */
-  @import url("https://fonts.googleapis.com/css2?family=Poppins:wght@400;700&display=swap");
-
-  /* ============== UTILITY CLASSES ============== */
-
-  .disabled {
-    display: none; /* Hide fragments completely */
-  }
-
-  /* ============== OBJECT FIT MODES ============== */
-
-  .ambient {
-    /* Contain video with blurred ambient background */
-    /* Syntax: contain ambient <blur> <brightness> <saturation> */
-    -object-fit: contain ambient 25 -0.1 0.7;
-  }
-
-  .pillarbox {
-    /* Contain video with black bars */
-    -object-fit: contain pillarbox #000000;
-  }
-
-  .cover {
-    /* Fill frame, crop if necessary (default) */
-    -object-fit: cover;
-  }
-
-  /* ============== TIMING DURATIONS ============== */
-
-  .intro_duration {
-    -duration: 8000ms; /* 8 seconds */
-  }
-
-  .outro_duration {
-    -duration: 6000ms; /* 6 seconds */
-  }
-
-  /* ============== INTRO SECTION ============== */
-
-  .intro_image {
-    -asset: tokyo_tower_image;
-    -duration: 8000ms;
-    -transition-start: fade-in 500ms;
-    -transition-end: fade-out 1000ms;
-    filter: instagram-lark; /* Instagram-style color filter */
-  }
-
-  .intro_music {
-    -asset: intro_jingle;
-    -duration: 8000ms;
-    -transition-end: fade-out 1000ms;
-  }
-
-  .intro_overlay {
-    -duration: 8000ms;
-    -transition-start: fade-in 1000ms;
-    -transition-end: fade-out 1000ms;
-  }
-
-  /* ============== MAIN VIDEO CLIPS ============== */
-
-  .main_clip {
-    -transition-start: fade-in 500ms;
-    -transition-end: fade-out 500ms;
-    -duration: auto; /* Use full asset duration */
-  }
-
-  /* Specific clip adjustments */
-  #clip1 {
-    -asset: shibuya_crossing;
-    -trim-start: 2000ms; /* Skip first 2 seconds */
-    -duration: 10000ms; /* Use 10 seconds */
-  }
-
-  #clip2 {
-    -asset: tokyo_tower_video;
-    -duration: 8000ms;
-  }
-
-  #clip3 {
-    -asset: studio_shot;
-    -duration: 6000ms;
-  }
-
-  #clip4 {
-    -asset: night_tokyo;
-    -trim-start: 5000ms; /* Skip first 5 seconds */
-    -duration: 12000ms;
-  }
-
-  /* ============== EFFECTS ============== */
-
-  .glitch_effect {
-    -asset: digital_glitch;
-    -duration: 300ms; /* Short glitch transition */
-    -offset-start: -150ms; /* Overlap with previous clip */
-    -offset-end: -150ms; /* Overlap with next clip */
-    -overlay-start-z-index: 10; /* Put glitch on top */
-    -overlay-end-z-index: 10;
-    -chromakey: smooth good #000000; /* Remove black background */
-  }
-
-  .greenscreen {
-    /* Remove green screen background */
-    /* Syntax: -chromakey: <blend> <similarity> <color> */
-    /* Blend: hard|smooth|soft (or numeric 0.0-0.2) */
-    /* Similarity: strict|good|forgiving|loose (or numeric 0.1-0.7) */
-    -chromakey: smooth good #00ff00;
-  }
-
-  /* ============== BACKGROUND MUSIC ============== */
-
-  .bg_music {
-    -asset: main_soundtrack;
-    -offset-start: 8000ms; /* Start after intro */
-    -transition-start: fade-in 2000ms;
-    -transition-end: fade-out 3000ms;
-  }
-
-  /* ============== OUTRO SECTION ============== */
-
-  .outro_image {
-    -asset: tokyo_tower_image;
-    -duration: 6000ms;
-    -transition-start: fade-in 1000ms;
-    -transition-end: fade-out 1000ms;
-    filter: instagram-valencia;
-  }
-
-  .outro_overlay {
-    /* Sync outro overlay with outro screen using calc() */
-    -offset-start: calc(url(#outro_screen.time.start));
-    -duration: 6000ms;
-    -transition-start: fade-in 1000ms;
-    -transition-end: fade-out 1000ms;
-  }
-
-  /* ============== CONTAINER STYLES (HTML Overlays) ============== */
-
-  .main_container {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 100vw;
-    height: 100vh;
-    font-family: "Poppins", sans-serif;
-    font-size: 6rem;
-    background: transparent;
-  }
-
-  .text_alignment {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    padding-top: 15rem;
-  }
-
-  .text_outline {
-    display: flex;
-    flex-direction: row;
-    flex-wrap: nowrap;
-    color: black;
-    font-weight: 700;
-  }
-
-  .text_outline span {
-    background-color: white;
-    padding: 0.5rem 1.5rem;
-    margin: 0 -0.5rem;
-    border-radius: 3rem;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
-  }
-
-  .text_outline__small {
-    font-size: 3rem;
-    padding-top: 2rem;
-    font-weight: 400;
-  }
-</style>
-
-<!-- ================================================== -->
-<!-- ASSETS (Media Files)                               -->
-<!-- ================================================== -->
-
-<assets>
-  <!-- Video clips -->
-  <asset
-    data-name="shibuya_crossing"
-    data-path="./input/shibuya_crossing.mp4"
-    data-author="TravelFilmer"
-  />
-  <asset
-    data-name="tokyo_tower_video"
-    data-path="./input/tokyo_tower.mp4"
-    data-author="TravelFilmer"
-  />
-  <asset
-    data-name="studio_shot"
-    data-path="./input/studio_greenscreen.mp4"
-    data-author="TravelFilmer"
-  />
-  <asset
-    data-name="night_tokyo"
-    data-path="./input/night_cityscape.mp4"
-    data-author="TravelFilmer"
-  />
-
-  <!-- Images -->
-  <asset
-    data-name="tokyo_tower_image"
-    data-path="./images/tokyo_tower.jpg"
-    data-author="PhotoPro"
-  />
-
-  <!-- Effects -->
-  <asset
-    data-name="digital_glitch"
-    data-path="./effects/glitch_01.mp4"
-  />
-
-  <!-- Audio tracks -->
-  <asset
-    data-name="intro_jingle"
-    data-path="./audio/intro.mp3"
-    data-author="MusicComposer"
-  />
-
-  <!-- AI-Generated Music -->
-  <asset
-    data-name="main_soundtrack"
-    data-path="./audio/main_background.mp3"
-  >
-    <ai data-integration-name="music_ai">
-      <prompt>
-        Upbeat travel vlog background music, electronic with acoustic guitar,
-        positive and energetic mood, tempo 120-130 BPM, instrumental only,
-        smooth transitions, suitable for YouTube content, duration 60 seconds
-      </prompt>
-      <duration value="60" />
-    </ai>
-  </asset>
-</assets>
-
-<!-- ================================================== -->
-<!-- OUTPUTS (Video Export Configurations)              -->
-<!-- ================================================== -->
-
-<outputs>
-  <!-- YouTube landscape (1920×1080, 16:9) -->
-  <output
-    name="youtube"
-    path="./output/youtube.mp4"
-    resolution="1920x1080"
-    fps="30"
-  />
-
-  <!-- YouTube Shorts (1080×1920, 9:16) -->
-  <output
-    name="youtube_shorts"
-    path="./output/youtube_shorts.mp4"
-    resolution="1080x1920"
-    fps="30"
-  />
-
-  <!-- Instagram Reels (1080×1920, 9:16) -->
-  <output
-    name="instagram"
-    path="./output/instagram.mp4"
-    resolution="1080x1920"
-    fps="30"
-  />
-
-  <!-- Square format for social media (1080×1080, 1:1) -->
-  <output
-    name="square"
-    path="./output/square.mp4"
-    resolution="1080x1080"
-    fps="30"
-  />
-</outputs>
-
-<!-- ================================================== -->
-<!-- AI PROVIDERS (AI Generation Services)              -->
-<!-- ================================================== -->
-
-<ai>
-  <!-- AIMusicAPI.ai integration for music generation -->
-  <ai-music-api-ai name="music_ai">
-    <model name="sonic-v4-5" />
-  </ai-music-api-ai>
-</ai>
-
-<!-- ================================================== -->
-<!-- UPLOADS (Platform Upload Configurations)           -->
-<!-- ================================================== -->
-
-<uploads>
-  <!-- YouTube upload configuration -->
-  <youtube name="yt_main" data-output-name="youtube">
-    <!-- Privacy settings: <private />, <unlisted />, or <public /> -->
-    <public />
-
-    <!-- Mark as made for kids (required by YouTube API) -->
-    <!-- Remove this tag if content is NOT for kids -->
-    <!-- <made-for-kids /> -->
-
-    <!-- Video category -->
-    <category name="travel" />
-
-    <!-- Video language -->
-    <language name="en" />
-
-    <!-- Override global title (optional) -->
-    <title>Amazing Tokyo Travel Vlog | Japan Adventure 2025</title>
-
-    <!-- Thumbnail: extract frame at specified time -->
-    <thumbnail data-timecode="5000ms" />
-
-    <!-- Video tags -->
-    <tag name="travel" />
-    <tag name="vlog" />
-    <tag name="tokyo" />
-    <tag name="japan" />
-    <tag name="adventure" />
-    <tag name="travel2025" />
-
-    <!-- Video description (supports EJS templating) -->
-    <pre>
-Join me on an incredible journey through Tokyo! 🗼🍜
-
-In this video, we explore:
-${timecodes}
-
-📍 Locations featured:
-- Shibuya Crossing
-- Tokyo Tower
-- Night cityscape views
-
-🎵 Music: AI-generated custom soundtrack
-
-👍 If you enjoyed this video, please like and subscribe!
-
-📱 Follow me:
-- Instagram: @travelfilmer
-- TikTok: @travelfilmer
-- Website: https://travelfilmer.com
-
-${tags}
-
-#TokyoTravel #JapanVlog #TravelVideo #TokyoAdventure
-    </pre>
-  </youtube>
-
-  <!-- YouTube Shorts upload -->
-  <youtube name="yt_shorts" data-output-name="youtube_shorts">
-    <public />
-    <category name="travel" />
-    <language name="en" />
-    <title>Tokyo Adventure Highlights 🗼 #Shorts</title>
-    <thumbnail data-timecode="3000ms" />
-    <tag name="shorts" />
-    <tag name="tokyo" />
-    <tag name="travel" />
-    <pre>
-Quick highlights from Tokyo! 🇯🇵✨
-
-#TokyoTravel #JapanTravel #TravelShorts
-    </pre>
-  </youtube>
-
-  <!-- S3 (DigitalOcean Spaces) backup -->
-  <s3 name="s3_backup" data-output-name="youtube">
-    <!-- S3-compatible endpoint -->
-    <endpoint name="digitaloceanspaces.com" />
-
-    <!-- Region -->
-    <region name="ams3" />
-
-    <!-- Bucket name -->
-    <bucket name="my-video-archive" />
-
-    <!-- File paths (supports variables: ${slug}, ${output}, ${title}) -->
-    <path name="file">videos/${slug}/${output}.mp4</path>
-    <path name="metadata">videos/${slug}/metadata.json</path>
-    <path name="thumbnail">videos/${slug}/thumbnail.jpeg</path>
-
-    <!-- Access control -->
-    <acl name="public-read" />
-
-    <!-- Thumbnail extraction -->
-    <thumbnail data-timecode="5000ms" />
-  </s3>
-
-  <!-- Instagram Reels upload -->
-  <instagram name="ig_main" data-output-name="instagram">
-    <!-- Thumbnail extraction -->
-    <thumbnail data-timecode="3000ms" />
-
-    <!-- Location tagging for better discoverability -->
-    <location city="Tokyo" country="Japan" />
-
-    <!-- Caption (supports EJS templating) -->
-    <pre>
-Tokyo adventures! 🗼✨
-
-${title}
-
-${tags}
-
-#TokyoTravel #JapanTravel #TravelReels #TokyoVlog #ExploreJapan
-    </pre>
-  </instagram>
-</uploads>
-
-<!-- ================================================== -->
-<!-- FFMPEG OPTIONS (Custom Encoding Presets)           -->
-<!-- ================================================== -->
-
-<ffmpeg>
-  <!-- Fast preview preset (for development) -->
-  <option name="preview">
-    -c:v h264_nvenc -preset fast -c:a aac -b:a 192k
-  </option>
-
-  <!-- High quality preset (for final export) -->
-  <option name="hq">
-    -c:v libx264 -preset slow -crf 18 -c:a aac -b:a 320k
-  </option>
-
-  <!-- Ultra-fast preset (for testing) -->
-  <option name="ultrafast">
-    -pix_fmt yuv420p -preset ultrafast -c:a aac -b:a 128k
-  </option>
-</ffmpeg>
+<fragment class="intro standard_duration fade_both" />
+<fragment class="main standard_duration fade_both ambient_bg" />
 ```
 
-### Example Project Structure
+### 4. Add IDs and Timecode Labels
 
-```
-tokyo-vlog/
-├── project.html              # Main project file (above)
-├── input/                    # Video clips
-│   ├── shibuya_crossing.mp4
-│   ├── tokyo_tower.mp4
-│   ├── studio_greenscreen.mp4
-│   └── night_cityscape.mp4
-├── audio/                    # Audio files
-│   ├── intro.mp3
-│   └── main_background.mp3   # (auto-generated by AI if missing)
-├── images/                   # Image assets
-│   └── tokyo_tower.jpg
-├── effects/                  # Effect clips
-│   └── glitch_01.mp4
-├── apps/                     # Custom React/Vue apps for overlays
-│   └── title-card/
-│       ├── src/              # App source code
-│       │   ├── App.tsx
-│       │   ├── App.css
-│       │   └── main.tsx
-│       ├── dst/              # Built app (REQUIRED for rendering)
-│       │   ├── index.html
-│       │   └── assets/
-│       ├── package.json
-│       ├── vite.config.ts
-│       └── Makefile
-├── output/                   # Generated videos
-│   ├── youtube.mp4
-│   ├── youtube_shorts.mp4
-│   ├── instagram.mp4
-│   └── square.mp4
-├── cache/                    # Temporary rendering cache
-│   ├── containers/           # Cached container PNGs
-│   └── apps/                 # Cached app screenshots
-└── .auth/                    # Authentication credentials (git-ignored)
-    ├── youtube_yt_main.json
-    ├── youtube_yt_shorts.json
-    ├── music-api.json
-    └── instagram_ig_main.json
+```html
+<fragment
+  class="intro"
+  id="intro_scene"
+  data-timecode="Introduction" />
+
+<fragment
+  class="main"
+  id="main_scene"
+  data-timecode="Main Content" />
 ```
 
-### Generating This Example
+Makes debugging easier and enables calc() references.
+
+### 5. Use calc() for Synchronization
+
+```css
+.background_music {
+  -asset: music;
+  -offset-start: calc(url(#intro_scene.time.start));
+  -duration: calc(url(#intro_scene.time.duration));
+}
+```
+
+### 6. Cache AI-Generated Assets
+
+AI-generated assets are cached automatically. Don't delete them unless regeneration is needed.
+
+### 7. Version Control Best Practices
+
+**Add to .gitignore:**
+
+```
+output/
+cache/
+.auth/
+*.mp4
+*.mp3
+*.jpg
+*.png
+apps/*/dst/
+node_modules/
+```
+
+**Commit to git:**
+
+```
+project.html
+apps/*/index.html
+apps/*/package.json
+apps/*/tsconfig.json
+apps/*/vite.config.ts
+```
+
+### 8. Use Debug Mode for Troubleshooting
 
 ```bash
-# 1. Create project directory
-mkdir tokyo-vlog
-cd tokyo-vlog
+staticstripes generate -p . -o youtube --debug
+```
 
-# 2. Create project.html (copy the example above)
+Shows complete FFmpeg command, timeline, and error details.
 
-# 3. Add your media files to input/, audio/, images/, effects/
+## Recent Improvements
 
-# 4. Create and build the React app
-mkdir -p apps
-cd apps
-npm create vite@latest title-card -- --template react-ts
-cd title-card
+### Filters Command
 
-# Update vite.config.ts to output to 'dst'
-# (See App System section for complete app code)
+List all available Instagram-style filters:
 
-npm install
-npm run build  # CRITICAL: Build to dst/ directory
-cd ../..
+```bash
+staticstripes filters
+```
 
-# 5. Set up AI credentials (if using AI generation)
-mkdir .auth
-echo '{"apiKey": "your-api-key"}' > .auth/music-api.json
+Shows all 22 filters with usage examples.
 
-# 6. Preview in dev mode (fast)
-staticstripes generate -p . -o youtube -d
+### Automatic App Building
 
-# 7. Generate final video (high quality)
-staticstripes generate -p . -o youtube --option hq
+Apps are automatically built before rendering:
 
-# 8. Generate all outputs
+```bash
+# Automatic build
 staticstripes generate -p .
 
-# 9. Authenticate with YouTube (first time only)
-staticstripes auth --upload-name yt_main
-
-# 10. Upload to YouTube
-staticstripes upload --upload-name yt_main
-
-# 11. Upload shorts version
-staticstripes upload --upload-name yt_shorts
+# Force rebuild
+staticstripes generate -p . --app-build
 ```
 
-### Key Features Demonstrated
+### Debug Timeline Output
 
-This example showcases:
+View detailed fragment timeline:
 
-✅ **Multiple sequences** - Video, audio, and overlay tracks
-✅ **Fragment timing** - Duration, trimming, offsets
-✅ **Transitions** - Fade in/out effects
-✅ **Object fit modes** - Cover, contain with ambient, pillarbox
-✅ **Filters** - Instagram-style color filters
-✅ **Chromakey** - Green screen removal
-✅ **Overlays** - Z-index layering for effects
-✅ **Calc() expressions** - Dynamic timing synchronization
-✅ **React apps** - Custom interactive overlays with metadata injection
-✅ **AI generation** - Auto-generate music if missing
-✅ **Multiple outputs** - YouTube, Shorts, Instagram, Square
-✅ **Platform uploads** - YouTube, S3, Instagram
-✅ **Timecodes** - Auto-generated chapter markers
-✅ **FFmpeg presets** - Custom encoding options
-✅ **EJS templating** - Dynamic descriptions
-✅ **App caching** - Intelligent caching for fast re-renders
-
-This comprehensive example demonstrates the full power and flexibility of StaticStripes for professional video production workflows.
-
----
-
-## Recent Improvements (Session Notes)
-
-### New Features Added
-
-#### 1. Filters Command
-**Command:** `staticstripes filters`
-
-Lists all 22 available Instagram-style filters with usage examples. Helpful for discovering filter names without reading documentation.
-
-#### 2. Automatic App Building
-Apps are now automatically built when generating videos:
-- System checks if `dst/` or `dist/` directory exists when rendering apps
-- If missing, automatically runs `npm install && npm run build`
-- Use `--app-build` flag to force rebuild even when output exists
-- No more manual build steps required
-
-#### 3. Debug Timeline Output
-**Flag:** `--debug`
-
-Now displays detailed timeline information before FFmpeg execution:
-- Shows all sequences and fragments with timing
-- Displays values in milliseconds (no decimals)
-- Shows user-defined fragment IDs (hides auto-generated ones)
-- Hides zero values for cleaner output
-- Helps debug timing issues, overlaps, and sequencing
-
-Example output:
-```
-=== Debug: Sequences & Fragments Timeline ===
-
-📹 Sequence 0
-   Total Duration: 16330ms
-   Fragments: 3
-
-   ✓ [1]
-      Asset:      intro_image
-      Start:      0ms
-      End:        8000ms
-      Duration:   8000ms
-
-   ✓ [2] id="ending_screen"
-      Asset:      clip_01
-      Start:      8000ms
-      End:        16330ms
-      Duration:   8330ms
-      Trim Left:  3000ms
-      Overlay:    3500ms
+```bash
+staticstripes generate -p . -o youtube --debug
 ```
 
-#### 4. calc() Expression Support for -duration
-The `-duration` CSS property now supports calc() expressions:
+### calc() Expression Support
+
+Reference other fragments' timing properties:
 
 ```css
 .fragment {
-  -duration: calc(url(#staircase.time.duration));
+  -offset-start: calc(url(#intro.time.end) + 500ms);
+  -duration: calc(url(#intro.time.duration));
 }
 ```
 
-Can reference other fragments' timing properties and perform calculations.
+### data-timing Short Syntax
 
-#### 5. data-timing Short Syntax
-New `data-timing` attribute provides compact syntax for timing properties:
+Compact timing syntax:
 
 ```html
 <fragment
   data-asset="clip"
-  data-timing="ts=3000,te=5000,d=2000,os=1000,oe=7000"
-/>
+  data-timing="ts=3000,d=5000,os=1000" />
 ```
 
-Where:
-- `ts` = `-trim-start`
-- `te` = `-trim-end`
-- `d` = `-duration`
-- `os` = `-offset-start`
-- `oe` = `-offset-end`
+### Sound Control
 
-Values default to milliseconds. Units can be specified: `ts=3s,d=5000ms`
-
-Supports calc() expressions: `d=calc(url(#id.time.duration)),os=1000`
-
-Benefits:
-- More concise than CSS properties
-- Easier to read timing values at a glance
-- Values in one place instead of scattered across CSS
-- Takes precedence over CSS properties
-
-#### 6. Sound Control with -sound Property
-New CSS property to control audio playback per fragment:
+Control audio per fragment:
 
 ```css
-.silent_fragment {
-  -sound: off; /* Replace audio with silence */
-}
-
-.normal_fragment {
-  -sound: on; /* Use asset's audio (default) */
+.fragment {
+  -sound: off;  /* Mute this fragment */
 }
 ```
 
-Use cases:
-- Mute specific video clips while keeping others with audio
-- Create silent B-roll sequences
-- Mix silent and audio fragments in the same timeline
-- Useful for music-only backgrounds with silent video overlays
+### Node-Based Architecture
 
-Example:
+Composable pipeline with specialized nodes:
+
 ```html
-<sequence>
-  <!-- Video with audio -->
-  <fragment data-asset="interview_clip" />
-
-  <!-- Silent B-roll -->
-  <fragment data-asset="scenery" style="-sound: off;" />
-
-  <!-- Back to audio -->
-  <fragment data-asset="conclusion" />
-</sequence>
-
-<sequence>
-  <!-- Background music plays throughout -->
-  <fragment data-asset="background_music" />
-</sequence>
+<node.openai name="generator">...</node.openai>
+<node.elevenlabs name="speech">...</node.elevenlabs>
+<node.app name="renderer">...</node.app>
+<node.project>...</node.project>
+<node.s3 name="uploader">...</node.s3>
+<node.instagram name="publisher">...</node.instagram>
 ```
 
-#### 7. Instagram Geolocation Support
-Add location tags to Instagram Reels for better discoverability and local engagement.
+## Resources
 
-**Two ways to specify location:**
+- **GitHub:** [github.com/gannochenko/staticstripes](https://github.com/gannochenko/staticstripes)
+- **NPM:** [@gannochenko/staticstripes](https://www.npmjs.com/package/@gannochenko/staticstripes)
+- **Issues:** [github.com/gannochenko/staticstripes/issues](https://github.com/gannochenko/staticstripes/issues)
 
-1. **Direct Location ID** (if you know the Facebook Page location ID):
-```html
-<instagram name="ig_upload" output="instagram_reel">
-  <caption>Amazing views! ${tags}</caption>
-  <share-to-feed value="true" />
-  <location id="123456789" />
-</instagram>
-```
+## Summary
 
-2. **Automatic Location Search** (recommended):
-```html
-<instagram name="ig_upload" output="instagram_reel">
-  <caption>Exploring the city! ${tags}</caption>
-  <share-to-feed value="true" />
-  <location city="Paris" country="France" />
-</instagram>
-```
+StaticStripes is a powerful video rendering tool that uses:
 
-When using city/country attributes, StaticStripes will automatically:
-- Search Instagram's location database during upload
-- Find the most relevant location ID
-- Display the matched location name and ID
-- Apply the location tag to your Reel
+1. **Node-based architecture** for composable pipelines
+2. **HTML/CSS syntax** for familiar, declarative video definitions
+3. **FFmpeg** for high-quality video processing
+4. **AI integrations** for automated content generation
+5. **Platform integrations** for automated publishing
 
-**How it works:**
-```
-📍 Searching for location: Paris, France...
-   Found: Paris, France (ID: 110774245615518)
-✅ Found location ID: 110774245615518
-```
+**Key capabilities:**
 
-**Benefits:**
-- Better local discoverability on Instagram
-- Increases engagement from nearby users
-- No need to manually find location IDs
-- Supports any city/country combination
+- ✅ Declare videos using HTML/CSS
+- ✅ Multiple sequences for complex compositions
+- ✅ Transitions, filters, and effects
+- ✅ Ken Burns zoom/pan effects
+- ✅ Chromakey (green screen) support
+- ✅ Custom HTML/CSS overlays and apps
+- ✅ AI text generation (OpenAI)
+- ✅ AI text-to-speech (ElevenLabs)
+- ✅ AI music generation (AIMusicAPI.ai)
+- ✅ Multi-format output (16:9, 9:16, custom)
+- ✅ YouTube upload with metadata
+- ✅ Instagram Reels publishing
+- ✅ S3 cloud storage
+- ✅ Hardware acceleration support
+- ✅ Development and production modes
+- ✅ Comprehensive debugging tools
 
-**Note:** Location search requires a valid Instagram access token and may not be available in all regions.
+**Perfect for:**
 
-### Implementation Details
+- 🎬 Video content creators
+- 📱 Social media managers
+- 🎨 Motion graphics designers
+- 🤖 AI-powered content automation
+- 📊 Data visualization videos
+- 🎓 Educational content
+- 🎮 Gaming montages
+- ✈️ Travel vlogs
 
-All improvements are production-ready and fully tested:
-- ✅ TypeScript compilation passes
-- ✅ Backward compatible (existing projects work unchanged)
-- ✅ Comprehensive error handling
-- ✅ Integrated with existing caching system
+Start creating professional videos with just HTML and CSS!
