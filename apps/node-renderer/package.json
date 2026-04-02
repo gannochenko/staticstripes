@@ -1,10 +1,10 @@
 {
-  "name": "@gannochenko/node-renderer",
+  "name": "@gannochenko/staticstripes",
   "version": "0.0.0",
-  "description": "Node-based video rendering system",
+  "description": "HTML/CSS wrapper around ffmpeg",
   "main": "dist/index.js",
   "bin": {
-    "node-renderer": "./dist/cli.js"
+    "staticstripes": "./dist/cli.js"
   },
   "scripts": {
     "build": "tsc",
@@ -12,12 +12,15 @@
     "start": "node dist/index.js",
     "test": "vitest",
     "test:ui": "vitest --ui",
-    "test:run": "vitest run"
+    "test:run": "vitest run",
+    "lint": "eslint src/**/*.ts",
+    "lint:fix": "eslint src/**/*.ts --fix",
+    "format": "prettier --write \"src/**/*.ts\"",
+    "format:check": "prettier --check \"src/**/*.ts\""
   },
   "keywords": [
     "video",
     "renderer",
-    "nodes",
     "ffmpeg"
   ],
   "author": "",
@@ -28,16 +31,29 @@
   },
   "devDependencies": {
     "@types/css-tree": "^2.3.11",
+    "@types/ejs": "^3.1.5",
     "@types/node": "^22.10.5",
+    "@typescript-eslint/eslint-plugin": "^8.19.1",
+    "@typescript-eslint/parser": "^8.19.1",
     "@vitest/ui": "^4.0.16",
+    "eslint": "^9.18.0",
+    "eslint-config-prettier": "^9.1.0",
+    "globals": "^17.0.0",
+    "prettier": "^3.4.2",
     "tsx": "^4.19.2",
     "typescript": "^5.7.3",
     "vitest": "^4.0.16"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.986.0",
+    "commander": "^14.0.3",
     "css-tree": "^3.1.0",
+    "ejs": "^4.0.1",
     "expr-eval": "^2.0.2",
+    "googleapis": "^171.4.0",
     "htmlparser2": "^10.1.0",
+    "jsdom": "^25.0.1",
+    "open": "^11.0.0",
     "openai": "^6.32.0",
     "puppeteer": "^24.40.0"
   }

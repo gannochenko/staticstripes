@@ -1,4 +1,4 @@
-import type { INode, NodeInput, NodeOutput, NodeParameter, ValidationError } from '../../lib/node-interface';
+import type { INode, NodeInput, NodeOutput, NodeParameter, ValidationError, NodeExecutionContext } from '../../lib/node-interface';
 export interface S3PathConfig {
     name: string;
     path: string;
@@ -25,5 +25,10 @@ export declare class S3Node implements INode {
     getOutputs(): NodeOutput[];
     validateParameters(): ValidationError[];
     getParameterSchema(): NodeParameter[];
+    execute(context: NodeExecutionContext): Promise<Record<string, any>>;
+    private parseThumbnailTimecode;
+    private extractThumbnail;
+    private getVideoDuration;
+    private getRelativePath;
 }
 //# sourceMappingURL=index.d.ts.map

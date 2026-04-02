@@ -238,11 +238,23 @@ export class S3UploadStrategy implements UploadStrategy {
         console.log(`\n📤 Uploading metadata file...`);
         const metadataPath = interpolatePath(paths.get('metadata')!);
 
+        // Get video duration
+        const durationMs = await this.getVideoDuration(output.path);
+
+        // Calculate relative path to thumbnail if it exists
+        let relativeThumbnailPath: string | undefined;
+        if (upload.thumbnailTimecode !== undefined && paths.has('thumbnail')) {
+          const thumbnailPath = interpolatePath(paths.get('thumbnail')!);
+          relativeThumbnailPath = this.getRelativePath(metadataPath, thumbnailPath);
+        }
+
         // Create metadata JSON
         const metadata = {
           title,
           date: date || null,
           tags,
+          duration: durationMs,
+          thumbnail: relativeThumbnailPath || null,
         };
 
         const metadataBuffer = Buffer.from(JSON.stringify(metadata, null, 2), 'utf-8');
@@ -315,5 +327,53 @@ export class S3UploadStrategy implements UploadStrategy {
     const command = `ffmpeg -y -ss ${timeInSeconds} -i "${videoPath}" -frames:v 1 -q:v 2 "${outputPath}"`;
 
     await execAsync(command);
+  }
+
+  /**
+   * Gets video duration in milliseconds using ffprobe
+   */
+  private async getVideoDuration(videoPath: string): Promise<number> {
+    const command = `ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 "${videoPath}"`;
+
+    const { stdout } = await execAsync(command);
+    const durationSeconds = parseFloat(stdout.trim());
+
+    return Math.round(durationSeconds * 1000);
+  }
+
+  /**
+   * Calculates relative path from one S3 path to another
+   * Example: from="videos/foo/metadata.json", to="videos/foo/video.mp4" => "./video.mp4"
+   */
+  private getRelativePath(from: string, to: string): string {
+    const fromParts = from.split('/').slice(0, -1); // Remove filename
+    const toParts = to.split('/');
+
+    // Find common prefix
+    let commonLength = 0;
+    while (
+      commonLength < fromParts.length &&
+      commonLength < toParts.length &&
+      fromParts[commonLength] === toParts[commonLength]
+    ) {
+      commonLength++;
+    }
+
+    // Build relative path
+    const upLevels = fromParts.length - commonLength;
+    const relativeParts = [];
+
+    // Add "../" for each level up
+    for (let i = 0; i < upLevels; i++) {
+      relativeParts.push('..');
+    }
+
+    // Add remaining path from "to"
+    relativeParts.push(...toParts.slice(commonLength));
+
+    const result = relativeParts.join('/');
+
+    // If in same directory, prefix with "./"
+    return upLevels === 0 ? `./${result}` : result;
   }
 }
