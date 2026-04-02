@@ -5,6 +5,7 @@ exports.buildAppsIfNeeded = buildAppsIfNeeded;
 const fs_1 = require("fs");
 const path_1 = require("path");
 const child_process_1 = require("child_process");
+const path_resolver_1 = require("../../lib/path-resolver");
 /**
  * Checks if an app needs building and builds it if necessary.
  * If the app src points to a 'dst' or 'dist' directory, this function
@@ -12,9 +13,10 @@ const child_process_1 = require("child_process");
  * @param options.force - If true, rebuilds the app even if output exists
  */
 async function buildAppIfNeeded(options) {
-    const { appSrc, projectDir, force = false } = options;
-    // Resolve the app directory path
-    const appDir = (0, path_1.isAbsolute)(appSrc) ? appSrc : (0, path_1.resolve)(projectDir, appSrc);
+    const { appSrc, projectDir, basePaths = [], force = false } = options;
+    // Resolve the app directory path (with base path support)
+    const resolvedSrc = (0, path_resolver_1.resolveAssetPath)(appSrc, basePaths);
+    const appDir = (0, path_1.isAbsolute)(resolvedSrc) ? resolvedSrc : (0, path_1.resolve)(projectDir, resolvedSrc);
     const dirName = (0, path_1.basename)(appDir);
     // Check if the app src points to a build output directory
     if (dirName !== 'dst' && dirName !== 'dist') {

@@ -10,6 +10,7 @@ const puppeteer_1 = __importDefault(require("puppeteer"));
 const path_1 = require("path");
 const fs_1 = require("fs");
 const crypto_1 = require("crypto");
+const path_resolver_1 = require("../../lib/path-resolver");
 /**
  * Generate cache key for an app based on all inputs that affect rendering
  */
@@ -132,10 +133,14 @@ class AppNode {
     }
     async execute(context) {
         console.log(`🎨 Executing app node "${this.params.name || 'unnamed'}"...`);
+        // Resolve app src path with base path support
+        const resolvedSrc = (0, path_resolver_1.resolveAssetPath)(this.params.src, context.basePaths);
+        const appSrc = (0, path_1.isAbsolute)(resolvedSrc) ? resolvedSrc : (0, path_1.resolve)(context.projectDir, resolvedSrc);
         // Build app if needed
         await (0, app_builder_1.buildAppIfNeeded)({
-            appSrc: this.params.src,
+            appSrc: appSrc,
             projectDir: context.projectDir,
+            basePaths: context.basePaths,
             force: false,
         });
         // Get fps and resolution from context (set by project node)
@@ -181,7 +186,7 @@ class AppNode {
         // Create app object (use urlParameters for URL, but mergedParameters for cache key)
         const app = {
             id: this.params.name || `app_${Date.now()}`,
-            src: this.params.src,
+            src: appSrc, // Use resolved path
             parameters: urlParameters, // Use stringified parameters for URL
         };
         // Check if cached result exists before launching browser

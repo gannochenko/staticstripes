@@ -6,7 +6,8 @@ import type {
   ValidationError,
   NodeExecutionContext,
 } from "../../lib/node-interface";
-import type { Output, Sequence, Asset, FFmpegOption } from "../../lib/type";
+import type { Output, Sequence, Asset, BasePath, FFmpegOption } from "../../lib/type";
+import { resolveAssetPath } from "../../lib/path-resolver";
 import {
   AssetManager,
   ExpressionContext,
@@ -29,6 +30,7 @@ export interface ProjectNodeParams {
   name?: string;
   title?: string;
   tags: string[];
+  basePaths: BasePath[];
   outputs: Output[];
   sequences: Sequence[];
   assets: Asset[];
@@ -286,8 +288,9 @@ export class ProjectNode implements INode {
         continue;
       }
 
-      // Resolve asset path relative to project directory
-      const assetPath = resolve(context.projectDir, asset.path);
+      // Resolve asset path using base paths, then relative to project directory
+      const resolvedPath = resolveAssetPath(asset.path, this.params.basePaths);
+      const assetPath = resolve(context.projectDir, resolvedPath);
 
       // Determine asset type from file extension
       const ext = asset.path.split(".").pop()?.toLowerCase() || "";

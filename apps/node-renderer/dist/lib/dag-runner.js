@@ -137,14 +137,16 @@ class DAGRunner {
     projectDir;
     options;
     outputs;
+    basePaths;
     cache;
     context;
-    constructor(parsedNodes, nodes, projectDir, options = {}, outputs = []) {
+    constructor(parsedNodes, nodes, projectDir, options = {}, outputs = [], basePaths = []) {
         this.parsedNodes = parsedNodes;
         this.nodes = nodes;
         this.projectDir = projectDir;
         this.options = options;
         this.outputs = outputs;
+        this.basePaths = basePaths;
         this.cache = new NodeCache();
         this.context = new ExecutionContext();
     }
@@ -243,6 +245,7 @@ class DAGRunner {
                     },
                     inputs, // Pass resolved inputs to the node
                     projectDir: this.projectDir,
+                    basePaths: this.basePaths,
                     cacheDir: undefined, // TODO: Implement cache directory
                     outputResolution: this.options.outputResolution || { width: 1920, height: 1080 },
                     outputFps: this.options.outputFps || 30,

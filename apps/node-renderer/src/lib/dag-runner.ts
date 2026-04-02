@@ -180,6 +180,7 @@ export class DAGRunner {
     private projectDir: string,
     private options: DAGRunnerOptions = {},
     private outputs: Output[] = [],
+    private basePaths: import('./node-interface').BasePath[] = [],
   ) {
     this.cache = new NodeCache();
     this.context = new ExecutionContext();
@@ -304,6 +305,7 @@ export class DAGRunner {
           },
           inputs, // Pass resolved inputs to the node
           projectDir: this.projectDir,
+          basePaths: this.basePaths,
           cacheDir: undefined, // TODO: Implement cache directory
           outputResolution: this.options.outputResolution || { width: 1920, height: 1080 },
           outputFps: this.options.outputFps || 30,

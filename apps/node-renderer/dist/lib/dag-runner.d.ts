@@ -124,9 +124,10 @@ export declare class DAGRunner {
     private projectDir;
     private options;
     private outputs;
+    private basePaths;
     private cache;
     private context;
-    constructor(parsedNodes: ParsedNode[], nodes: INode[], projectDir: string, options?: DAGRunnerOptions, outputs?: Output[]);
+    constructor(parsedNodes: ParsedNode[], nodes: INode[], projectDir: string, options?: DAGRunnerOptions, outputs?: Output[], basePaths?: import('./node-interface').BasePath[]);
     /**
      * Gets the execution context
      */

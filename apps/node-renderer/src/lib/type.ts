@@ -76,6 +76,17 @@ export interface FFmpegOption {
 }
 
 /**
+ * Base path definition
+ */
+export interface BasePath {
+  /** Base path name (e.g., "clips", "global") */
+  name: string;
+
+  /** Absolute or relative path */
+  path: string;
+}
+
+/**
  * Parsed project node content
  */
 export interface ProjectContent {
@@ -90,6 +101,9 @@ export interface ProjectContent {
 
   /** Parsed CSS rules mapped to elements */
   css: Map<Element, CSSProperties>;
+
+  /** Base paths for resolving asset paths */
+  basePaths: BasePath[];
 
   /** Asset definitions */
   assets: Asset[];

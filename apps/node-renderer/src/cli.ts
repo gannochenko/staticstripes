@@ -214,6 +214,9 @@ async function executeProject(
       }
     }
 
+    // Extract base paths from project node
+    const basePaths = result.projectNode?.projectContent?.basePaths || [];
+
     // Create runner
     const runner = new DAGRunner(result.nodes, nodes, projectDir, {
       enableCache,
@@ -240,7 +243,7 @@ async function executeProject(
           console.error(error.stack);
         }
       },
-    }, result.outputs);
+    }, result.outputs, basePaths);
 
     console.log(`Cache: ${enableCache ? 'enabled' : 'disabled'}`);
     console.log();

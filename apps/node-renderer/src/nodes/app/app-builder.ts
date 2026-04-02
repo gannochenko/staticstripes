@@ -1,10 +1,13 @@
 import { existsSync } from 'fs';
 import { resolve, dirname, basename, isAbsolute } from 'path';
 import { spawn } from 'child_process';
+import { resolveAssetPath } from '../../lib/path-resolver';
+import type { BasePath } from '../../lib/node-interface';
 
 export interface BuildAppOptions {
   appSrc: string;
   projectDir: string;
+  basePaths?: BasePath[];
   force?: boolean;
 }
 
@@ -15,10 +18,11 @@ export interface BuildAppOptions {
  * @param options.force - If true, rebuilds the app even if output exists
  */
 export async function buildAppIfNeeded(options: BuildAppOptions): Promise<void> {
-  const { appSrc, projectDir, force = false } = options;
+  const { appSrc, projectDir, basePaths = [], force = false } = options;
 
-  // Resolve the app directory path
-  const appDir = isAbsolute(appSrc) ? appSrc : resolve(projectDir, appSrc);
+  // Resolve the app directory path (with base path support)
+  const resolvedSrc = resolveAssetPath(appSrc, basePaths);
+  const appDir = isAbsolute(resolvedSrc) ? resolvedSrc : resolve(projectDir, resolvedSrc);
   const dirName = basename(appDir);
 
   // Check if the app src points to a build output directory

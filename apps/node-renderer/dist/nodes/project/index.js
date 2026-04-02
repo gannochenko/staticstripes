@@ -1,6 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.ProjectNode = void 0;
+const path_resolver_1 = require("../../lib/path-resolver");
 const rendering_1 = require("./rendering");
 const path_1 = require("path");
 const fs_1 = require("fs");
@@ -193,8 +194,9 @@ class ProjectNode {
                 console.warn(`⚠️  Asset "${asset.name}" has no path, skipping`);
                 continue;
             }
-            // Resolve asset path relative to project directory
-            const assetPath = (0, path_1.resolve)(context.projectDir, asset.path);
+            // Resolve asset path using base paths, then relative to project directory
+            const resolvedPath = (0, path_resolver_1.resolveAssetPath)(asset.path, this.params.basePaths);
+            const assetPath = (0, path_1.resolve)(context.projectDir, resolvedPath);
             // Determine asset type from file extension
             const ext = asset.path.split(".").pop()?.toLowerCase() || "";
             let assetType = "video";

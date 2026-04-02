@@ -1,6 +1,8 @@
+import type { BasePath } from '../../lib/node-interface';
 export interface BuildAppOptions {
     appSrc: string;
     projectDir: string;
+    basePaths?: BasePath[];
     force?: boolean;
 }
 /**

@@ -63,6 +63,10 @@ export declare class HTMLParser {
      */
     private matchesSelector;
     /**
+     * Extracts base paths from <basePaths> section
+     */
+    private extractBasePaths;
+    /**
      * Extracts assets from <assets> section
      */
     private extractAssets;

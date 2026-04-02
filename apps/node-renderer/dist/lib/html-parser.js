@@ -147,6 +147,8 @@ class HTMLParser {
         const styleRules = this.buildStyleRules(cssRules);
         const css = new Map();
         this.applyStylesToElement(projectElement, styleRules, css);
+        // Extract base paths
+        const basePaths = this.extractBasePaths(projectElement);
         // Extract assets
         const assets = this.extractAssets(projectElement);
         // Extract sequences
@@ -158,6 +160,7 @@ class HTMLParser {
             tags,
             cssText,
             css,
+            basePaths,
             assets,
             sequences,
             ffmpegOptions,
@@ -258,6 +261,28 @@ class HTMLParser {
             return element.attribs?.id === id;
         }
         return false;
+    }
+    /**
+     * Extracts base paths from <basePaths> section
+     */
+    extractBasePaths(projectElement) {
+        const basePathsElements = findChildElementsByTagName(projectElement, 'basePaths');
+        if (basePathsElements.length === 0) {
+            return [];
+        }
+        const basePathsElement = basePathsElements[0];
+        const pathElements = findChildElementsByTagName(basePathsElement, 'path');
+        return pathElements
+            .map((pathEl) => {
+            const attrs = this.getAttributes(pathEl);
+            const name = attrs.get('name');
+            const path = getTextContent(pathEl).trim();
+            if (!name || !path) {
+                return null;
+            }
+            return { name, path };
+        })
+            .filter((basePath) => basePath !== null);
     }
     /**
      * Extracts assets from <assets> section

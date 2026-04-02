@@ -9,9 +9,10 @@ import type {
 import { buildAppIfNeeded } from './app-builder';
 import { renderApp } from './app-renderer';
 import puppeteer from 'puppeteer';
-import { resolve } from 'path';
+import { resolve, isAbsolute } from 'path';
 import { existsSync } from 'fs';
 import { createHash } from 'crypto';
+import { resolveAssetPath } from '../../lib/path-resolver';
 
 export interface AppNodeParams {
   name?: string;
@@ -166,10 +167,15 @@ export class AppNode implements INode {
   public async execute(context: NodeExecutionContext): Promise<Record<string, any>> {
     console.log(`🎨 Executing app node "${this.params.name || 'unnamed'}"...`);
 
+    // Resolve app src path with base path support
+    const resolvedSrc = resolveAssetPath(this.params.src, context.basePaths);
+    const appSrc = isAbsolute(resolvedSrc) ? resolvedSrc : resolve(context.projectDir, resolvedSrc);
+
     // Build app if needed
     await buildAppIfNeeded({
-      appSrc: this.params.src,
+      appSrc: appSrc,
       projectDir: context.projectDir,
+      basePaths: context.basePaths,
       force: false,
     });
 
@@ -219,7 +225,7 @@ export class AppNode implements INode {
     // Create app object (use urlParameters for URL, but mergedParameters for cache key)
     const app = {
       id: this.params.name || `app_${Date.now()}`,
-      src: this.params.src,
+      src: appSrc, // Use resolved path
       parameters: urlParameters, // Use stringified parameters for URL
     };
 

@@ -25,6 +25,16 @@ export interface NodeParameter {
 }
 
 /**
+ * Base path definition
+ */
+export interface BasePath {
+  /** Base path name (e.g., "clips", "global") */
+  name: string;
+  /** Absolute or relative path */
+  path: string;
+}
+
+/**
  * Execution context passed to nodes during execution
  * Contains outputs from upstream nodes
  */
@@ -47,6 +57,11 @@ export interface NodeExecutionContext {
    * Project directory path (where project.html lives)
    */
   projectDir: string;
+
+  /**
+   * Base paths for resolving asset paths
+   */
+  basePaths: BasePath[];
 
   /**
    * Cache directory for this node

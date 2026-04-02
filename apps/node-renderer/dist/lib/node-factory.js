@@ -75,6 +75,7 @@ class NodeFactory {
             name: parsedNode.name,
             title: content.title,
             tags: content.tags,
+            basePaths: content.basePaths,
             outputs,
             sequences: content.sequences,
             assets: content.assets,
@@ -96,32 +97,53 @@ class NodeFactory {
     }
     static extractYouTubeParams(parsedNode) {
         const pathRef = parsedNode.attributes.get('path') || '';
-        // Check for flag elements
-        const unlistedElements = (0, html_parser_1.findChildElementsByTagName)(parsedNode.element, 'unlisted');
-        const madeForKidsElements = (0, html_parser_1.findChildElementsByTagName)(parsedNode.element, 'made-for-kids');
-        // Extract category
-        const categoryElements = (0, html_parser_1.findChildElementsByTagName)(parsedNode.element, 'category');
-        const category = categoryElements.length > 0
-            ? categoryElements[0].attribs?.name
-            : undefined;
-        // Extract language
-        const languageElements = (0, html_parser_1.findChildElementsByTagName)(parsedNode.element, 'language');
-        const language = languageElements.length > 0
-            ? languageElements[0].attribs?.name
-            : undefined;
-        // Extract thumbnail
-        const thumbnailElements = (0, html_parser_1.findChildElementsByTagName)(parsedNode.element, 'thumbnail');
-        const thumbnail = thumbnailElements.length > 0
-            ? thumbnailElements[0].attribs?.timecode
-            : undefined;
-        // Extract description
-        const preElements = (0, html_parser_1.findChildElementsByTagName)(parsedNode.element, 'pre');
-        const description = preElements.length > 0 ? (0, html_parser_1.getTextContent)(preElements[0]).trim() : undefined;
+        // Extract unlisted - support both attribute and child element formats
+        let unlisted = parsedNode.attributes.get('unlisted') === 'true';
+        if (!unlisted) {
+            const unlistedElements = (0, html_parser_1.findChildElementsByTagName)(parsedNode.element, 'unlisted');
+            unlisted = unlistedElements.length > 0;
+        }
+        // Extract madeForKids - support both attribute and child element formats
+        let madeForKids = parsedNode.attributes.get('madeForKids') === 'true';
+        if (!madeForKids) {
+            const madeForKidsElements = (0, html_parser_1.findChildElementsByTagName)(parsedNode.element, 'made-for-kids');
+            madeForKids = madeForKidsElements.length > 0;
+        }
+        // Extract category - support both attribute and child element formats
+        let category = parsedNode.attributes.get('category') || undefined;
+        if (!category) {
+            const categoryElements = (0, html_parser_1.findChildElementsByTagName)(parsedNode.element, 'category');
+            category =
+                categoryElements.length > 0
+                    ? categoryElements[0].attribs?.name
+                    : undefined;
+        }
+        // Extract language - support both attribute and child element formats
+        let language = parsedNode.attributes.get('language') || undefined;
+        if (!language) {
+            const languageElements = (0, html_parser_1.findChildElementsByTagName)(parsedNode.element, 'language');
+            language =
+                languageElements.length > 0
+                    ? languageElements[0].attribs?.name
+                    : undefined;
+        }
+        // Extract thumbnail - support both attribute and child element formats
+        let thumbnail = parsedNode.attributes.get('thumbnail') || undefined;
+        if (!thumbnail) {
+            const thumbnailElements = (0, html_parser_1.findChildElementsByTagName)(parsedNode.element, 'thumbnail');
+            thumbnail =
+                thumbnailElements.length > 0
+                    ? thumbnailElements[0].attribs?.timecode
+                    : undefined;
+        }
+        // Extract description from <description> child element
+        const descriptionElements = (0, html_parser_1.findChildElementsByTagName)(parsedNode.element, 'description');
+        const description = descriptionElements.length > 0 ? (0, html_parser_1.getTextContent)(descriptionElements[0]).trim() : undefined;
         return {
             name: parsedNode.name,
             pathRef,
-            unlisted: unlistedElements.length > 0,
-            madeForKids: madeForKidsElements.length > 0,
+            unlisted,
+            madeForKids,
             category,
             language,
             thumbnail,
@@ -130,33 +152,54 @@ class NodeFactory {
     }
     static extractS3Params(parsedNode) {
         const pathRef = parsedNode.attributes.get('path') || '';
-        // Extract endpoint, region, bucket
-        const endpointElements = (0, html_parser_1.findChildElementsByTagName)(parsedNode.element, 'endpoint');
-        const endpoint = endpointElements.length > 0
-            ? endpointElements[0].attribs?.name || ''
-            : '';
-        const regionElements = (0, html_parser_1.findChildElementsByTagName)(parsedNode.element, 'region');
-        const region = regionElements.length > 0
-            ? regionElements[0].attribs?.name || ''
-            : '';
-        const bucketElements = (0, html_parser_1.findChildElementsByTagName)(parsedNode.element, 'bucket');
-        const bucket = bucketElements.length > 0
-            ? bucketElements[0].attribs?.name || ''
-            : '';
+        // Extract endpoint, region, bucket - support both attribute and child element formats
+        let endpoint = parsedNode.attributes.get('endpoint') || '';
+        let region = parsedNode.attributes.get('region') || '';
+        let bucket = parsedNode.attributes.get('bucket') || '';
+        // Fall back to child elements if attributes not found (backward compatibility)
+        if (!endpoint) {
+            const endpointElements = (0, html_parser_1.findChildElementsByTagName)(parsedNode.element, 'endpoint');
+            endpoint =
+                endpointElements.length > 0
+                    ? endpointElements[0].attribs?.name || ''
+                    : '';
+        }
+        if (!region) {
+            const regionElements = (0, html_parser_1.findChildElementsByTagName)(parsedNode.element, 'region');
+            region =
+                regionElements.length > 0
+                    ? regionElements[0].attribs?.name || ''
+                    : '';
+        }
+        if (!bucket) {
+            const bucketElements = (0, html_parser_1.findChildElementsByTagName)(parsedNode.element, 'bucket');
+            bucket =
+                bucketElements.length > 0
+                    ? bucketElements[0].attribs?.name || ''
+                    : '';
+        }
         // Extract paths
         const pathElements = (0, html_parser_1.findChildElementsByTagName)(parsedNode.element, 'path');
         const paths = pathElements.map((pathEl) => ({
             name: pathEl.attribs?.name || '',
             path: (0, html_parser_1.getTextContent)(pathEl).trim(),
         }));
-        // Extract acl
-        const aclElements = (0, html_parser_1.findChildElementsByTagName)(parsedNode.element, 'acl');
-        const acl = aclElements.length > 0 ? aclElements[0].attribs?.name : undefined;
-        // Extract thumbnail
-        const thumbnailElements = (0, html_parser_1.findChildElementsByTagName)(parsedNode.element, 'thumbnail');
-        const thumbnail = thumbnailElements.length > 0
-            ? thumbnailElements[0].attribs?.timecode
-            : undefined;
+        // Extract acl - support both attribute and child element formats
+        let acl = parsedNode.attributes.get('acl') || undefined;
+        if (!acl) {
+            const aclElements = (0, html_parser_1.findChildElementsByTagName)(parsedNode.element, 'acl');
+            acl =
+                aclElements.length > 0 ? aclElements[0].attribs?.name : undefined;
+        }
+        // Extract thumbnail - support both attribute and child element formats
+        let thumbnail = parsedNode.attributes.get('thumbnail') || undefined;
+        if (!thumbnail) {
+            const thumbnailElements = (0, html_parser_1.findChildElementsByTagName)(parsedNode.element, 'thumbnail');
+            thumbnail =
+                thumbnailElements.length > 0
+                    ? thumbnailElements[0].attribs?.timecode
+                    : undefined;
+        }
         return {
             name: parsedNode.name,
             pathRef,
