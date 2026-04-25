@@ -190,6 +190,13 @@ export class ProjectNode implements INode {
         fps: output.fps,
       };
 
+      // If output already exists, skip rendering and use it as-is
+      if (existsSync(outputPath)) {
+        console.log(`⏭️  Output "${output.name}" already exists, skipping render: ${outputPath}`);
+        results[output.name] = outputPath;
+        continue;
+      }
+
       // Ensure output directory exists
       const outputDir = dirname(renderOutput.path);
       if (!existsSync(outputDir)) {
@@ -211,8 +218,15 @@ export class ProjectNode implements INode {
         console.log(`   Filter: ${filterComplex.substring(0, 200)}...`);
       }
 
-      // Get FFmpeg args from options
-      const ffmpegArgs = this.params.ffmpegOptions[0]?.args || "";
+      // Get FFmpeg args from options — use named profile if specified, else first option
+      const profile = context.ffmpegProfile;
+      const selectedOption = profile
+        ? this.params.ffmpegOptions.find((o) => o.name === profile) ?? this.params.ffmpegOptions[0]
+        : this.params.ffmpegOptions[0];
+      if (profile && !this.params.ffmpegOptions.find((o) => o.name === profile)) {
+        console.warn(`⚠️  FFmpeg profile "${profile}" not found, using first option`);
+      }
+      const ffmpegArgs = selectedOption?.args || "";
 
       // Generate FFmpeg command
       const ffmpegCommand = makeFFmpegCommand(

@@ -12,6 +12,7 @@ interface CLIOptions {
   enableCache?: boolean;
   verbose?: boolean;
   validate?: boolean;
+  ffmpegProfile?: string;
 }
 
 function printUsage() {
@@ -25,6 +26,7 @@ Options:
   --no-cache          Disable caching
   --verbose, -v       Verbose output
   --validate-only     Only validate, don't execute
+  --profile <name>    FFmpeg option profile to use (e.g. preview, prod)
   --help, -h          Show this help
 
 Examples:
@@ -32,6 +34,7 @@ Examples:
   node-renderer project.html --verbose
   node-renderer project.html --validate-only
   node-renderer project.html --no-cache
+  node-renderer project.html --profile prod
 `);
 }
 
@@ -48,11 +51,15 @@ function parseArgs(): CLIOptions | null {
   const verbose = args.includes('--verbose') || args.includes('-v');
   const validate = args.includes('--validate-only');
 
+  const profileIdx = args.indexOf('--profile');
+  const ffmpegProfile = profileIdx !== -1 ? args[profileIdx + 1] : undefined;
+
   return {
     projectPath,
     enableCache,
     verbose,
     validate,
+    ffmpegProfile,
   };
 }
 
@@ -184,6 +191,7 @@ async function executeProject(
   projectPath: string,
   enableCache: boolean,
   verbose: boolean,
+  ffmpegProfile?: string,
 ): Promise<boolean> {
   printHeader('🚀 Executing Project');
 
@@ -222,6 +230,7 @@ async function executeProject(
       enableCache,
       outputResolution,
       outputFps,
+      ffmpegProfile,
       onNodeStart: (nodeName) => {
         console.log(`🔄 Executing: ${nodeName}`);
       },
@@ -358,6 +367,7 @@ async function main() {
       options.projectPath,
       options.enableCache !== false,
       options.verbose || false,
+      options.ffmpegProfile,
     );
   } else {
     success = true;

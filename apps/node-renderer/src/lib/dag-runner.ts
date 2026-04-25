@@ -165,6 +165,7 @@ export interface DAGRunnerOptions {
   onNodeError?: (nodeName: string, error: Error) => void;
   outputResolution?: { width: number; height: number };
   outputFps?: number;
+  ffmpegProfile?: string;
 }
 
 /**
@@ -309,6 +310,7 @@ export class DAGRunner {
           cacheDir: undefined, // TODO: Implement cache directory
           outputResolution: this.options.outputResolution || { width: 1920, height: 1080 },
           outputFps: this.options.outputFps || 30,
+          ffmpegProfile: this.options.ffmpegProfile,
         };
 
         const result = await node.execute(nodeContext);

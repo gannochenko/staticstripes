@@ -136,6 +136,12 @@ class ProjectNode {
                 },
                 fps: output.fps,
             };
+            // If output already exists, skip rendering and use it as-is
+            if ((0, fs_1.existsSync)(outputPath)) {
+                console.log(`⏭️  Output "${output.name}" already exists, skipping render: ${outputPath}`);
+                results[output.name] = outputPath;
+                continue;
+            }
             // Ensure output directory exists
             const outputDir = (0, path_1.dirname)(renderOutput.path);
             if (!(0, fs_1.existsSync)(outputDir)) {

@@ -77,6 +77,12 @@ export interface NodeExecutionContext {
    * Output FPS from project configuration
    */
   outputFps: number;
+
+  /**
+   * FFmpeg option profile name to use (e.g. "preview", "prod")
+   * Defaults to the first defined option if not set
+   */
+  ffmpegProfile?: string;
 }
 
 /**

@@ -20,6 +20,18 @@ export const PARAMETER_SCHEMA: ParameterSchema = {
       placeholder: "4.5",
       defaultValue: "4.5",
     },
+    {
+      name: "subtitle",
+      label: "Subtitle",
+      placeholder: "",
+      defaultValue: "",
+    },
+    {
+      name: "subtitleFontSize",
+      label: "Subtitle Font Size (rem)",
+      placeholder: "2.5",
+      defaultValue: "2.5",
+    },
   ],
 };
 
@@ -27,5 +39,7 @@ export interface AppParams {
   title: string;
   verticalOffset: string;
   fontSize: string;
+  subtitle: string;
+  subtitleFontSize: string;
   [key: string]: string;
 }

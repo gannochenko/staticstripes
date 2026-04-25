@@ -307,13 +307,18 @@ function TafelLabel({
   title,
   verticalOffset,
   fontSize,
+  subtitle,
+  subtitleFontSize,
 }: {
   title: string;
   verticalOffset: string;
   fontSize: string;
+  subtitle?: string;
+  subtitleFontSize?: string;
 }) {
   const offset = parseFloat(verticalOffset) || 0;
   const titleFontSize = parseFloat(fontSize) || 4.5;
+  const resolvedSubtitleFontSize = parseFloat(subtitleFontSize || "2.5") || 2.5;
 
   return (
     <div
@@ -327,6 +332,11 @@ function TafelLabel({
           {title}
         </TextLine>
       )}
+      {subtitle && (
+        <TextLine fontSize={`${resolvedSubtitleFontSize}rem`} fontWeight={400}>
+          {subtitle}
+        </TextLine>
+      )}
     </div>
   );
 }
@@ -336,7 +346,7 @@ function TafelLabel({
 // ---------------------------------------------------------------------------
 
 export default function App() {
-  const { title, verticalOffset, fontSize, rendering } = useAppParams();
+  const { title, verticalOffset, fontSize, subtitle, subtitleFontSize, rendering } = useAppParams<AppParams>();
   const resolvedTitle = title ?? "Grafrat – hidden gem";
   const resolvedVerticalOffset = verticalOffset ?? "20";
   const resolvedFontSize = fontSize ?? "4.5";
@@ -367,7 +377,13 @@ export default function App() {
     return (
       <RenderingView>
         <div className="app-rendering-container">
-          <TafelLabel title={resolvedTitle} verticalOffset={resolvedVerticalOffset} fontSize={resolvedFontSize} />
+          <TafelLabel
+            title={resolvedTitle}
+            verticalOffset={resolvedVerticalOffset}
+            fontSize={resolvedFontSize}
+            subtitle={subtitle}
+            subtitleFontSize={subtitleFontSize}
+          />
         </div>
       </RenderingView>
     );
@@ -380,12 +396,20 @@ export default function App() {
         title: resolvedTitle,
         verticalOffset: resolvedVerticalOffset,
         fontSize: resolvedFontSize,
+        subtitle: subtitle ?? "",
+        subtitleFontSize: subtitleFontSize ?? "2.5",
       }}
       schema={PARAMETER_SCHEMA}
     >
       {(content) => (
         <div className="app-frame-container">
-          <TafelLabel title={content.title} verticalOffset={content.verticalOffset} fontSize={content.fontSize} />
+          <TafelLabel
+            title={content.title}
+            verticalOffset={content.verticalOffset}
+            fontSize={content.fontSize}
+            subtitle={content.subtitle}
+            subtitleFontSize={content.subtitleFontSize}
+          />
         </div>
       )}
     </VideoFrame>
