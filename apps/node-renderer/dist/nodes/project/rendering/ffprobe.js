@@ -1,10 +1,26 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getAssetDuration = void 0;
+exports.getAssetDuration = exports.hasAudioStream = void 0;
 const child_process_1 = require("child_process");
 const util_1 = require("util");
 const fs_1 = require("fs");
 const execFileAsync = (0, util_1.promisify)(child_process_1.execFile);
+const hasAudioStream = async (path) => {
+    try {
+        const { stdout } = await execFileAsync('ffprobe', [
+            '-v', 'error',
+            '-select_streams', 'a',
+            '-show_entries', 'stream=codec_type',
+            '-of', 'default=noprint_wrappers=1:nokey=1',
+            path,
+        ]);
+        return stdout.trim().length > 0;
+    }
+    catch {
+        return false;
+    }
+};
+exports.hasAudioStream = hasAudioStream;
 const getAssetDuration = async (path) => {
     try {
         // First try the standard duration query

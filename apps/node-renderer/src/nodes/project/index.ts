@@ -16,6 +16,7 @@ import {
   makeFFmpegCommand,
   runFFMpeg,
   getAssetDuration,
+  hasAudioStream,
 } from "./rendering";
 import { resolve, dirname } from "path";
 import { existsSync, mkdirSync } from "fs";
@@ -266,6 +267,8 @@ export class ProjectNode implements INode {
           duration = await getAssetDuration(outputPath);
         }
 
+        const synthesizedVideoHasAudio = (assetType === "video" && !isApng) ? await hasAudioStream(outputPath) : false;
+
         const renderAsset: RenderAsset = {
           name: asset.name,
           path: outputPath,
@@ -276,7 +279,7 @@ export class ProjectNode implements INode {
           height: 1080,
           rotation: 0,
           hasVideo: assetType === "video" || assetType === "image",
-          hasAudio: (assetType === "video" && !isApng) || assetType === "audio",
+          hasAudio: synthesizedVideoHasAudio || assetType === "audio",
         };
 
         renderAssets.push(renderAsset);
@@ -307,6 +310,8 @@ export class ProjectNode implements INode {
         duration = await getAssetDuration(assetPath);
       }
 
+      const videoHasAudio = assetType === "video" ? await hasAudioStream(assetPath) : false;
+
       const renderAsset: RenderAsset = {
         name: asset.name,
         path: assetPath,
@@ -317,7 +322,7 @@ export class ProjectNode implements INode {
         height: 1080,
         rotation: 0,
         hasVideo: assetType === "video" || assetType === "image",
-        hasAudio: assetType === "video" || assetType === "audio",
+        hasAudio: videoHasAudio || assetType === "audio",
       };
 
       console.log(`   Asset "${asset.name}": type=${assetType}, hasVideo=${renderAsset.hasVideo}, hasAudio=${renderAsset.hasAudio}`);

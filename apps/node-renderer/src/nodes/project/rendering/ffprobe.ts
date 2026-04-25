@@ -4,6 +4,21 @@ import { existsSync } from 'fs';
 
 const execFileAsync = promisify(execFile);
 
+export const hasAudioStream = async (path: string): Promise<boolean> => {
+  try {
+    const { stdout } = await execFileAsync('ffprobe', [
+      '-v', 'error',
+      '-select_streams', 'a',
+      '-show_entries', 'stream=codec_type',
+      '-of', 'default=noprint_wrappers=1:nokey=1',
+      path,
+    ]);
+    return stdout.trim().length > 0;
+  } catch {
+    return false;
+  }
+};
+
 export const getAssetDuration = async (path: string): Promise<number> => {
   try {
     // First try the standard duration query

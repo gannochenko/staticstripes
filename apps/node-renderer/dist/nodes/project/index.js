@@ -175,6 +175,7 @@ class ProjectNode {
                 if (assetType === "video" || assetType === "audio") {
                     duration = await (0, rendering_1.getAssetDuration)(outputPath);
                 }
+                const synthesizedVideoHasAudio = (assetType === "video" && !isApng) ? await (0, rendering_1.hasAudioStream)(outputPath) : false;
                 const renderAsset = {
                     name: asset.name,
                     path: outputPath,
@@ -185,7 +186,7 @@ class ProjectNode {
                     height: 1080,
                     rotation: 0,
                     hasVideo: assetType === "video" || assetType === "image",
-                    hasAudio: (assetType === "video" && !isApng) || assetType === "audio",
+                    hasAudio: synthesizedVideoHasAudio || assetType === "audio",
                 };
                 renderAssets.push(renderAsset);
                 continue;
@@ -211,6 +212,7 @@ class ProjectNode {
             if (assetType === "video" || assetType === "audio") {
                 duration = await (0, rendering_1.getAssetDuration)(assetPath);
             }
+            const videoHasAudio = assetType === "video" ? await (0, rendering_1.hasAudioStream)(assetPath) : false;
             const renderAsset = {
                 name: asset.name,
                 path: assetPath,
@@ -221,7 +223,7 @@ class ProjectNode {
                 height: 1080,
                 rotation: 0,
                 hasVideo: assetType === "video" || assetType === "image",
-                hasAudio: assetType === "video" || assetType === "audio",
+                hasAudio: videoHasAudio || assetType === "audio",
             };
             console.log(`   Asset "${asset.name}": type=${assetType}, hasVideo=${renderAsset.hasVideo}, hasAudio=${renderAsset.hasAudio}`);
             renderAssets.push(renderAsset);
