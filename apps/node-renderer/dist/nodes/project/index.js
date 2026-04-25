@@ -1,10 +1,16 @@
 "use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.ProjectNode = void 0;
 const path_resolver_1 = require("../../lib/path-resolver");
 const rendering_1 = require("./rendering");
 const path_1 = require("path");
 const fs_1 = require("fs");
+const puppeteer_1 = __importDefault(require("puppeteer"));
+const app_builder_1 = require("../app/app-builder");
+const app_renderer_1 = require("../app/app-renderer");
 const css_processor_1 = require("./rendering/css-processor");
 const dag_validator_1 = require("../../lib/dag-validator");
 /**
@@ -98,6 +104,22 @@ class ProjectNode {
         const expressionContext = {
             fragments: new Map(),
         };
+        // Render inline app overlays (fragments with <app> children) before filter graph
+        if (this.params.sequences.some((s) => s.fragments.some((f) => f.app))) {
+            const firstOutput = this.params.outputs[0];
+            if (firstOutput) {
+                const appRenderOutput = {
+                    name: firstOutput.name,
+                    path: "",
+                    resolution: {
+                        width: parseInt(firstOutput.resolution.split("x")[0]),
+                        height: parseInt(firstOutput.resolution.split("x")[1]),
+                    },
+                    fps: firstOutput.fps,
+                };
+                await this.renderFragmentApps(context, assetManager, appRenderOutput);
+            }
+        }
         // Result map: output name -> rendered file path
         const results = {};
         // Render each output
@@ -137,6 +159,91 @@ class ProjectNode {
             results[output.name] = renderOutput.path;
         }
         return results;
+    }
+    parseTimeMs(timeStr) {
+        const t = timeStr.trim();
+        if (t.endsWith("ms"))
+            return parseFloat(t);
+        if (t.endsWith("s"))
+            return parseFloat(t) * 1000;
+        return parseFloat(t) || 0;
+    }
+    async renderFragmentApps(context, assetManager, output) {
+        console.log("🎨 Rendering inline app overlays...");
+        const browser = await puppeteer_1.default.launch({
+            headless: true,
+            args: [
+                "--no-sandbox",
+                "--disable-setuid-sandbox",
+                "--allow-file-access-from-files",
+            ],
+            protocolTimeout: 120000,
+        });
+        try {
+            let appIndex = 0;
+            for (const sequence of this.params.sequences) {
+                for (const fragment of sequence.fragments) {
+                    if (!fragment.app)
+                        continue;
+                    const syntheticName = `__app_overlay_${appIndex++}`;
+                    // Resolve duration from CSS
+                    const styles = this.params.css?.get(fragment.element) || {};
+                    const duration = this.parseTimeMs(styles["-duration"] || "0ms");
+                    if (duration <= 0) {
+                        throw new Error(`Fragment with inline <app src="${fragment.app.src}"> has no -duration in its CSS. ` +
+                            `Add a -duration property to the fragment's CSS class.`);
+                    }
+                    // Resolve app src path
+                    const resolvedSrc = (0, path_resolver_1.resolveAssetPath)(fragment.app.src, context.basePaths);
+                    const appSrc = (0, path_1.isAbsolute)(resolvedSrc)
+                        ? resolvedSrc
+                        : (0, path_1.resolve)(context.projectDir, resolvedSrc);
+                    // Build app if needed
+                    await (0, app_builder_1.buildAppIfNeeded)({
+                        appSrc,
+                        projectDir: context.projectDir,
+                        basePaths: context.basePaths,
+                        force: false,
+                    });
+                    const app = {
+                        id: syntheticName,
+                        src: appSrc,
+                        parameters: fragment.app.parameters,
+                    };
+                    const result = await (0, app_renderer_1.renderApp)({
+                        app,
+                        width: output.resolution.width,
+                        height: output.resolution.height,
+                        projectDir: context.projectDir,
+                        outputName: output.name,
+                        title: this.params.title || "",
+                        date: undefined,
+                        tags: this.params.tags || [],
+                        fps: output.fps,
+                        duration,
+                        browser,
+                    });
+                    console.log(`✅ App overlay "${syntheticName}" rendered (${result.mode}) → ${result.path}`);
+                    // Register as virtual asset (APNG with transparency)
+                    assetManager.addVirtualAsset({
+                        name: syntheticName,
+                        path: result.path,
+                        type: "video",
+                        duration,
+                        width: output.resolution.width,
+                        height: output.resolution.height,
+                        rotation: 0,
+                        hasVideo: true,
+                        hasAudio: false,
+                    });
+                    // Inject data-asset so CSSProcessor picks it up normally
+                    fragment.element.attribs["data-asset"] = syntheticName;
+                }
+            }
+        }
+        finally {
+            await browser.close();
+        }
     }
     async prepareAssets(context) {
         const renderAssets = [];

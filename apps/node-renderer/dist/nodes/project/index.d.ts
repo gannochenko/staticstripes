@@ -24,6 +24,8 @@ export declare class ProjectNode implements INode {
     validateParameters(): ValidationError[];
     getParameterSchema(): NodeParameter[];
     execute(context: NodeExecutionContext): Promise<Record<string, any>>;
+    private parseTimeMs;
+    private renderFragmentApps;
     private prepareAssets;
     private buildFilterGraph;
 }

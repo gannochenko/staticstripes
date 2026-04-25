@@ -30,6 +30,15 @@ export interface Output {
     fps: number;
 }
 /**
+ * Inline app overlay defined as a child <app> element inside a <fragment>
+ */
+export interface FragmentApp {
+    /** Path to the app's dst/dist directory (supports basePath: prefix) */
+    src: string;
+    /** Parameters passed to the app via URL query string */
+    parameters: Record<string, string>;
+}
+/**
  * Fragment definition
  */
 export interface Fragment {
@@ -41,6 +50,8 @@ export interface Fragment {
     timecode?: string;
     /** Raw element for accessing children */
     element: Element;
+    /** Inline app overlay (from <app> child element) */
+    app?: FragmentApp;
 }
 /**
  * Sequence definition

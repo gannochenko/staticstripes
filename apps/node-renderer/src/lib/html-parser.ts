@@ -11,6 +11,7 @@ import {
   Output,
   Sequence,
   Fragment,
+  FragmentApp,
   FFmpegOption,
   CSSProperties,
 } from './type';
@@ -428,11 +429,31 @@ export class HTMLParser {
       const fragments: Fragment[] = fragmentElements.map((fragEl) => {
         const attrs = this.getAttributes(fragEl);
 
+        // Parse optional inline <app> child element
+        let app: FragmentApp | undefined;
+        const appElements = findChildElementsByTagName(fragEl, 'app');
+        if (appElements.length > 0) {
+          const appEl = appElements[0];
+          const appAttrs = this.getAttributes(appEl);
+          const src = appAttrs.get('src') || '';
+          const parametersStr = appAttrs.get('data-parameters') || '{}';
+          let parameters: Record<string, string> = {};
+          try {
+            parameters = JSON.parse(parametersStr);
+          } catch {
+            console.warn(`⚠️  Failed to parse app data-parameters: ${parametersStr}`);
+          }
+          if (src) {
+            app = { src, parameters };
+          }
+        }
+
         return {
           class: attrs.get('class'),
           id: attrs.get('id'),
           timecode: attrs.get('timecode'),
           element: fragEl,
+          app,
         };
       });
 

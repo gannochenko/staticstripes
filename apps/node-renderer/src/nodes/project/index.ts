@@ -18,8 +18,11 @@ import {
   getAssetDuration,
   hasAudioStream,
 } from "./rendering";
-import { resolve, dirname } from "path";
+import { resolve, dirname, isAbsolute } from "path";
 import { existsSync, mkdirSync } from "fs";
+import puppeteer from "puppeteer";
+import { buildAppIfNeeded } from "../app/app-builder";
+import { renderApp } from "../app/app-renderer";
 import type {
   Asset as RenderAsset,
   Output as RenderOutput,
@@ -144,6 +147,23 @@ export class ProjectNode implements INode {
       fragments: new Map(),
     };
 
+    // Render inline app overlays (fragments with <app> children) before filter graph
+    if (this.params.sequences.some((s) => s.fragments.some((f) => f.app))) {
+      const firstOutput = this.params.outputs[0];
+      if (firstOutput) {
+        const appRenderOutput: RenderOutput = {
+          name: firstOutput.name,
+          path: "",
+          resolution: {
+            width: parseInt(firstOutput.resolution.split("x")[0]),
+            height: parseInt(firstOutput.resolution.split("x")[1]),
+          },
+          fps: firstOutput.fps,
+        };
+        await this.renderFragmentApps(context, assetManager, appRenderOutput);
+      }
+    }
+
     // Result map: output name -> rendered file path
     const results: Record<string, string> = {};
 
@@ -215,6 +235,109 @@ export class ProjectNode implements INode {
     }
 
     return results;
+  }
+
+  private parseTimeMs(timeStr: string): number {
+    const t = timeStr.trim();
+    if (t.endsWith("ms")) return parseFloat(t);
+    if (t.endsWith("s")) return parseFloat(t) * 1000;
+    return parseFloat(t) || 0;
+  }
+
+  private async renderFragmentApps(
+    context: NodeExecutionContext,
+    assetManager: AssetManager,
+    output: RenderOutput,
+  ): Promise<void> {
+    console.log("🎨 Rendering inline app overlays...");
+
+    const browser = await puppeteer.launch({
+      headless: true,
+      args: [
+        "--no-sandbox",
+        "--disable-setuid-sandbox",
+        "--allow-file-access-from-files",
+      ],
+      protocolTimeout: 120000,
+    });
+
+    try {
+      let appIndex = 0;
+
+      for (const sequence of this.params.sequences) {
+        for (const fragment of sequence.fragments) {
+          if (!fragment.app) continue;
+
+          const syntheticName = `__app_overlay_${appIndex++}`;
+
+          // Resolve duration from CSS
+          const styles = this.params.css?.get(fragment.element) || {};
+          const duration = this.parseTimeMs(styles["-duration"] || "0ms");
+          if (duration <= 0) {
+            throw new Error(
+              `Fragment with inline <app src="${fragment.app.src}"> has no -duration in its CSS. ` +
+              `Add a -duration property to the fragment's CSS class.`,
+            );
+          }
+
+          // Resolve app src path
+          const resolvedSrc = resolveAssetPath(fragment.app.src, context.basePaths);
+          const appSrc = isAbsolute(resolvedSrc)
+            ? resolvedSrc
+            : resolve(context.projectDir, resolvedSrc);
+
+          // Build app if needed
+          await buildAppIfNeeded({
+            appSrc,
+            projectDir: context.projectDir,
+            basePaths: context.basePaths,
+            force: false,
+          });
+
+          const app = {
+            id: syntheticName,
+            src: appSrc,
+            parameters: fragment.app.parameters,
+          };
+
+          const result = await renderApp({
+            app,
+            width: output.resolution.width,
+            height: output.resolution.height,
+            projectDir: context.projectDir,
+            outputName: output.name,
+            title: this.params.title || "",
+            date: undefined,
+            tags: this.params.tags || [],
+            fps: output.fps,
+            duration,
+            browser,
+          });
+
+          console.log(
+            `✅ App overlay "${syntheticName}" rendered (${result.mode}) → ${result.path}`,
+          );
+
+          // Register as virtual asset (APNG with transparency)
+          assetManager.addVirtualAsset({
+            name: syntheticName,
+            path: result.path,
+            type: "video",
+            duration,
+            width: output.resolution.width,
+            height: output.resolution.height,
+            rotation: 0,
+            hasVideo: true,
+            hasAudio: false,
+          });
+
+          // Inject data-asset so CSSProcessor picks it up normally
+          fragment.element.attribs["data-asset"] = syntheticName;
+        }
+      }
+    } finally {
+      await browser.close();
+    }
   }
 
   private async prepareAssets(

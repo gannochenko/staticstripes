@@ -1,6 +1,6 @@
-import { useRef, useState, useLayoutEffect } from "react";
+import { useRef, useState, useLayoutEffect, useEffect } from "react";
 import "@gannochenko/viewer-tools/styles.css";
-import { VideoFrame, RenderingView, useAppParams } from "@gannochenko/viewer-tools";
+import { VideoFrame, RenderingView, useAppParams, AnimationCapture } from "@gannochenko/viewer-tools";
 import { PARAMETER_SCHEMA, type AppParams } from "./schema";
 
 // ---------------------------------------------------------------------------
@@ -340,6 +340,28 @@ export default function App() {
   const resolvedTitle = title ?? "Grafrat – hidden gem";
   const resolvedVerticalOffset = verticalOffset ?? "20";
   const resolvedFontSize = fontSize ?? "4.5";
+
+  useEffect(() => {
+    if (!rendering) return;
+
+    const capture = new AnimationCapture();
+    if (!capture.isRendering) return;
+
+    let cancelled = false;
+    (async () => {
+      // Double RAF ensures layout and paint are complete before screenshot
+      await new Promise((r) => requestAnimationFrame(r));
+      await new Promise((r) => requestAnimationFrame(r));
+      if (cancelled) return;
+      // Capture frame 0 — mergeFramesToVideo duplicates it to fill the full duration
+      await capture.captureFrame(0);
+      capture.done();
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [rendering]);
 
   if (rendering) {
     return (

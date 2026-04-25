@@ -368,11 +368,31 @@ class HTMLParser {
             const fragmentElements = this.findDescendantsByTagName(sequenceEl, 'fragment');
             const fragments = fragmentElements.map((fragEl) => {
                 const attrs = this.getAttributes(fragEl);
+                // Parse optional inline <app> child element
+                let app;
+                const appElements = findChildElementsByTagName(fragEl, 'app');
+                if (appElements.length > 0) {
+                    const appEl = appElements[0];
+                    const appAttrs = this.getAttributes(appEl);
+                    const src = appAttrs.get('src') || '';
+                    const parametersStr = appAttrs.get('data-parameters') || '{}';
+                    let parameters = {};
+                    try {
+                        parameters = JSON.parse(parametersStr);
+                    }
+                    catch {
+                        console.warn(`⚠️  Failed to parse app data-parameters: ${parametersStr}`);
+                    }
+                    if (src) {
+                        app = { src, parameters };
+                    }
+                }
                 return {
                     class: attrs.get('class'),
                     id: attrs.get('id'),
                     timecode: attrs.get('timecode'),
                     element: fragEl,
+                    app,
                 };
             });
             return { fragments };
