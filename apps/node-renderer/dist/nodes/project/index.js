@@ -154,8 +154,15 @@ class ProjectNode {
             if (filterComplex.length < 500) {
                 console.log(`   Filter: ${filterComplex.substring(0, 200)}...`);
             }
-            // Get FFmpeg args from options
-            const ffmpegArgs = this.params.ffmpegOptions[0]?.args || "";
+            // Get FFmpeg args from options — use named profile if specified, else first option
+            const profile = context.ffmpegProfile;
+            const selectedOption = profile
+                ? this.params.ffmpegOptions.find((o) => o.name === profile) ?? this.params.ffmpegOptions[0]
+                : this.params.ffmpegOptions[0];
+            if (profile && !this.params.ffmpegOptions.find((o) => o.name === profile)) {
+                console.warn(`⚠️  FFmpeg profile "${profile}" not found, using first option`);
+            }
+            const ffmpegArgs = selectedOption?.args || "";
             // Generate FFmpeg command
             const ffmpegCommand = (0, rendering_1.makeFFmpegCommand)(assetManager.getAssetIndexMap(), new Map(renderAssets.map((a) => [a.name, a])), renderOutput, filterComplex, ffmpegArgs);
             console.log(`\n🔧 FFmpeg command:\n${ffmpegCommand}\n`);

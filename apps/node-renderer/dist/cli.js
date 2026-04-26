@@ -51,6 +51,7 @@ Options:
   --no-cache          Disable caching
   --verbose, -v       Verbose output
   --validate-only     Only validate, don't execute
+  --profile <name>    FFmpeg option profile to use (e.g. preview, prod)
   --help, -h          Show this help
 
 Examples:
@@ -58,6 +59,7 @@ Examples:
   node-renderer project.html --verbose
   node-renderer project.html --validate-only
   node-renderer project.html --no-cache
+  node-renderer project.html --profile prod
 `);
 }
 function parseArgs() {
@@ -70,11 +72,14 @@ function parseArgs() {
     const enableCache = !args.includes('--no-cache');
     const verbose = args.includes('--verbose') || args.includes('-v');
     const validate = args.includes('--validate-only');
+    const profileIdx = args.indexOf('--profile');
+    const ffmpegProfile = profileIdx !== -1 ? args[profileIdx + 1] : undefined;
     return {
         projectPath,
         enableCache,
         verbose,
         validate,
+        ffmpegProfile,
     };
 }
 function printSeparator(char = '=', length = 60) {
@@ -183,7 +188,7 @@ async function validateProject(projectPath, verbose) {
         return false;
     }
 }
-async function executeProject(projectPath, enableCache, verbose) {
+async function executeProject(projectPath, enableCache, verbose, ffmpegProfile) {
     printHeader('🚀 Executing Project');
     const absolutePath = path.resolve(projectPath);
     try {
@@ -214,6 +219,7 @@ async function executeProject(projectPath, enableCache, verbose) {
             enableCache,
             outputResolution,
             outputFps,
+            ffmpegProfile,
             onNodeStart: (nodeName) => {
                 console.log(`🔄 Executing: ${nodeName}`);
             },
@@ -326,7 +332,7 @@ async function main() {
     printHeader('✅ Validation Passed');
     // Execute if not validate-only
     if (!options.validate) {
-        success = await executeProject(options.projectPath, options.enableCache !== false, options.verbose || false);
+        success = await executeProject(options.projectPath, options.enableCache !== false, options.verbose || false, options.ffmpegProfile);
     }
     else {
         success = true;

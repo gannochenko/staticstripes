@@ -158,6 +158,9 @@ export function makeFFmpegCommand(
     parts.push(ffmpegArgs);
   }
 
+  // Enable faststart so moov atom is at the front of the file (streamable)
+  parts.push('-movflags +faststart');
+
   // Add output path
   parts.push(`"${output.path}"`);
 

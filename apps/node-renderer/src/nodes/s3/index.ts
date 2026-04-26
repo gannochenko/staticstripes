@@ -7,7 +7,7 @@ import type {
   NodeExecutionContext,
 } from '../../lib/node-interface';
 import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
-import { readFileSync, existsSync, mkdirSync } from 'fs';
+import { createReadStream, readFileSync, existsSync, mkdirSync, statSync } from 'fs';
 import { exec } from 'child_process';
 import { promisify } from 'util';
 import { dirname, resolve } from 'path';
@@ -230,15 +230,19 @@ export class S3Node implements INode {
 
     const s3Client = new S3Client(s3Config);
 
-    // Upload video file
-    console.log(`📤 Uploading video file...`);
-    const fileBuffer = readFileSync(sourcePath);
+    // Upload video file using a stream to avoid loading the full file into RAM
+    const fileSizeBytes = statSync(sourcePath).size;
+    const fileSizeMb = (fileSizeBytes / 1024 / 1024).toFixed(1);
+    console.log(`📤 Uploading video file (${fileSizeMb} MB)...`);
 
     const fileUploadParams: any = {
       Bucket: this.params.bucket,
       Key: filePath,
-      Body: fileBuffer,
+      Body: createReadStream(sourcePath),
       ContentType: 'video/mp4',
+      ContentLength: fileSizeBytes,
+      ContentDisposition: 'inline',
+      CacheControl: 'public, max-age=31536000, immutable',
     };
 
     if (this.params.acl) {

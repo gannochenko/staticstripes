@@ -249,6 +249,7 @@ class DAGRunner {
                     cacheDir: undefined, // TODO: Implement cache directory
                     outputResolution: this.options.outputResolution || { width: 1920, height: 1080 },
                     outputFps: this.options.outputFps || 30,
+                    ffmpegProfile: this.options.ffmpegProfile,
                 };
                 const result = await node.execute(nodeContext);
                 // Store results in outputs map

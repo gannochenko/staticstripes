@@ -114,6 +114,7 @@ export interface DAGRunnerOptions {
         height: number;
     };
     outputFps?: number;
+    ffmpegProfile?: string;
 }
 /**
  * Executes a DAG of nodes
