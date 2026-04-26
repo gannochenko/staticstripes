@@ -31,10 +31,15 @@ class ProjectNode {
         return [];
     }
     getOutputs() {
-        return this.params.outputs.map((output) => ({
-            name: output.name,
-            description: `Video output: ${output.resolution} @ ${output.fps}fps`,
-        }));
+        return [
+            ...this.params.outputs.map((output) => ({
+                name: output.name,
+                description: `Video output: ${output.resolution} @ ${output.fps}fps`,
+            })),
+            { name: 'title', description: 'Project title' },
+            { name: 'date', description: 'Project date (ISO 8601)' },
+            { name: 'tags', description: 'Project tags' },
+        ];
     }
     validateParameters() {
         const errors = [];
@@ -120,7 +125,7 @@ class ProjectNode {
                 await this.renderFragmentApps(context, assetManager, appRenderOutput);
             }
         }
-        // Result map: output name -> rendered file path
+        // Result map: output name -> value
         const results = {};
         // Render each output
         for (const output of this.params.outputs) {
@@ -171,6 +176,9 @@ class ProjectNode {
             console.log(`✅ Output "${output.name}" rendered to: ${renderOutput.path}`);
             results[output.name] = renderOutput.path;
         }
+        results['title'] = this.params.title ?? null;
+        results['date'] = this.params.date ?? null;
+        results['tags'] = this.params.tags;
         return results;
     }
     parseTimeMs(timeStr) {

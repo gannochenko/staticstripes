@@ -33,6 +33,7 @@ import { DAGValidator } from "../../lib/dag-validator";
 export interface ProjectNodeParams {
   name?: string;
   title?: string;
+  date?: string;
   tags: string[];
   basePaths: BasePath[];
   outputs: Output[];
@@ -61,10 +62,15 @@ export class ProjectNode implements INode {
   }
 
   public getOutputs(): NodeOutput[] {
-    return this.params.outputs.map((output) => ({
-      name: output.name,
-      description: `Video output: ${output.resolution} @ ${output.fps}fps`,
-    }));
+    return [
+      ...this.params.outputs.map((output) => ({
+        name: output.name,
+        description: `Video output: ${output.resolution} @ ${output.fps}fps`,
+      })),
+      { name: 'title', description: 'Project title' },
+      { name: 'date', description: 'Project date (ISO 8601)' },
+      { name: 'tags', description: 'Project tags' },
+    ];
   }
 
   public validateParameters(): ValidationError[] {
@@ -164,8 +170,8 @@ export class ProjectNode implements INode {
       }
     }
 
-    // Result map: output name -> rendered file path
-    const results: Record<string, string> = {};
+    // Result map: output name -> value
+    const results: Record<string, any> = {};
 
     // Render each output
     for (const output of this.params.outputs) {
@@ -247,6 +253,10 @@ export class ProjectNode implements INode {
       );
       results[output.name] = renderOutput.path;
     }
+
+    results['title'] = this.params.title ?? null;
+    results['date'] = this.params.date ?? null;
+    results['tags'] = this.params.tags;
 
     return results;
   }

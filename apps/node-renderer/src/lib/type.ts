@@ -106,6 +106,9 @@ export interface ProjectContent {
   /** Project title */
   title?: string;
 
+  /** Project date (ISO 8601) */
+  date?: string;
+
   /** Project tags */
   tags: string[];
 

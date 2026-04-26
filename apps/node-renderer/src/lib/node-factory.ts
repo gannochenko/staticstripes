@@ -89,6 +89,7 @@ export class NodeFactory {
     return {
       name: parsedNode.name,
       title: content.title,
+      date: content.date,
       tags: content.tags,
       basePaths: content.basePaths,
       outputs,

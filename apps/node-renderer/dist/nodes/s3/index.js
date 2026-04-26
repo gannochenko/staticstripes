@@ -126,6 +126,11 @@ class S3Node {
             throw new Error(`Invalid path reference format: "${this.params.pathRef}". Expected format: $nodeName.output.outputName`);
         }
         const [, nodeName, outputName] = match;
+        // Build template variable substitution map
+        const slug = (0, path_1.basename)(context.projectDir);
+        const resolvePath = (template) => template
+            .replace(/\$\{slug\}/g, slug)
+            .replace(/\$\{output\}/g, outputName);
         // Get source file path from upstream node
         const sourcePath = context.getOutput(nodeName, outputName);
         if (!sourcePath) {
@@ -139,7 +144,7 @@ class S3Node {
         if (!filePathConfig) {
             throw new Error('S3 node requires a path config with name="file"');
         }
-        const filePath = filePathConfig.path;
+        const filePath = resolvePath(filePathConfig.path);
         // Load credentials
         const credentialsManager = new credentials_1.CredentialsManager(context.projectDir, this.params.name || 's3');
         let credentials;
@@ -176,14 +181,18 @@ class S3Node {
             s3Config.forcePathStyle = false;
         }
         const s3Client = new client_s3_1.S3Client(s3Config);
-        // Upload video file
-        console.log(`📤 Uploading video file...`);
-        const fileBuffer = (0, fs_1.readFileSync)(sourcePath);
+        // Upload video file using a stream to avoid loading the full file into RAM
+        const fileSizeBytes = (0, fs_1.statSync)(sourcePath).size;
+        const fileSizeMb = (fileSizeBytes / 1024 / 1024).toFixed(1);
+        console.log(`📤 Uploading video file (${fileSizeMb} MB)...`);
         const fileUploadParams = {
             Bucket: this.params.bucket,
             Key: filePath,
-            Body: fileBuffer,
+            Body: (0, fs_1.createReadStream)(sourcePath),
             ContentType: 'video/mp4',
+            ContentLength: fileSizeBytes,
+            ContentDisposition: 'inline',
+            CacheControl: 'public, max-age=31536000, immutable',
         };
         if (this.params.acl) {
             fileUploadParams.ACL = this.params.acl;
@@ -209,7 +218,7 @@ class S3Node {
                 const thumbnailPath = (0, path_1.resolve)(context.projectDir, '.cache', 'thumbnail.jpeg');
                 await this.extractThumbnail(sourcePath, thumbnailTimecode, thumbnailPath);
                 console.log(`📤 Uploading thumbnail...`);
-                const s3ThumbnailPath = thumbnailPathConfig.path;
+                const s3ThumbnailPath = resolvePath(thumbnailPathConfig.path);
                 const thumbnailBuffer = (0, fs_1.readFileSync)(thumbnailPath);
                 const thumbnailUploadParams = {
                     Bucket: this.params.bucket,
@@ -235,7 +244,7 @@ class S3Node {
         const metadataPathConfig = this.params.paths.find(p => p.name === 'metadata');
         if (metadataPathConfig) {
             console.log(`\n📤 Uploading metadata file...`);
-            const metadataPath = metadataPathConfig.path;
+            const metadataPath = resolvePath(metadataPathConfig.path);
             // Get video duration
             const durationMs = await this.getVideoDuration(sourcePath);
             // Calculate relative path to thumbnail if it exists
@@ -243,15 +252,20 @@ class S3Node {
             if (thumbnailUrl) {
                 const thumbnailPathConfig = this.params.paths.find(p => p.name === 'thumbnail');
                 if (thumbnailPathConfig) {
-                    relativeThumbnailPath = this.getRelativePath(metadataPath, thumbnailPathConfig.path);
+                    relativeThumbnailPath = this.getRelativePath(metadataPath, resolvePath(thumbnailPathConfig.path));
                 }
             }
+            // Pull project metadata from upstream node outputs
+            const projectTitle = context.getOutput(nodeName, 'title') ?? null;
+            const projectDate = context.getOutput(nodeName, 'date') ?? null;
+            const projectTags = context.getOutput(nodeName, 'tags') ?? [];
             // Create metadata JSON
             const metadata = {
-                title: null,
-                date: null,
-                tags: [],
+                title: projectTitle,
+                date: projectDate,
+                tags: projectTags,
                 duration: durationMs,
+                file: (0, path_1.basename)(filePath),
                 thumbnail: relativeThumbnailPath || null,
             };
             const metadataBuffer = Buffer.from(JSON.stringify(metadata, null, 2), 'utf-8');

@@ -3,6 +3,7 @@ import type { Output, Sequence, Asset, BasePath, FFmpegOption } from "../../lib/
 export interface ProjectNodeParams {
     name?: string;
     title?: string;
+    date?: string;
     tags: string[];
     basePaths: BasePath[];
     outputs: Output[];

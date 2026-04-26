@@ -10,7 +10,7 @@ import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
 import { createReadStream, readFileSync, existsSync, mkdirSync, statSync } from 'fs';
 import { exec } from 'child_process';
 import { promisify } from 'util';
-import { dirname, resolve } from 'path';
+import { dirname, resolve, basename } from 'path';
 import { CredentialsManager } from '../../lib/credentials';
 
 const execAsync = promisify(exec);
@@ -164,6 +164,13 @@ export class S3Node implements INode {
 
     const [, nodeName, outputName] = match;
 
+    // Build template variable substitution map
+    const slug = basename(context.projectDir);
+    const resolvePath = (template: string) =>
+      template
+        .replace(/\$\{slug\}/g, slug)
+        .replace(/\$\{output\}/g, outputName);
+
     // Get source file path from upstream node
     const sourcePath = context.getOutput(nodeName, outputName);
     if (!sourcePath) {
@@ -182,7 +189,7 @@ export class S3Node implements INode {
       throw new Error('S3 node requires a path config with name="file"');
     }
 
-    const filePath = filePathConfig.path;
+    const filePath = resolvePath(filePathConfig.path);
 
     // Load credentials
     const credentialsManager = new CredentialsManager(
@@ -274,7 +281,7 @@ export class S3Node implements INode {
         await this.extractThumbnail(sourcePath, thumbnailTimecode, thumbnailPath);
 
         console.log(`📤 Uploading thumbnail...`);
-        const s3ThumbnailPath = thumbnailPathConfig.path;
+        const s3ThumbnailPath = resolvePath(thumbnailPathConfig.path);
         const thumbnailBuffer = readFileSync(thumbnailPath);
 
         const thumbnailUploadParams: any = {
@@ -305,7 +312,7 @@ export class S3Node implements INode {
     const metadataPathConfig = this.params.paths.find(p => p.name === 'metadata');
     if (metadataPathConfig) {
       console.log(`\n📤 Uploading metadata file...`);
-      const metadataPath = metadataPathConfig.path;
+      const metadataPath = resolvePath(metadataPathConfig.path);
 
       // Get video duration
       const durationMs = await this.getVideoDuration(sourcePath);
@@ -315,16 +322,22 @@ export class S3Node implements INode {
       if (thumbnailUrl) {
         const thumbnailPathConfig = this.params.paths.find(p => p.name === 'thumbnail');
         if (thumbnailPathConfig) {
-          relativeThumbnailPath = this.getRelativePath(metadataPath, thumbnailPathConfig.path);
+          relativeThumbnailPath = this.getRelativePath(metadataPath, resolvePath(thumbnailPathConfig.path));
         }
       }
 
+      // Pull project metadata from upstream node outputs
+      const projectTitle = context.getOutput(nodeName, 'title') ?? null;
+      const projectDate = context.getOutput(nodeName, 'date') ?? null;
+      const projectTags: string[] = context.getOutput(nodeName, 'tags') ?? [];
+
       // Create metadata JSON
       const metadata = {
-        title: null,
-        date: null,
-        tags: [],
+        title: projectTitle,
+        date: projectDate,
+        tags: projectTags,
         duration: durationMs,
+        file: basename(filePath),
         thumbnail: relativeThumbnailPath || null,
       };
 

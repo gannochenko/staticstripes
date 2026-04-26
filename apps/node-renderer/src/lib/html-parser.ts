@@ -132,6 +132,10 @@ export class HTMLParser {
     // Extract title
     const title = this.extractTitle(projectElement);
 
+    // Extract date
+    const dateElements = findChildElementsByTagName(projectElement, 'date');
+    const date = dateElements.length > 0 ? getTextContent(dateElements[0]).trim() : undefined;
+
     // Extract tags
     const tags = this.extractTags(projectElement);
 
@@ -156,6 +160,7 @@ export class HTMLParser {
 
     return {
       title,
+      date,
       tags,
       cssText,
       css,
