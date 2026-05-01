@@ -146,6 +146,12 @@ class Sequence {
                 currentVideoStream.fps(this.output.fps);
                 // fitting the video stream into the output frame
                 if (fragment.objectFit === "ken-burns") {
+                    // Pre-fit images to output AR before zoompan to prevent stretching
+                    // when the image AR (e.g. portrait) differs from the output AR (landscape).
+                    // After fitOutputSimple, iw=W and ih=H, so zoompan expressions work correctly.
+                    if (asset.type === "image") {
+                        currentVideoStream.fitOutputSimple(this.output.resolution);
+                    }
                     // Ken Burns effect (zoom/pan)
                     currentVideoStream.kenBurns({
                         effect: fragment.objectFitKenBurns,
