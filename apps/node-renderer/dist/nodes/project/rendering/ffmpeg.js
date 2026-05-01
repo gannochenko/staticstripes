@@ -35,6 +35,7 @@ exports.makeFade = makeFade;
 exports.makeColor = makeColor;
 exports.makeAnullsrc = makeAnullsrc;
 exports.makeAmix = makeAmix;
+exports.makeDrawtext = makeDrawtext;
 const child_process_1 = require("child_process");
 const label_generator_1 = require("./label-generator");
 /**
@@ -1111,6 +1112,27 @@ function makeAmix(inputs, options = {}) {
         params.push(`normalize=${options.normalize ? '1' : '0'}`);
     }
     return new Filter(inputs, [output], `amix=${params.join(':')}`);
+}
+/**
+ * Creates a drawtext filter to overlay text on video
+ */
+function makeDrawtext(inputs, options) {
+    const input = inputs[0];
+    if (input.isAudio) {
+        throw new Error(`makeDrawtext: input must be video, got audio (tag: ${input.tag})`);
+    }
+    const output = { tag: (0, label_generator_1.getLabel)(), isAudio: false };
+    const params = [
+        `text='${options.text}'`,
+        `fontsize=${options.fontsize ?? 22}`,
+        `fontcolor=${options.fontcolor ?? 'white'}`,
+        `box=1`,
+        `boxcolor=${options.boxcolor ?? 'black@0.5'}`,
+        `boxborderw=${options.boxborderw ?? 5}`,
+        `x=${options.x ?? 10}`,
+        `y=${options.y ?? 10}`,
+    ];
+    return new Filter(inputs, [output], `drawtext=${params.join(':')}`);
 }
 /**
  * Wraps a label in brackets

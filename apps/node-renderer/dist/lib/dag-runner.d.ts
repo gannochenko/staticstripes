@@ -115,6 +115,9 @@ export interface DAGRunnerOptions {
     };
     outputFps?: number;
     ffmpegProfile?: string;
+    force?: boolean;
+    showTime?: boolean;
+    timeFormat?: 'ms' | 'hms';
 }
 /**
  * Executes a DAG of nodes

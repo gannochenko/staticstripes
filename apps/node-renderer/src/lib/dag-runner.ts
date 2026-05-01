@@ -166,6 +166,9 @@ export interface DAGRunnerOptions {
   outputResolution?: { width: number; height: number };
   outputFps?: number;
   ffmpegProfile?: string;
+  force?: boolean;
+  showTime?: boolean;
+  timeFormat?: 'ms' | 'hms';
 }
 
 /**
@@ -311,6 +314,9 @@ export class DAGRunner {
           outputResolution: this.options.outputResolution || { width: 1920, height: 1080 },
           outputFps: this.options.outputFps || 30,
           ffmpegProfile: this.options.ffmpegProfile,
+          force: this.options.force,
+          showTime: this.options.showTime,
+          timeFormat: this.options.timeFormat,
         };
 
         const result = await node.execute(nodeContext);

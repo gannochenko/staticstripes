@@ -804,6 +804,12 @@ class Stream {
         }
         return this;
     }
+    drawTimecode(text, options = {}) {
+        const res = (0, ffmpeg_1.makeDrawtext)([this.looseEnd], { text, ...options });
+        this.looseEnd = res.outputs[0];
+        this.buf.append(res);
+        return this;
+    }
     getLooseEnd() {
         return this.looseEnd;
     }

@@ -26,6 +26,7 @@ import {
   makeColor,
   makeVignette,
   makeColorBalance,
+  makeDrawtext,
 } from './ffmpeg';
 
 export const PILLARBOX = 'pillarbox';
@@ -1058,6 +1059,16 @@ export class Stream {
         throw new Error(`Unknown Instagram filter: ${filterName}`);
     }
 
+    return this;
+  }
+
+  public drawTimecode(
+    text: string,
+    options: { x?: string | number; y?: string | number; fontsize?: number; fontcolor?: string } = {},
+  ): Stream {
+    const res = makeDrawtext([this.looseEnd], { text, ...options });
+    this.looseEnd = res.outputs[0];
+    this.buf.append(res);
     return this;
   }
 

@@ -13,6 +13,9 @@ interface CLIOptions {
   verbose?: boolean;
   validate?: boolean;
   ffmpegProfile?: string;
+  force?: boolean;
+  showTime?: boolean;
+  timeFormat?: 'ms' | 'hms';
 }
 
 function printUsage() {
@@ -27,6 +30,9 @@ Options:
   --verbose, -v       Verbose output
   --validate-only     Only validate, don't execute
   --profile <name>    FFmpeg option profile to use (e.g. preview, prod)
+  --force             Overwrite existing output files instead of skipping
+  --show-time         Overlay global timecode and per-fragment labels on video
+  --time-format <ms|hms>  Timecode format: ms (milliseconds) or hms (HH:MM:SS, default)
   --help, -h          Show this help
 
 Examples:
@@ -53,6 +59,10 @@ function parseArgs(): CLIOptions | null {
 
   const profileIdx = args.indexOf('--profile');
   const ffmpegProfile = profileIdx !== -1 ? args[profileIdx + 1] : undefined;
+  const force = args.includes('--force');
+  const showTime = args.includes('--show-time');
+  const timeFormatIdx = args.indexOf('--time-format');
+  const timeFormat = (timeFormatIdx !== -1 ? args[timeFormatIdx + 1] : 'hms') as 'ms' | 'hms';
 
   return {
     projectPath,
@@ -60,6 +70,9 @@ function parseArgs(): CLIOptions | null {
     verbose,
     validate,
     ffmpegProfile,
+    force,
+    showTime,
+    timeFormat,
   };
 }
 
@@ -192,6 +205,9 @@ async function executeProject(
   enableCache: boolean,
   verbose: boolean,
   ffmpegProfile?: string,
+  force?: boolean,
+  showTime?: boolean,
+  timeFormat?: 'ms' | 'hms',
 ): Promise<boolean> {
   printHeader('🚀 Executing Project');
 
@@ -231,6 +247,9 @@ async function executeProject(
       outputResolution,
       outputFps,
       ffmpegProfile,
+      force,
+      showTime,
+      timeFormat,
       onNodeStart: (nodeName) => {
         console.log(`🔄 Executing: ${nodeName}`);
       },
@@ -368,6 +387,9 @@ async function main() {
       options.enableCache !== false,
       options.verbose || false,
       options.ffmpegProfile,
+      options.force,
+      options.showTime,
+      options.timeFormat,
     );
   } else {
     success = true;

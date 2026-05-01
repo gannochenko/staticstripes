@@ -52,6 +52,9 @@ Options:
   --verbose, -v       Verbose output
   --validate-only     Only validate, don't execute
   --profile <name>    FFmpeg option profile to use (e.g. preview, prod)
+  --force             Overwrite existing output files instead of skipping
+  --show-time         Overlay global timecode and per-fragment labels on video
+  --time-format <ms|hms>  Timecode format: ms (milliseconds) or hms (HH:MM:SS, default)
   --help, -h          Show this help
 
 Examples:
@@ -74,12 +77,19 @@ function parseArgs() {
     const validate = args.includes('--validate-only');
     const profileIdx = args.indexOf('--profile');
     const ffmpegProfile = profileIdx !== -1 ? args[profileIdx + 1] : undefined;
+    const force = args.includes('--force');
+    const showTime = args.includes('--show-time');
+    const timeFormatIdx = args.indexOf('--time-format');
+    const timeFormat = (timeFormatIdx !== -1 ? args[timeFormatIdx + 1] : 'hms');
     return {
         projectPath,
         enableCache,
         verbose,
         validate,
         ffmpegProfile,
+        force,
+        showTime,
+        timeFormat,
     };
 }
 function printSeparator(char = '=', length = 60) {
@@ -188,7 +198,7 @@ async function validateProject(projectPath, verbose) {
         return false;
     }
 }
-async function executeProject(projectPath, enableCache, verbose, ffmpegProfile) {
+async function executeProject(projectPath, enableCache, verbose, ffmpegProfile, force, showTime, timeFormat) {
     printHeader('🚀 Executing Project');
     const absolutePath = path.resolve(projectPath);
     try {
@@ -220,6 +230,9 @@ async function executeProject(projectPath, enableCache, verbose, ffmpegProfile) 
             outputResolution,
             outputFps,
             ffmpegProfile,
+            force,
+            showTime,
+            timeFormat,
             onNodeStart: (nodeName) => {
                 console.log(`🔄 Executing: ${nodeName}`);
             },
@@ -332,7 +345,7 @@ async function main() {
     printHeader('✅ Validation Passed');
     // Execute if not validate-only
     if (!options.validate) {
-        success = await executeProject(options.projectPath, options.enableCache !== false, options.verbose || false, options.ffmpegProfile);
+        success = await executeProject(options.projectPath, options.enableCache !== false, options.verbose || false, options.ffmpegProfile, options.force, options.showTime, options.timeFormat);
     }
     else {
         success = true;

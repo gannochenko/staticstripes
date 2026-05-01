@@ -8,11 +8,13 @@ export declare class Sequence {
     private output;
     private assetManager;
     private expressionContext;
+    private showTime;
+    private timeFormat;
     private time;
     private videoStream;
     private audioStream;
     private debugInfo;
-    constructor(buf: FilterBuffer, definition: SequenceDefinition, output: Output, assetManager: AssetManager, expressionContext: ExpressionContext);
+    constructor(buf: FilterBuffer, definition: SequenceDefinition, output: Output, assetManager: AssetManager, expressionContext: ExpressionContext, showTime?: boolean, timeFormat?: 'ms' | 'hms');
     build(): void;
     isEmpty(): boolean;
     overlayWith(sequence: Sequence): void;

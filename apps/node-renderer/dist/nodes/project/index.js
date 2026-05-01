@@ -141,8 +141,8 @@ class ProjectNode {
                 },
                 fps: output.fps,
             };
-            // If output already exists, skip rendering and use it as-is
-            if ((0, fs_1.existsSync)(outputPath)) {
+            // If output already exists and --force not set, skip rendering
+            if ((0, fs_1.existsSync)(outputPath) && !context.force) {
                 console.log(`⏭️  Output "${output.name}" already exists, skipping render: ${outputPath}`);
                 results[output.name] = outputPath;
                 continue;
@@ -153,7 +153,7 @@ class ProjectNode {
                 (0, fs_1.mkdirSync)(outputDir, { recursive: true });
             }
             // Build filter graph
-            const filterBuffer = await this.buildFilterGraph(renderOutput, assetManager, expressionContext);
+            const filterBuffer = await this.buildFilterGraph(renderOutput, assetManager, expressionContext, context.showTime, context.timeFormat);
             const filterComplex = filterBuffer.render();
             console.log(`\n🔍 Filter complex length: ${filterComplex.length} characters`);
             if (filterComplex.length < 500) {
@@ -358,7 +358,7 @@ class ProjectNode {
         }
         return renderAssets;
     }
-    async buildFilterGraph(output, assetManager, expressionContext) {
+    async buildFilterGraph(output, assetManager, expressionContext, showTime = false, timeFormat = 'hms') {
         const buf = new rendering_1.FilterBuffer();
         let mainSequence = null;
         // Process sequences with CSS
@@ -368,7 +368,7 @@ class ProjectNode {
         // Build each sequence
         for (const renderSequenceDef of renderSequences) {
             console.log(`   Building sequence with ${renderSequenceDef.fragments.length} fragment(s)`);
-            const seq = new rendering_1.Sequence(buf, renderSequenceDef, output, assetManager, expressionContext);
+            const seq = new rendering_1.Sequence(buf, renderSequenceDef, output, assetManager, expressionContext, showTime, timeFormat);
             if (seq.isEmpty()) {
                 console.log(`   Sequence is empty, skipping`);
                 continue;
@@ -401,6 +401,14 @@ class ProjectNode {
         }
         // End streams with final output labels
         if (mainSequence) {
+            if (showTime) {
+                const timeExpr = timeFormat === 'ms' ? '%{eif\\:t*1000\\:d}ms' : '%{pts\\:hms}';
+                mainSequence.getVideoStream().drawTimecode(timeExpr, {
+                    y: 'h-36',
+                    fontsize: 22,
+                    fontcolor: 'cyan',
+                });
+            }
             mainSequence.getVideoStream().endTo({
                 tag: "outv",
                 isAudio: false,

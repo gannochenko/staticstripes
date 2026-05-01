@@ -196,8 +196,8 @@ export class ProjectNode implements INode {
         fps: output.fps,
       };
 
-      // If output already exists, skip rendering and use it as-is
-      if (existsSync(outputPath)) {
+      // If output already exists and --force not set, skip rendering
+      if (existsSync(outputPath) && !context.force) {
         console.log(`⏭️  Output "${output.name}" already exists, skipping render: ${outputPath}`);
         results[output.name] = outputPath;
         continue;
@@ -214,6 +214,8 @@ export class ProjectNode implements INode {
         renderOutput,
         assetManager,
         expressionContext,
+        context.showTime,
+        context.timeFormat,
       );
 
       const filterComplex = filterBuffer.render();
@@ -484,6 +486,8 @@ export class ProjectNode implements INode {
     output: RenderOutput,
     assetManager: AssetManager,
     expressionContext: ExpressionContext,
+    showTime: boolean = false,
+    timeFormat: 'ms' | 'hms' = 'hms',
   ): Promise<FilterBuffer> {
     const buf = new FilterBuffer();
     let mainSequence: RenderSequence | null = null;
@@ -509,6 +513,8 @@ export class ProjectNode implements INode {
         output,
         assetManager,
         expressionContext,
+        showTime,
+        timeFormat,
       );
 
       if (seq.isEmpty()) {
@@ -549,6 +555,15 @@ export class ProjectNode implements INode {
 
     // End streams with final output labels
     if (mainSequence) {
+      if (showTime) {
+        const timeExpr = timeFormat === 'ms' ? '%{eif\\:t*1000\\:d}ms' : '%{pts\\:hms}';
+        mainSequence.getVideoStream().drawTimecode(timeExpr, {
+          y: 'h-36',
+          fontsize: 22,
+          fontcolor: 'cyan',
+        });
+      }
+
       mainSequence.getVideoStream().endTo({
         tag: "outv",
         isAudio: false,

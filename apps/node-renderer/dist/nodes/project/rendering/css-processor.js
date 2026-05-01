@@ -32,6 +32,10 @@ class CSSProcessor {
     static processFragment(parsedFragment, css) {
         // Get CSS properties for this element
         const styles = css.get(parsedFragment.element) || {};
+        // Skip hidden fragments
+        if (styles["display"] === "none") {
+            return null;
+        }
         // Extract asset name from data-asset attribute or -asset CSS property
         const assetName = parsedFragment.element.attribs?.["data-asset"] || styles["-asset"] || "";
         if (!assetName) {

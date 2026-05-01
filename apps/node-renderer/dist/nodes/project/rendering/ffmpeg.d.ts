@@ -404,4 +404,16 @@ export declare function makeAmix(inputs: Label[], options?: {
     weights?: number[];
     normalize?: boolean;
 }): Filter;
+/**
+ * Creates a drawtext filter to overlay text on video
+ */
+export declare function makeDrawtext(inputs: Label[], options: {
+    text: string;
+    x?: string | number;
+    y?: string | number;
+    fontsize?: number;
+    fontcolor?: string;
+    boxcolor?: string;
+    boxborderw?: number;
+}): Filter;
 //# sourceMappingURL=ffmpeg.d.ts.map

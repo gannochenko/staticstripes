@@ -1567,6 +1567,45 @@ export function makeAmix(
 }
 
 /**
+ * Creates a drawtext filter to overlay text on video
+ */
+export function makeDrawtext(
+  inputs: Label[],
+  options: {
+    text: string;
+    x?: string | number;
+    y?: string | number;
+    fontsize?: number;
+    fontcolor?: string;
+    boxcolor?: string;
+    boxborderw?: number;
+  },
+): Filter {
+  const input = inputs[0];
+
+  if (input.isAudio) {
+    throw new Error(
+      `makeDrawtext: input must be video, got audio (tag: ${input.tag})`,
+    );
+  }
+
+  const output = { tag: getLabel(), isAudio: false };
+
+  const params = [
+    `text='${options.text}'`,
+    `fontsize=${options.fontsize ?? 22}`,
+    `fontcolor=${options.fontcolor ?? 'white'}`,
+    `box=1`,
+    `boxcolor=${options.boxcolor ?? 'black@0.5'}`,
+    `boxborderw=${options.boxborderw ?? 5}`,
+    `x=${options.x ?? 10}`,
+    `y=${options.y ?? 10}`,
+  ];
+
+  return new Filter(inputs, [output], `drawtext=${params.join(':')}`);
+}
+
+/**
  * Wraps a label in brackets
  */
 function wrap(label: string): string {

@@ -145,6 +145,12 @@ export declare class Stream {
      * @param filterName - The filter to apply
      */
     filter(filterName: VisualFilter): Stream;
+    drawTimecode(text: string, options?: {
+        x?: string | number;
+        y?: string | number;
+        fontsize?: number;
+        fontcolor?: string;
+    }): Stream;
     getLooseEnd(): Label;
     render(): string;
 }

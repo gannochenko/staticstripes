@@ -73,6 +73,18 @@ export interface NodeExecutionContext {
      * Defaults to the first defined option if not set
      */
     ffmpegProfile?: string;
+    /**
+     * When true, overwrite existing output files instead of skipping them
+     */
+    force?: boolean;
+    /**
+     * When true, overlay global timecode and per-fragment labels on the video
+     */
+    showTime?: boolean;
+    /**
+     * Format for timecode overlays: 'hms' (HH:MM:SS) or 'ms' (milliseconds)
+     */
+    timeFormat?: 'ms' | 'hms';
 }
 /**
  * Base interface that all node types must implement

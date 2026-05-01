@@ -18,6 +18,14 @@ import {
 } from "./stream";
 import { Output, SequenceDefinition, FragmentDebugInfo } from "./types";
 
+function msToTimecode(ms: number): string {
+  const totalSeconds = Math.floor(ms / 1000);
+  const h = Math.floor(totalSeconds / 3600);
+  const m = Math.floor((totalSeconds % 3600) / 60);
+  const s = totalSeconds % 60;
+  return `${String(h).padStart(2, '0')}\\:${String(m).padStart(2, '0')}\\:${String(s).padStart(2, '0')}`;
+}
+
 export class Sequence {
   private time: number = 0; // time is absolute
 
@@ -31,6 +39,8 @@ export class Sequence {
     private output: Output,
     private assetManager: AssetManager,
     private expressionContext: ExpressionContext,
+    private showTime: boolean = false,
+    private timeFormat: 'ms' | 'hms' = 'hms',
   ) {}
 
   build() {
@@ -285,6 +295,16 @@ export class Sequence {
             },
           ],
         });
+      }
+
+      // per-fragment time label overlay
+      if (this.showTime && asset.hasVideo) {
+        const fragmentStart = this.time + calculatedOverlayLeft;
+        const fragmentEnd = fragmentStart + effectiveDuration;
+        const rangeLabel = `${fragment.assetName}  [${msToTimecode(fragmentStart)} - ${msToTimecode(fragmentEnd)}]`;
+        const timeExpr = this.timeFormat === 'ms' ? '%{eif\\:t*1000\\:d}ms' : '%{pts\\:hms}';
+        currentVideoStream.drawTimecode(rangeLabel, { y: 50, fontsize: 20, fontcolor: 'yellow' });
+        currentVideoStream.drawTimecode(timeExpr, { y: 80, fontsize: 20 });
       }
 
       // merging to the main streams

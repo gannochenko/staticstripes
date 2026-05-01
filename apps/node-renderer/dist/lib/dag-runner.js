@@ -250,6 +250,9 @@ class DAGRunner {
                     outputResolution: this.options.outputResolution || { width: 1920, height: 1080 },
                     outputFps: this.options.outputFps || 30,
                     ffmpegProfile: this.options.ffmpegProfile,
+                    force: this.options.force,
+                    showTime: this.options.showTime,
+                    timeFormat: this.options.timeFormat,
                 };
                 const result = await node.execute(nodeContext);
                 // Store results in outputs map

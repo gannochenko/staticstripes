@@ -3,22 +3,33 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.Sequence = void 0;
 const expression_parser_1 = require("./expression-parser");
 const stream_1 = require("./stream");
+function msToTimecode(ms) {
+    const totalSeconds = Math.floor(ms / 1000);
+    const h = Math.floor(totalSeconds / 3600);
+    const m = Math.floor((totalSeconds % 3600) / 60);
+    const s = totalSeconds % 60;
+    return `${String(h).padStart(2, '0')}\\:${String(m).padStart(2, '0')}\\:${String(s).padStart(2, '0')}`;
+}
 class Sequence {
     buf;
     definition;
     output;
     assetManager;
     expressionContext;
+    showTime;
+    timeFormat;
     time = 0; // time is absolute
     videoStream;
     audioStream;
     debugInfo = []; // Collect debug info during build
-    constructor(buf, definition, output, assetManager, expressionContext) {
+    constructor(buf, definition, output, assetManager, expressionContext, showTime = false, timeFormat = 'hms') {
         this.buf = buf;
         this.definition = definition;
         this.output = output;
         this.assetManager = assetManager;
         this.expressionContext = expressionContext;
+        this.showTime = showTime;
+        this.timeFormat = timeFormat;
     }
     build() {
         let firstOne = true;
@@ -228,6 +239,15 @@ class Sequence {
                         },
                     ],
                 });
+            }
+            // per-fragment time label overlay
+            if (this.showTime && asset.hasVideo) {
+                const fragmentStart = this.time + calculatedOverlayLeft;
+                const fragmentEnd = fragmentStart + effectiveDuration;
+                const rangeLabel = `${fragment.assetName}  [${msToTimecode(fragmentStart)} - ${msToTimecode(fragmentEnd)}]`;
+                const timeExpr = this.timeFormat === 'ms' ? '%{eif\\:t*1000\\:d}ms' : '%{pts\\:hms}';
+                currentVideoStream.drawTimecode(rangeLabel, { y: 50, fontsize: 20, fontcolor: 'yellow' });
+                currentVideoStream.drawTimecode(timeExpr, { y: 80, fontsize: 20 });
             }
             // merging to the main streams
             if (!firstOne) {
