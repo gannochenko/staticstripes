@@ -65,14 +65,21 @@ export class Sequence {
         this.expressionContext,
       );
 
+      const calculatedTrimRight = calculateFinalValue(
+        fragment.trimRight,
+        this.expressionContext,
+      );
+
       const asset = this.assetManager.getAssetByName(fragment.assetName);
       if (!asset) {
         return;
       }
 
-      // If fragment duration is 0 (not explicitly set), use asset's natural duration
-      // This prevents creating null sources with duration=0ms which causes FFmpeg to hang
-      const effectiveDuration = calculatedDuration > 0 ? calculatedDuration : asset.duration;
+      // If fragment duration is 0 (not explicitly set), derive from asset duration minus trims.
+      // This ensures -trim-start and -trim-end correctly shrink the timeline contribution.
+      const effectiveDuration = calculatedDuration > 0
+        ? calculatedDuration
+        : Math.max(0, asset.duration - calculatedTrimLeft - calculatedTrimRight);
 
       const timeContext: TimeData = {
         start: 0,
@@ -139,7 +146,12 @@ export class Sequence {
         }
       }
 
-      if ((calculatedTrimLeft != 0 || (effectiveDuration < asset.duration && effectiveDuration > 0))) {
+      // Apply volume adjustment to audio stream (before trim, on source audio)
+      if (fragment.volume !== 100 && asset.hasAudio && fragment.sound !== "off") {
+        currentAudioStream.volume(fragment.volume);
+      }
+
+      if ((calculatedTrimLeft != 0 || calculatedTrimRight != 0 || (effectiveDuration < asset.duration && effectiveDuration > 0))) {
         // Only trim video if it came from an actual source
         if (asset.hasVideo && effectiveDuration > 0) {
           currentVideoStream.trim(

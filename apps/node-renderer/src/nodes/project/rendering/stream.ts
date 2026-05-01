@@ -27,6 +27,7 @@ import {
   makeVignette,
   makeColorBalance,
   makeDrawtext,
+  makeVolume,
 } from './ffmpeg';
 
 export const PILLARBOX = 'pillarbox';
@@ -1059,6 +1060,13 @@ export class Stream {
         throw new Error(`Unknown Instagram filter: ${filterName}`);
     }
 
+    return this;
+  }
+
+  public volume(percent: number): Stream {
+    const res = makeVolume([this.looseEnd], percent);
+    this.looseEnd = res.outputs[0];
+    this.buf.append(res);
     return this;
   }
 

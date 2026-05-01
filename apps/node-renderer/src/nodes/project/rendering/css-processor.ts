@@ -70,6 +70,10 @@ export class CSSProcessor {
     const trimLeftStr = styles["-trim-start"] || "0ms";
     const trimLeft = this.parseTimeOrExpression(trimLeftStr);
 
+    // Extract trim-end (support expressions)
+    const trimRightStr = styles["-trim-end"] || "0ms";
+    const trimRight = this.parseTimeOrExpression(trimRightStr);
+
     // Extract overlay/offset
     const offsetStartStr = styles["-offset-start"] || "0ms";
     const overlayLeft = this.parseTimeOrExpression(offsetStartStr);
@@ -88,6 +92,10 @@ export class CSSProcessor {
     // Extract sound property
     const sound = (styles["-sound"] as "on" | "off") || "on";
 
+    // Extract volume (percentage, 100 = original)
+    const volumeStr = styles["-volume"];
+    const volume = volumeStr ? parseFloat(volumeStr) : 100;
+
     // Build render fragment
     const renderFragment: RenderFragment = {
       id:
@@ -97,6 +105,7 @@ export class CSSProcessor {
       assetName,
       duration,
       trimLeft,
+      trimRight,
       overlayLeft,
       overlayZIndex: 0,
       transitionIn: transitionIn.type,
@@ -126,6 +135,7 @@ export class CSSProcessor {
       chromakeyColor: "#000000",
       visualFilter,
       sound,
+      volume,
       timecodeLabel: parsedFragment.timecode,
     };
 

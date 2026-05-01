@@ -19,6 +19,7 @@ export type Fragment = {
   assetName: string;
   duration: number | CompiledExpression; // calculated, in milliseconds
   trimLeft: number | CompiledExpression; // in milliseconds
+  trimRight: number | CompiledExpression; // trim from end of asset, in milliseconds
   overlayLeft: number | CompiledExpression; // milliseconds to overlay with previous fragment
   overlayZIndex: number;
   transitionIn: string; // how to transition into the fragment
@@ -53,6 +54,7 @@ export type Fragment = {
   chromakeyColor: string;
   visualFilter?: string; // Optional visual filter (e.g., 'instagram-nashville')
   sound: 'on' | 'off'; // Whether to use asset audio or silence
+  volume: number; // Audio volume in percent (100 = original, 0 = muted, 200 = doubled)
   timecodeLabel?: string; // Optional label for timecode
 };
 

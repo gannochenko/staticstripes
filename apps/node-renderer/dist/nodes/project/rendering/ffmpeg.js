@@ -35,6 +35,7 @@ exports.makeFade = makeFade;
 exports.makeColor = makeColor;
 exports.makeAnullsrc = makeAnullsrc;
 exports.makeAmix = makeAmix;
+exports.makeVolume = makeVolume;
 exports.makeDrawtext = makeDrawtext;
 const child_process_1 = require("child_process");
 const label_generator_1 = require("./label-generator");
@@ -1112,6 +1113,19 @@ function makeAmix(inputs, options = {}) {
         params.push(`normalize=${options.normalize ? '1' : '0'}`);
     }
     return new Filter(inputs, [output], `amix=${params.join(':')}`);
+}
+/**
+ * Creates a volume filter to adjust audio level
+ * @param inputs - Input stream labels (must be audio)
+ * @param percent - Volume in percent (100 = original, 0 = muted, 200 = doubled)
+ */
+function makeVolume(inputs, percent) {
+    const input = inputs[0];
+    if (!input.isAudio) {
+        throw new Error(`makeVolume: input must be audio, got video (tag: ${input.tag})`);
+    }
+    const output = { tag: (0, label_generator_1.getLabel)(), isAudio: true };
+    return new Filter(inputs, [output], `volume=${percent / 100}`);
 }
 /**
  * Creates a drawtext filter to overlay text on video

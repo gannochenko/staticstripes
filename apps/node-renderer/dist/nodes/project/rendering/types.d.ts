@@ -17,6 +17,7 @@ export type Fragment = {
     assetName: string;
     duration: number | CompiledExpression;
     trimLeft: number | CompiledExpression;
+    trimRight: number | CompiledExpression;
     overlayLeft: number | CompiledExpression;
     overlayZIndex: number;
     transitionIn: string;
@@ -45,6 +46,7 @@ export type Fragment = {
     chromakeyColor: string;
     visualFilter?: string;
     sound: 'on' | 'off';
+    volume: number;
     timecodeLabel?: string;
 };
 export type SequenceDefinition = {

@@ -1567,6 +1567,24 @@ export function makeAmix(
 }
 
 /**
+ * Creates a volume filter to adjust audio level
+ * @param inputs - Input stream labels (must be audio)
+ * @param percent - Volume in percent (100 = original, 0 = muted, 200 = doubled)
+ */
+export function makeVolume(inputs: Label[], percent: number): Filter {
+  const input = inputs[0];
+
+  if (!input.isAudio) {
+    throw new Error(
+      `makeVolume: input must be audio, got video (tag: ${input.tag})`,
+    );
+  }
+
+  const output = { tag: getLabel(), isAudio: true };
+  return new Filter(inputs, [output], `volume=${percent / 100}`);
+}
+
+/**
  * Creates a drawtext filter to overlay text on video
  */
 export function makeDrawtext(

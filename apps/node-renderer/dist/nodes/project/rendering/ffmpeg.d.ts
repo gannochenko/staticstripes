@@ -405,6 +405,12 @@ export declare function makeAmix(inputs: Label[], options?: {
     normalize?: boolean;
 }): Filter;
 /**
+ * Creates a volume filter to adjust audio level
+ * @param inputs - Input stream labels (must be audio)
+ * @param percent - Volume in percent (100 = original, 0 = muted, 200 = doubled)
+ */
+export declare function makeVolume(inputs: Label[], percent: number): Filter;
+/**
  * Creates a drawtext filter to overlay text on video
  */
 export declare function makeDrawtext(inputs: Label[], options: {

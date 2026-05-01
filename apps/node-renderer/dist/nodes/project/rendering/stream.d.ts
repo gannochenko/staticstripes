@@ -145,6 +145,7 @@ export declare class Stream {
      * @param filterName - The filter to apply
      */
     filter(filterName: VisualFilter): Stream;
+    volume(percent: number): Stream;
     drawTimecode(text: string, options?: {
         x?: string | number;
         y?: string | number;
