@@ -928,18 +928,21 @@ function makeKenBurns(inputs, options) {
     let zoomExpr;
     let xExpr;
     let yExpr;
+    // x/y must stay within [0, iw*(1-1/zoom)] and [0, ih*(1-1/zoom)] respectively.
+    // floor() eliminates sub-pixel jitter; max(0,...) and min(...) clamp to valid range.
+    const clampX = (inner) => `'floor(max(0,min(iw*(1-1/zoom),${inner})))'`;
+    const clampY = (inner) => `'floor(max(0,min(ih*(1-1/zoom),${inner})))'`;
     switch (options.effect) {
         case 'zoom-in':
-            // Start at 1.0, zoom to zoomFactor over animation duration, then hold
-            zoomExpr = `'1+(${zoomFactor}-1)*(${progress})'`;
-            xExpr = `'iw*${focalX / 100}-iw/zoom/2'`;
-            yExpr = `'ih*${focalY / 100}-ih/zoom/2'`;
+            // max(1,...) prevents z from dipping below 1 due to floating-point error
+            zoomExpr = `'max(1,1+(${zoomFactor}-1)*(${progress}))'`;
+            xExpr = clampX(`iw*${focalX / 100}-iw/zoom/2`);
+            yExpr = clampY(`ih*${focalY / 100}-ih/zoom/2`);
             break;
         case 'zoom-out':
-            // Start at zoomFactor, zoom out to 1.0 over animation duration, then hold
-            zoomExpr = `'${zoomFactor}-(${zoomFactor}-1)*(${progress})'`;
-            xExpr = `'iw*${focalX / 100}-iw/zoom/2'`;
-            yExpr = `'ih*${focalY / 100}-ih/zoom/2'`;
+            zoomExpr = `'max(1,${zoomFactor}-(${zoomFactor}-1)*(${progress}))'`;
+            xExpr = clampX(`iw*${focalX / 100}-iw/zoom/2`);
+            yExpr = clampY(`ih*${focalY / 100}-ih/zoom/2`);
             break;
         case 'pan-left':
         case 'pan-right': {
@@ -947,9 +950,8 @@ function makeKenBurns(inputs, options) {
             const panStart = (options.panStartX ?? 0) / 100; // 0 = left edge, 1 = right edge
             const panEnd = (options.panEndX ?? 100) / 100;
             zoomExpr = `'${zoomFactor}'`;
-            // Interpolate between start and end positions: start + (end - start) * progress
-            xExpr = `'(iw-iw/zoom)*(${panStart}+(${panEnd}-${panStart})*(${progress}))'`;
-            yExpr = `'(ih-ih/zoom)/2'`; // center vertically
+            xExpr = clampX(`(iw-iw/zoom)*(${panStart}+(${panEnd}-${panStart})*(${progress}))`);
+            yExpr = clampY(`(ih-ih/zoom)/2`);
             break;
         }
         case 'pan-top':
@@ -958,9 +960,8 @@ function makeKenBurns(inputs, options) {
             const panStart = (options.panStartY ?? 0) / 100; // 0 = top edge, 1 = bottom edge
             const panEnd = (options.panEndY ?? 100) / 100;
             zoomExpr = `'${zoomFactor}'`;
-            xExpr = `'(iw-iw/zoom)/2'`; // center horizontally
-            // Interpolate between start and end positions: start + (end - start) * progress
-            yExpr = `'(ih-ih/zoom)*(${panStart}+(${panEnd}-${panStart})*(${progress}))'`;
+            xExpr = clampX(`(iw-iw/zoom)/2`);
+            yExpr = clampY(`(ih-ih/zoom)*(${panStart}+(${panEnd}-${panStart})*(${progress}))`);
             break;
         }
     }

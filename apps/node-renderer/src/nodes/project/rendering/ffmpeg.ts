@@ -1293,44 +1293,66 @@ export function makeKenBurns(
   let xExpr: string;
   let yExpr: string;
 
-  switch (options.effect) {
-    case 'zoom-in':
-      // Start at 1.0, zoom to zoomFactor over animation duration, then hold
-      zoomExpr = `'1+(${zoomFactor}-1)*(${progress})'`;
-      xExpr = `'iw*${focalX/100}-iw/zoom/2'`;
-      yExpr = `'ih*${focalY/100}-ih/zoom/2'`;
-      break;
+  // IMPORTANT: do NOT use the `zoom` variable in x/y expressions.
+  // zoompan evaluates z first, but `zoom` in x/y may reflect the previous frame's
+  // value in some FFmpeg builds, causing 1-pixel jitter. Instead, inline the z
+  // formula directly — both z and x/y then derive from `on` independently.
+  // floor() removes sub-pixel rounding; max/min clamps to the valid crop region.
+  const buildXY = (zInline: string) => {
+    const maxX = `iw*(1-1/(${zInline}))`;
+    const maxY = `ih*(1-1/(${zInline}))`;
+    const cx = `iw*${focalX/100}-iw/(2*(${zInline}))`;
+    const cy = `ih*${focalY/100}-ih/(2*(${zInline}))`;
+    return {
+      x: `'floor(max(0,min(${maxX},${cx})))'`,
+      y: `'floor(max(0,min(${maxY},${cy})))'`,
+    };
+  };
 
-    case 'zoom-out':
-      // Start at zoomFactor, zoom out to 1.0 over animation duration, then hold
-      zoomExpr = `'${zoomFactor}-(${zoomFactor}-1)*(${progress})'`;
-      xExpr = `'iw*${focalX/100}-iw/zoom/2'`;
-      yExpr = `'ih*${focalY/100}-ih/zoom/2'`;
+  switch (options.effect) {
+    case 'zoom-in': {
+      const z = `max(1,1+(${zoomFactor}-1)*(${progress}))`;
+      zoomExpr = `'${z}'`;
+      const xy = buildXY(z);
+      xExpr = xy.x;
+      yExpr = xy.y;
       break;
+    }
+
+    case 'zoom-out': {
+      const z = `max(1,${zoomFactor}-(${zoomFactor}-1)*(${progress}))`;
+      zoomExpr = `'${z}'`;
+      const xy = buildXY(z);
+      xExpr = xy.x;
+      yExpr = xy.y;
+      break;
+    }
 
     case 'pan-left':
     case 'pan-right': {
       // Horizontal panning with custom start/end positions
-      const panStart = (options.panStartX ?? 0) / 100; // 0 = left edge, 1 = right edge
+      const panStart = (options.panStartX ?? 0) / 100;
       const panEnd = (options.panEndX ?? 100) / 100;
-
-      zoomExpr = `'${zoomFactor}'`;
-      // Interpolate between start and end positions: start + (end - start) * progress
-      xExpr = `'(iw-iw/zoom)*(${panStart}+(${panEnd}-${panStart})*(${progress}))'`;
-      yExpr = `'(ih-ih/zoom)/2'`; // center vertically
+      const z = `${zoomFactor}`;
+      zoomExpr = `'${z}'`;
+      const maxX = `iw*(1-1/${z})`;
+      const maxY = `ih*(1-1/${z})`;
+      xExpr = `'floor(max(0,min(${maxX},(${maxX})*(${panStart}+(${panEnd}-${panStart})*(${progress})))))'`;
+      yExpr = `'floor(max(0,min(${maxY},${maxY}/2)))'`;
       break;
     }
 
     case 'pan-top':
     case 'pan-bottom': {
       // Vertical panning with custom start/end positions
-      const panStart = (options.panStartY ?? 0) / 100; // 0 = top edge, 1 = bottom edge
+      const panStart = (options.panStartY ?? 0) / 100;
       const panEnd = (options.panEndY ?? 100) / 100;
-
-      zoomExpr = `'${zoomFactor}'`;
-      xExpr = `'(iw-iw/zoom)/2'`; // center horizontally
-      // Interpolate between start and end positions: start + (end - start) * progress
-      yExpr = `'(ih-ih/zoom)*(${panStart}+(${panEnd}-${panStart})*(${progress}))'`;
+      const z = `${zoomFactor}`;
+      zoomExpr = `'${z}'`;
+      const maxX = `iw*(1-1/${z})`;
+      const maxY = `ih*(1-1/${z})`;
+      xExpr = `'floor(max(0,min(${maxX},${maxX}/2)))'`;
+      yExpr = `'floor(max(0,min(${maxY},(${maxY})*(${panStart}+(${panEnd}-${panStart})*(${progress})))))'`;
       break;
     }
   }
