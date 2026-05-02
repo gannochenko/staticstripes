@@ -316,7 +316,6 @@ export async function renderApp(
     await page.exposeFunction(
       "__stsCaptureFrame",
       async (frameNumber: number) => {
-        console.log(`[app:${app.id}] 🎬 Starting capture frame ${frameNumber}...`);
         const screenshot = await page.screenshot({
           type: "png",
           omitBackground: true,
@@ -327,9 +326,6 @@ export async function renderApp(
           number: frameNumber,
           buffer: Buffer.from(screenshot),
         });
-        console.log(
-          `[app:${app.id}] ✅ Captured frame ${frameNumber} (${frames.length} total)`,
-        );
 
         // Promise resolution is the ACK!
         return true;

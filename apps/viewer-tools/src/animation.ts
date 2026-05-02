@@ -157,10 +157,7 @@ export async function captureAnimation(
       await new Promise(resolve => requestAnimationFrame(resolve));
       await new Promise(resolve => requestAnimationFrame(resolve));
 
-      // Request capture with explicit frame number and WAIT for Puppeteer ACK
-      console.log(`[AnimationCapture] About to capture frame ${i}...`);
       await capture.captureFrame(i);
-      console.log(`[AnimationCapture] Captured frame ${i} successfully`);
 
       // Optional: maintain consistent timing (useful for debugging)
       // In production, Puppeteer's screenshot speed controls pacing

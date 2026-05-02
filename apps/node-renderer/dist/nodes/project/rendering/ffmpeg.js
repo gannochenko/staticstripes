@@ -904,71 +904,82 @@ function makeKenBurns(inputs, options) {
     const animationFrames = Math.floor(animationDurationInSeconds * options.fps);
     // Convert zoom percentage to factor (e.g., 30% = 1.3x)
     const zoomFactor = 1 + options.zoom / 100;
-    // Create easing function expression
-    // t = progress from 0 to 1 (on/animationFrames)
-    // Returns eased value from 0 to 1
-    const getEasingExpr = (easing) => {
-        const t = `min(1,on/${animationFrames})`;
+    const W = options.width;
+    const H = options.height;
+    const animDurSec = animationDurationInSeconds;
+    // Root cause of jitter: scale=eval=frame outputs floor(W*z/2)*2 (even-rounded for YUV),
+    // but crop x was computed with a different formula → 1-2 px mismatch → per-frame flicker.
+    //
+    // Fix: express BOTH scale dimensions AND crop offsets via the SAME formula:
+    //   sw(z) = floor(W*z/2)*2   (replicates FFmpeg's internal YUV even-rounding)
+    //   cx(z) = (sw(z) - W) * focalX
+    // Since both filters evaluate the same z from the same 't', the values are always consistent.
+    //
+    // For pan effects: scale is static (no per-frame size change), only crop x/y varies.
+    const progressExpr = `min(1,t/${animDurSec})`;
+    const getEasingExpr = (easing, prog) => {
         switch (easing) {
-            case 'ease-in':
-                // Quadratic ease-in: t^2
-                return `pow(${t},2)`;
-            case 'ease-out':
-                // Quadratic ease-out: 1-(1-t)^2
-                return `1-pow(1-(${t}),2)`;
-            case 'ease-in-out':
-                // Quadratic ease-in-out: t<0.5 ? 2*t^2 : 1-2*(1-t)^2
-                return `if(lt(${t},0.5),2*pow(${t},2),1-pow(-2*(${t})+2,2)/2)`;
-            case 'linear':
-            default:
-                return t;
+            case 'ease-in': return `pow(${prog},2)`;
+            case 'ease-out': return `1-pow(1-(${prog}),2)`;
+            case 'ease-in-out': return `if(lt(${prog},0.5),2*pow(${prog},2),1-pow(-2*(${prog})+2,2)/2)`;
+            default: return prog;
         }
     };
-    const progress = getEasingExpr(options.easing);
-    let zoomExpr;
-    let xExpr;
-    let yExpr;
-    // x/y must stay within [0, iw*(1-1/zoom)] and [0, ih*(1-1/zoom)] respectively.
-    // floor() eliminates sub-pixel jitter; max(0,...) and min(...) clamp to valid range.
-    const clampX = (inner) => `'floor(max(0,min(iw*(1-1/zoom),${inner})))'`;
-    const clampY = (inner) => `'floor(max(0,min(ih*(1-1/zoom),${inner})))'`;
+    const progress = getEasingExpr(options.easing, progressExpr);
+    const fxFrac = (focalX / 100).toFixed(6);
+    const fyFrac = (focalY / 100).toFixed(6);
+    // Even-rounded scale output — same formula used in both scale w/h and crop x/y.
+    const swExpr = (z) => `floor(${W}*(${z})/2)*2`;
+    const shExpr = (z) => `floor(${H}*(${z})/2)*2`;
+    let filterStr;
     switch (options.effect) {
-        case 'zoom-in':
-            // max(1,...) prevents z from dipping below 1 due to floating-point error
-            zoomExpr = `'max(1,1+(${zoomFactor}-1)*(${progress}))'`;
-            xExpr = clampX(`iw*${focalX / 100}-iw/zoom/2`);
-            yExpr = clampY(`ih*${focalY / 100}-ih/zoom/2`);
+        case 'zoom-in': {
+            const z = `max(1,1+(${zoomFactor}-1)*(${progress}))`;
+            const sw = swExpr(z);
+            const sh = shExpr(z);
+            filterStr = `loop=${totalFrames}:1,fps=${options.fps},scale=eval=frame:w='${sw}':h='${sh}',crop=w=${W}:h=${H}:x='(${sw}-${W})*${fxFrac}':y='(${sh}-${H})*${fyFrac}'`;
             break;
-        case 'zoom-out':
-            zoomExpr = `'max(1,${zoomFactor}-(${zoomFactor}-1)*(${progress}))'`;
-            xExpr = clampX(`iw*${focalX / 100}-iw/zoom/2`);
-            yExpr = clampY(`ih*${focalY / 100}-ih/zoom/2`);
+        }
+        case 'zoom-out': {
+            const z = `max(1,${zoomFactor}-(${zoomFactor}-1)*(${progress}))`;
+            const sw = swExpr(z);
+            const sh = shExpr(z);
+            filterStr = `loop=${totalFrames}:1,fps=${options.fps},scale=eval=frame:w='${sw}':h='${sh}',crop=w=${W}:h=${H}:x='(${sw}-${W})*${fxFrac}':y='(${sh}-${H})*${fyFrac}'`;
             break;
+        }
         case 'pan-left':
         case 'pan-right': {
-            // Horizontal panning with custom start/end positions
-            const panStart = (options.panStartX ?? 0) / 100; // 0 = left edge, 1 = right edge
+            // Static scale — no per-frame size variation, so no mismatch possible.
+            const panStart = (options.panStartX ?? 0) / 100;
             const panEnd = (options.panEndX ?? 100) / 100;
-            zoomExpr = `'${zoomFactor}'`;
-            xExpr = clampX(`(iw-iw/zoom)*(${panStart}+(${panEnd}-${panStart})*(${progress}))`);
-            yExpr = clampY(`(ih-ih/zoom)/2`);
+            const bigW = Math.round(W * zoomFactor);
+            const bigH = Math.round(H * zoomFactor);
+            const maxX = bigW - W;
+            const cx = `max(0,min(${maxX},(${maxX})*(${panStart}+(${panEnd}-${panStart})*(${progress}))))`;
+            const cy = `${Math.floor((bigH - H) / 2)}`;
+            filterStr = `loop=${totalFrames}:1,fps=${options.fps},scale=${bigW}:${bigH},crop=w=${W}:h=${H}:x='${cx}':y='${cy}'`;
             break;
         }
         case 'pan-top':
         case 'pan-bottom': {
-            // Vertical panning with custom start/end positions
-            const panStart = (options.panStartY ?? 0) / 100; // 0 = top edge, 1 = bottom edge
+            const panStart = (options.panStartY ?? 0) / 100;
             const panEnd = (options.panEndY ?? 100) / 100;
-            zoomExpr = `'${zoomFactor}'`;
-            xExpr = clampX(`(iw-iw/zoom)/2`);
-            yExpr = clampY(`(ih-ih/zoom)*(${panStart}+(${panEnd}-${panStart})*(${progress}))`);
+            const bigW = Math.round(W * zoomFactor);
+            const bigH = Math.round(H * zoomFactor);
+            const maxY = bigH - H;
+            const cx = `${Math.floor((bigW - W) / 2)}`;
+            const cy = `max(0,min(${maxY},(${maxY})*(${panStart}+(${panEnd}-${panStart})*(${progress}))))`;
+            filterStr = `loop=${totalFrames}:1,fps=${options.fps},scale=${bigW}:${bigH},crop=w=${W}:h=${H}:x='${cx}':y='${cy}'`;
+            break;
+        }
+        default: {
+            const z = `max(1,1+(${zoomFactor}-1)*(${progress}))`;
+            const sw = swExpr(z);
+            const sh = shExpr(z);
+            filterStr = `loop=${totalFrames}:1,fps=${options.fps},scale=eval=frame:w='${sw}':h='${sh}',crop=w=${W}:h=${H}:x='(${sw}-${W})*0.5':y='(${sh}-${H})*0.5'`;
             break;
         }
     }
-    // zoompan filter syntax:
-    // zoompan=z='zoom':x='x':y='y':d=frames:s=WxH:fps=FPS
-    // d=totalFrames ensures we generate frames for the entire fragment duration
-    const filterStr = `zoompan=z=${zoomExpr}:x=${xExpr}:y=${yExpr}:d=${totalFrames}:s=${options.width}x${options.height}:fps=${options.fps}`;
     return new Filter(inputs, [output], filterStr);
 }
 /**

@@ -92,7 +92,6 @@ export function useAnimationProgress(
         // Use manual time control for scrubbing
         const prog = effectiveDuration > 0 ? Math.min(1, Math.max(0, manualTime / effectiveDuration)) : 0;
         const frame = Math.floor((params.fps * manualTime) / 1000);
-        console.log(`[useAnimationProgress] manualTime=${manualTime}, prog=${prog.toFixed(3)}, frame=${frame}`);
         setProgress(prog);
         setFrameNumber(frame);
       } else {
