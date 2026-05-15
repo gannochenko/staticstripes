@@ -70,6 +70,27 @@ class CSSProcessor {
         // Extract playback speed (1.0 = normal speed)
         const playbackSpeedStr = styles["-playback-speed"];
         const playbackSpeed = playbackSpeedStr ? parseFloat(playbackSpeedStr) : 1.0;
+        // Extract overlay z-index
+        const overlayZIndexStr = styles["-overlay-z-index"];
+        const overlayZIndex = overlayZIndexStr ? parseInt(overlayZIndexStr, 10) : 0;
+        // Extract chromakey: "<blend> <similarity> <color>"
+        const chromakeyStr = styles["-chromakey"];
+        let chromakey = false;
+        let chromakeyBlend = 0;
+        let chromakeySimilarity = 0;
+        let chromakeyColor = "#000000";
+        if (chromakeyStr) {
+            chromakey = true;
+            const chromakeyParts = chromakeyStr.trim().split(/\s+/);
+            const blendStr = chromakeyParts[0] ?? "0";
+            const similarityStr = chromakeyParts[1] ?? "0.3";
+            const colorStr = chromakeyParts[2] ?? "#000000";
+            const blendAliases = { hard: 0.0, smooth: 0.1, soft: 0.2 };
+            const similarityAliases = { strict: 0.1, good: 0.3, forgiving: 0.5, loose: 0.7 };
+            chromakeyBlend = blendAliases[blendStr] ?? parseFloat(blendStr);
+            chromakeySimilarity = similarityAliases[similarityStr] ?? parseFloat(similarityStr);
+            chromakeyColor = colorStr;
+        }
         // Build render fragment
         const renderFragment = {
             id: parsedFragment.id ||
@@ -80,7 +101,7 @@ class CSSProcessor {
             trimLeft,
             trimRight,
             overlayLeft,
-            overlayZIndex: 0,
+            overlayZIndex,
             transitionIn: transitionIn.type,
             transitionInDuration: transitionIn.duration,
             transitionOut: transitionOut.type,
@@ -101,10 +122,10 @@ class CSSProcessor {
             objectFitKenBurnsPanStartY: 0,
             objectFitKenBurnsPanEndX: 100,
             objectFitKenBurnsPanEndY: 100,
-            chromakey: false,
-            chromakeyBlend: 0,
-            chromakeySimilarity: 0,
-            chromakeyColor: "#000000",
+            chromakey,
+            chromakeyBlend,
+            chromakeySimilarity,
+            chromakeyColor,
             visualFilter,
             sound,
             volume,
