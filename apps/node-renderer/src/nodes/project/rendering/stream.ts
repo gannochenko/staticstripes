@@ -28,6 +28,8 @@ import {
   makeColorBalance,
   makeDrawtext,
   makeVolume,
+  makeVideoSpeed,
+  makeAudioSpeed,
 } from './ffmpeg';
 
 export const PILLARBOX = 'pillarbox';
@@ -1065,6 +1067,18 @@ export class Stream {
 
   public volume(percent: number): Stream {
     const res = makeVolume([this.looseEnd], percent);
+    this.looseEnd = res.outputs[0];
+    this.buf.append(res);
+    return this;
+  }
+
+  public speed(value: number): Stream {
+    if (value === 1.0) {
+      return this;
+    }
+    const res = this.looseEnd.isAudio
+      ? makeAudioSpeed([this.looseEnd], value)
+      : makeVideoSpeed([this.looseEnd], value);
     this.looseEnd = res.outputs[0];
     this.buf.append(res);
     return this;

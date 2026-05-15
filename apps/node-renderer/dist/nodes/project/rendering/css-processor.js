@@ -67,6 +67,9 @@ class CSSProcessor {
         // Extract volume (percentage, 100 = original)
         const volumeStr = styles["-volume"];
         const volume = volumeStr ? parseFloat(volumeStr) : 100;
+        // Extract playback speed (1.0 = normal speed)
+        const playbackSpeedStr = styles["-playback-speed"];
+        const playbackSpeed = playbackSpeedStr ? parseFloat(playbackSpeedStr) : 1.0;
         // Build render fragment
         const renderFragment = {
             id: parsedFragment.id ||
@@ -105,6 +108,7 @@ class CSSProcessor {
             visualFilter,
             sound,
             volume,
+            playbackSpeed,
             timecodeLabel: parsedFragment.timecode,
         };
         return renderFragment;

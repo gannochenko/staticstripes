@@ -47,6 +47,7 @@ export type Fragment = {
     visualFilter?: string;
     sound: 'on' | 'off';
     volume: number;
+    playbackSpeed?: number;
     timecodeLabel?: string;
 };
 export type SequenceDefinition = {

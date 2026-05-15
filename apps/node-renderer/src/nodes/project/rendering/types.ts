@@ -55,6 +55,7 @@ export type Fragment = {
   visualFilter?: string; // Optional visual filter (e.g., 'instagram-nashville')
   sound: 'on' | 'off'; // Whether to use asset audio or silence
   volume: number; // Audio volume in percent (100 = original, 0 = muted, 200 = doubled)
+  playbackSpeed?: number; // Playback speed multiplier (1.0 = normal, 2.0 = 2x speed, 0.5 = half speed)
   timecodeLabel?: string; // Optional label for timecode
 };
 

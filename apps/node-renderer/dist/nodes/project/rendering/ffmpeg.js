@@ -37,6 +37,8 @@ exports.makeAnullsrc = makeAnullsrc;
 exports.makeAmix = makeAmix;
 exports.makeVolume = makeVolume;
 exports.makeDrawtext = makeDrawtext;
+exports.makeVideoSpeed = makeVideoSpeed;
+exports.makeAudioSpeed = makeAudioSpeed;
 const child_process_1 = require("child_process");
 const label_generator_1 = require("./label-generator");
 /**
@@ -1159,6 +1161,58 @@ function makeDrawtext(inputs, options) {
         `y=${options.y ?? 10}`,
     ];
     return new Filter(inputs, [output], `drawtext=${params.join(':')}`);
+}
+/**
+ * Creates a video speed filter using setpts
+ * @param inputs - Input stream labels (must be video)
+ * @param speed - Speed multiplier (e.g. 2.0 = 2x speed, 0.5 = half speed)
+ */
+function makeVideoSpeed(inputs, speed) {
+    const input = inputs[0];
+    if (input.isAudio) {
+        throw new Error(`makeVideoSpeed: input must be video, got audio (tag: ${input.tag})`);
+    }
+    const output = {
+        tag: (0, label_generator_1.getLabel)(),
+        isAudio: false,
+    };
+    return new Filter(inputs, [output], `setpts=PTS/${speed}`);
+}
+/**
+ * Creates an audio speed filter using atempo (chained to support any speed)
+ * atempo is limited to 0.5–2.0 per stage, so multiple stages are chained when needed.
+ * @param inputs - Input stream labels (must be audio)
+ * @param speed - Speed multiplier (e.g. 2.0 = 2x speed, 0.5 = half speed)
+ */
+function makeAudioSpeed(inputs, speed) {
+    const input = inputs[0];
+    if (!input.isAudio) {
+        throw new Error(`makeAudioSpeed: input must be audio, got video (tag: ${input.tag})`);
+    }
+    const output = {
+        tag: (0, label_generator_1.getLabel)(),
+        isAudio: true,
+    };
+    const stages = [];
+    let remaining = speed;
+    if (speed > 1.0) {
+        while (remaining > 2.0) {
+            stages.push('atempo=2.0');
+            remaining /= 2.0;
+        }
+        stages.push(`atempo=${remaining}`);
+    }
+    else if (speed < 1.0) {
+        while (remaining < 0.5) {
+            stages.push('atempo=0.5');
+            remaining /= 0.5;
+        }
+        stages.push(`atempo=${remaining}`);
+    }
+    else {
+        stages.push('atempo=1.0');
+    }
+    return new Filter(inputs, [output], stages.join(','));
 }
 /**
  * Wraps a label in brackets

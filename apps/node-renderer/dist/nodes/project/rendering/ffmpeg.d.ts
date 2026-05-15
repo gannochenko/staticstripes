@@ -422,4 +422,17 @@ export declare function makeDrawtext(inputs: Label[], options: {
     boxcolor?: string;
     boxborderw?: number;
 }): Filter;
+/**
+ * Creates a video speed filter using setpts
+ * @param inputs - Input stream labels (must be video)
+ * @param speed - Speed multiplier (e.g. 2.0 = 2x speed, 0.5 = half speed)
+ */
+export declare function makeVideoSpeed(inputs: Label[], speed: number): Filter;
+/**
+ * Creates an audio speed filter using atempo (chained to support any speed)
+ * atempo is limited to 0.5–2.0 per stage, so multiple stages are chained when needed.
+ * @param inputs - Input stream labels (must be audio)
+ * @param speed - Speed multiplier (e.g. 2.0 = 2x speed, 0.5 = half speed)
+ */
+export declare function makeAudioSpeed(inputs: Label[], speed: number): Filter;
 //# sourceMappingURL=ffmpeg.d.ts.map

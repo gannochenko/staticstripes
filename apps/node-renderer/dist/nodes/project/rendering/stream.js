@@ -810,6 +810,17 @@ class Stream {
         this.buf.append(res);
         return this;
     }
+    speed(value) {
+        if (value === 1.0) {
+            return this;
+        }
+        const res = this.looseEnd.isAudio
+            ? (0, ffmpeg_1.makeAudioSpeed)([this.looseEnd], value)
+            : (0, ffmpeg_1.makeVideoSpeed)([this.looseEnd], value);
+        this.looseEnd = res.outputs[0];
+        this.buf.append(res);
+        return this;
+    }
     drawTimecode(text, options = {}) {
         const res = (0, ffmpeg_1.makeDrawtext)([this.looseEnd], { text, ...options });
         this.looseEnd = res.outputs[0];

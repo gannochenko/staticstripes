@@ -151,6 +151,14 @@ export class Sequence {
         currentAudioStream.volume(fragment.volume);
       }
 
+      // Apply playback speed adjustment (before trim)
+      if (fragment.playbackSpeed !== undefined && fragment.playbackSpeed !== 1.0) {
+        currentVideoStream.speed(fragment.playbackSpeed);
+        if (asset.hasAudio && fragment.sound !== "off") {
+          currentAudioStream.speed(fragment.playbackSpeed);
+        }
+      }
+
       if ((calculatedTrimLeft != 0 || calculatedTrimRight != 0 || (effectiveDuration < asset.duration && effectiveDuration > 0))) {
         // Only trim video if it came from an actual source
         if (asset.hasVideo && effectiveDuration > 0) {

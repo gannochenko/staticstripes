@@ -146,6 +146,7 @@ export declare class Stream {
      */
     filter(filterName: VisualFilter): Stream;
     volume(percent: number): Stream;
+    speed(value: number): Stream;
     drawTimecode(text: string, options?: {
         x?: string | number;
         y?: string | number;
