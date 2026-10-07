@@ -1,6 +1,6 @@
 {
   "name": "staticstripes",
-  "displayName": "StaticStripes",
+  "version": "0.1.0",
   "description": "Create, edit and render videos from declarative HTML/CSS projects with the StaticStripes CLI (FFmpeg under the hood).",
   "author": {
     "name": "Sergei Gannochenko",
