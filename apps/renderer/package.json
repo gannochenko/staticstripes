@@ -6,6 +6,9 @@
   "bin": {
     "staticstripes": "./dist/cli.js"
   },
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "build": "tsc",
     "dev": "tsx src/index.ts",
