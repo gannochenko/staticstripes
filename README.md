@@ -242,6 +242,19 @@ The `project.html` file uses a custom HTML-based syntax:
 </container>
 ```
 
+## Claude plugin
+
+StaticStripes ships as a plugin for Claude Code and Cowork: a skill with the full `project.html` reference,
+an environment check (`/staticstripes:setup`) and a render command (`/staticstripes:render`).
+
+```bash
+claude plugin marketplace add gannochenko/staticstripes
+claude plugin install staticstripes@staticstripes
+```
+
+The plugin doesn't bundle or silently install FFmpeg — the setup skill checks your environment and proposes
+install commands for your OS, running them only after you confirm.
+
 ## Platform Compatibility
 
 StaticStripes is fully cross-platform and works on:

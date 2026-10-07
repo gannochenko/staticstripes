@@ -1,0 +1,17 @@
+{
+  "name": "staticstripes",
+  "owner": {
+    "name": "Sergei Gannochenko",
+    "url": "https://github.com/gannochenko"
+  },
+  "metadata": {
+    "description": "Claude plugin for StaticStripes — declarative HTML/CSS video rendering with FFmpeg."
+  },
+  "plugins": [
+    {
+      "name": "staticstripes",
+      "source": "./plugins/staticstripes",
+      "description": "Create, edit and render videos from declarative HTML/CSS projects with the StaticStripes CLI."
+    }
+  ]
+}
